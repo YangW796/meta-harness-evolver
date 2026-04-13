@@ -16,3 +16,7 @@ build/
 
 # Local config overrides (keep generic, not agent-specific)
 *.local
+.env
+.env.*
+hoss-evolution/
+.tool_cache/

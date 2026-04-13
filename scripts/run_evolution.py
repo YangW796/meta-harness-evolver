@@ -2,13 +2,13 @@
 """
 Meta-Harness Evolution Loop — Main Entry Point
 
-Runs the full Meta-Harness outer loop for Hoss:
-  1. Read prior candidates from ~/hoss-evolution/candidates/
-  2. Spawn proposer sub-agent to propose a new harness
-  3. Validate the proposed candidate
+Runs the full Meta-Harness outer loop:
+  1. Read prior candidates from ./hoss-evolution/candidates/
+  2. Spawn proposer sub-agent to propose a new candidate
+  3. Validate the candidate
   4. Evaluate against benchmark
   5. Log results
-  6. Post summary to Discord
+  6. Post summary to Feishu
 
 Usage:
   python3 run_evolution.py [--candidate-num N]
@@ -21,18 +21,83 @@ Exit codes:
 
 import argparse
 import json
+import logging
 import os
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 
-WORKSPACE = Path.home() / "hoss-evolution"
+WORKSPACE = (Path.cwd() / "hoss-evolution").resolve()
 CANDIDATES_DIR = WORKSPACE / "candidates"
 BEST_DIR = WORKSPACE / "best" / "current"
 SCRIPTS_DIR = Path(__file__).parent
+ENV_FILE = SCRIPTS_DIR.parent / ".env"
+
+
+def _load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'").strip('"')
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file(ENV_FILE)
+
+
+_IGNORED_DIR_NAMES = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".ipynb_checkpoints",
+    "node_modules",
+    "dist",
+    "build",
+}
+_IGNORED_FILE_NAMES = {
+    ".DS_Store",
+    ".env",
+    ".env.local",
+}
+_IGNORED_SUFFIXES = {
+    ".pyc",
+    ".pyo",
+}
+
+
+def should_ignore_path(path: Path) -> bool:
+    name = path.name
+    if name in _IGNORED_FILE_NAMES:
+        return True
+    if name.endswith(".egg-info"):
+        return True
+    if name.startswith(".") and name not in {".gitkeep"}:
+        return True
+    if path.is_dir() and name in _IGNORED_DIR_NAMES:
+        return True
+    if path.is_file() and path.suffix in _IGNORED_SUFFIXES:
+        return True
+    return False
+
+
+def iter_effective_files(directory: Path):
+    for p in directory.iterdir():
+        if should_ignore_path(p):
+            continue
+        if p.is_file():
+            yield p
 
 
 def get_next_candidate_num() -> int:
@@ -55,7 +120,7 @@ def get_best_candidate() -> dict | None:
 
 def run_proposer(candidate_num: int) -> dict:
     """
-    Spawn the proposer sub-agent to propose a harness modification.
+    Spawn the proposer sub-agent to propose a candidate modification.
     Returns dict with 'success', 'candidate_dir', and 'reasoning'.
     """
     import uuid
@@ -83,37 +148,39 @@ def run_proposer(candidate_num: int) -> dict:
     # Spawn the sub-agent
     agent_session_id = str(uuid.uuid4())[:8]
 
-    proposer_task = f"""You are the Meta-Harness Proposer for Hoss (OpenClaw agent).
+    # Dynamically list files in the current best directory for AI4S
+    best_harness_dir = BEST_DIR / "harness"
+    if best_harness_dir.exists():
+        files = [f.name for f in iter_effective_files(best_harness_dir)]
+        target_files_str = "\n".join([f"   - {f}" for f in files])
+    else:
+        target_files_str = "   - (No files found, please create the necessary Python scripts or configs)"
 
-Your job: Propose ONE targeted harness modification based on evolution history.
+    proposer_task = f"""You are the Evolution Proposer for an AI4S (AI for Science) project.
+
+Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
 ## Your Workspace
-- Evolution history: ~/hoss-evolution/candidates/
-- Current best harness: ~/hoss-evolution/best/current/
-- Your output: ~/hoss-evolution/candidates/candidate_{candidate_num}/harness/
+- Evolution history: {WORKSPACE}/candidates/
+- Current best codebase: {WORKSPACE}/best/current/
+- Your output: {WORKSPACE}/candidates/candidate_{candidate_num}/harness/
 
 ## What You Must Do
 
-1. Read ALL prior candidates from ~/hoss-evolution/candidates/ (sorted by number)
-2. Read the current best from ~/hoss-evolution/best/current/
+1. Read ALL prior candidates from {WORKSPACE}/candidates/ (sorted by number)
+2. Read the current best from {WORKSPACE}/best/current/
 3. Identify patterns: what's working? What's failing?
-4. Propose ONE targeted, specific edit to ONE of these files:
-   - SOUL.md (core identity/personality)
-   - IDENTITY.md (role, voice, tone)
-   - AGENTS.md (sub-agent coordination)
-   - TOOLS.md (tool configs — DO NOT change credentials/secrets)
-   - HEARTBEAT.md (check priorities/thresholds)
-   - MEMORY.md (memory structure — rarely change this)
+4. Propose ONE targeted, specific edit to ONE of the files. The current files include:
+{target_files_str}
 
-5. Copy the current best harness files to your output dir
-6. Apply your targeted edit to the ONE file you chose
-7. Write a BRIEF reasoning trace to ~/hoss-evolution/candidates/candidate_{candidate_num}/proposer_reasoning.md
+5. Copy the current best files to your output dir
+6. Apply your targeted edit to the ONE file you chose (e.g., modifying a PyTorch model, loss function, or hyperparameters).
+7. Write a BRIEF reasoning trace to {WORKSPACE}/candidates/candidate_{candidate_num}/proposer_reasoning.md
    explaining: what you changed, why, what you expect to improve
 
 ## Constraints
 - Do NOT do wholesale rewrites — one targeted edit max
-- Do NOT change git safety rules or credential values
-- Do NOT touch files outside the harness spec
+- Make sure Python code is syntactically correct and can run.
 - If you see no clear improvement path, write your reasoning and make ONE small edit anyway
 
 ## History Summary
@@ -121,8 +188,8 @@ Total prior candidates: {len(history)}
 Best score so far: {best['final_score'] if best else 'N/A'}
 
 ## Output Format
-Write your modified file to ~/hoss-evolution/candidates/candidate_{candidate_num}/harness/<FILENAME>
-Write reasoning to ~/hoss-evolution/candidates/candidate_{candidate_num}/proposer_reasoning.md
+Write your modified file to {WORKSPACE}/candidates/candidate_{candidate_num}/harness/<FILENAME>
+Write reasoning to {WORKSPACE}/candidates/candidate_{candidate_num}/proposer_reasoning.md
 
 Start now. Read the history first, then propose.
 """
@@ -131,20 +198,218 @@ Start now. Read the history first, then propose.
     print(f"[PROPOSER] History: {len(history)} prior candidates")
 
     try:
-        from openclaw.sessions import sessions_spawn
-        result = sessions_spawn(
+        if best_harness_dir.exists():
+            import shutil
+
+            for f in iter_effective_files(best_harness_dir):
+                shutil.copy2(f, candidate_dir / "harness" / f.name)
+
+        if os.environ.get("EVOLVER_TEST_MODE") == "1":
+            harness_out = candidate_dir / "harness"
+            cfg = harness_out / "config.yaml"
+            if cfg.exists():
+                cfg.write_text(cfg.read_text() + "\nseed: 1\n")
+            else:
+                (harness_out / "config.yaml").write_text("seed: 1\n")
+            (candidate_dir / "proposer_reasoning.md").write_text(
+                "Test mode proposer: appended a minimal config change (seed: 1).\n"
+            )
+            return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": {"mode": "test"}}
+
+        result = _run_proposer_with_nexau(
             task=proposer_task,
-            label=f"harness-proposer-{agent_session_id}",
-            runtime="subagent",
-            mode="run",
-            run_timeout_seconds=300,
+            label=f"evolver-proposer-{agent_session_id}",
+            work_dir=WORKSPACE,
+            timeout_seconds=300,
+            log_dir=candidate_dir / "traces",
         )
-        print(f"[PROPOSER] Sub-agent returned: {result}")
+        print(f"[PROPOSER] NexAU returned: {result}")
         return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": result}
     except Exception as e:
-        print(f"[PROPOSER] Error spawning sub-agent: {e}")
-        # Fall back: copy current best as a no-op candidate
+        print(f"[PROPOSER] Error running proposer: {e}")
         return {"success": False, "candidate_dir": str(candidate_dir), "error": str(e)}
+
+
+def _tail_text(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n...(truncated)\n"
+
+
+def _tail_file(path: Path, max_bytes: int = 8000) -> str:
+    if not path.exists():
+        return ""
+    data = path.read_bytes()
+    if len(data) <= max_bytes:
+        return data.decode("utf-8", errors="replace")
+    return data[-max_bytes:].decode("utf-8", errors="replace")
+
+
+def _run_proposer_with_nexau(task: str, label: str, work_dir: Path, timeout_seconds: int, log_dir: Path) -> dict:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{label}.log"
+
+    proposer_max_iterations = int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20"))
+    proposer_timeout_seconds = int(os.environ.get("PROPOSER_TIMEOUT_SECONDS", str(timeout_seconds)))
+
+    print("[PROPOSER] LLM input (truncated):")
+    print(_tail_text(task, 4000))
+    print(f"[PROPOSER] LLM input length: {len(task)} chars")
+    print(f"[PROPOSER] NexAU log: {log_path}")
+    print(f"[PROPOSER] NexAU limits: max_iterations={proposer_max_iterations}, timeout_seconds={proposer_timeout_seconds}")
+
+    payload = {
+        "task": task,
+        "label": label,
+        "work_dir": str(work_dir),
+        "max_iterations": proposer_max_iterations,
+    }
+
+    cmd = [sys.executable, str(Path(__file__).resolve()), "--nexau-proposer-child", str(log_path)]
+    try:
+        result = subprocess.run(
+            cmd,
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=proposer_timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[PROPOSER] NexAU proposer timed out after {proposer_timeout_seconds}s")
+        tail = _tail_file(log_path)
+        if tail:
+            print("[PROPOSER] NexAU log tail:")
+            print(tail)
+        raise
+
+    stdout_tail = _tail_text(result.stdout or "", 2000)
+    stderr_tail = _tail_text(result.stderr or "", 2000)
+    if stdout_tail.strip():
+        print("[PROPOSER] NexAU stdout (truncated):")
+        print(stdout_tail)
+    if stderr_tail.strip():
+        print("[PROPOSER] NexAU stderr (truncated):")
+        print(stderr_tail)
+
+    log_tail = _tail_file(log_path)
+    if log_tail.strip():
+        print("[PROPOSER] NexAU log tail:")
+        print(log_tail)
+
+    try:
+        parsed = json.loads((result.stdout or "").strip().splitlines()[-1])
+    except Exception:
+        parsed = {"ok": False, "error": "Failed to parse NexAU child output as JSON", "stdout": result.stdout}
+
+    if result.returncode != 0 or not parsed.get("ok", False):
+        err = parsed.get("error") or f"child_exit_code={result.returncode}"
+        raise RuntimeError(err)
+
+    return {"label": label, "output": parsed.get("output"), "timeout_seconds": timeout_seconds, "log_path": str(log_path)}
+
+
+def _nexau_proposer_child(log_path: Path) -> int:
+    payload_raw = sys.stdin.read()
+    try:
+        payload = json.loads(payload_raw)
+    except Exception:
+        payload = {"task": payload_raw, "label": "unknown", "work_dir": os.getcwd()}
+
+    label = str(payload.get("label", "nexau-proposer"))
+    task = str(payload.get("task", ""))
+    work_dir = Path(str(payload.get("work_dir", os.getcwd()))).resolve()
+    max_iterations = int(payload.get("max_iterations", 20))
+
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        handlers=[logging.FileHandler(log_path, encoding="utf-8"), logging.StreamHandler(sys.stderr)],
+    )
+    logging.getLogger(__name__).info("NexAU proposer child started")
+    logging.getLogger(__name__).info("label=%s work_dir=%s task_len=%s max_iterations=%s", label, work_dir, len(task), max_iterations)
+
+    try:
+        nexau_home = Path(os.environ.get("NEXAU_HOME", "/home/wy/Documents/NexAU")).resolve()
+        if not nexau_home.exists():
+            raise RuntimeError(f"NexAU not found at {nexau_home}. Set NEXAU_HOME to your NexAU repo path.")
+
+        if str(nexau_home) not in sys.path:
+            sys.path.insert(0, str(nexau_home))
+
+        code_agent_dir = nexau_home / "examples" / "code_agent"
+        if not code_agent_dir.exists():
+            raise RuntimeError(f"NexAU code_agent example not found at {code_agent_dir}")
+
+        if str(code_agent_dir) not in sys.path:
+            sys.path.insert(0, str(code_agent_dir))
+
+        llm_model = os.environ.get("LLM_MODEL")
+        llm_api_key = os.environ.get("LLM_API_KEY")
+        if not llm_model or not llm_api_key:
+            raise RuntimeError("Missing LLM_MODEL / LLM_API_KEY in environment for NexAU proposer.")
+
+        from nexau import Agent, AgentConfig, LLMConfig, Tool
+
+        from tool_impl.complete_task import complete_task
+        from tool_impl.glob_tool import glob
+        from tool_impl.list_directory import list_directory
+        from tool_impl.read_file import read_file
+        from tool_impl.read_many_files import read_many_files
+        from tool_impl.replace import replace
+        from tool_impl.run_shell_command import run_shell_command
+        from tool_impl.search_file_content import search_file_content
+        from tool_impl.write_file import write_file
+        from tool_impl.write_todos import write_todos
+        from tool_impl.web_fetch import web_fetch
+
+        tools_dir = code_agent_dir / "tools"
+        tools = [
+            Tool.from_yaml(str(tools_dir / "read_file.tool.yaml"), binding=read_file),
+            Tool.from_yaml(str(tools_dir / "read_many_files.tool.yaml"), binding=read_many_files),
+            Tool.from_yaml(str(tools_dir / "write_file.tool.yaml"), binding=write_file),
+            Tool.from_yaml(str(tools_dir / "list_directory.tool.yaml"), binding=list_directory),
+            Tool.from_yaml(str(tools_dir / "Glob.tool.yaml"), binding=glob),
+            Tool.from_yaml(str(tools_dir / "search_file_content.tool.yaml"), binding=search_file_content),
+            Tool.from_yaml(str(tools_dir / "replace.tool.yaml"), binding=replace),
+            Tool.from_yaml(str(tools_dir / "run_shell_command.tool.yaml"), binding=run_shell_command),
+            Tool.from_yaml(str(tools_dir / "write_todos.tool.yaml"), binding=write_todos),
+            Tool.from_yaml(str(tools_dir / "complete_task.tool.yaml"), binding=complete_task),
+            Tool.from_yaml(str(tools_dir / "WebFetch.tool.yaml"), binding=web_fetch),
+        ]
+
+        system_prompt = (code_agent_dir / "systemprompt.md").read_text()
+        agent_config = AgentConfig(
+            name=label,
+            system_prompt=system_prompt,
+            system_prompt_type="string",
+            tool_call_mode="openai",
+            max_iterations=max_iterations,
+            llm_config=LLMConfig(
+                model=llm_model,
+                base_url=os.environ.get("LLM_BASE_URL"),
+                api_key=llm_api_key,
+                api_type=os.environ.get("LLM_API_TYPE", "openai_chat_completion"),
+                temperature=float(os.environ.get("LLM_TEMPERATURE", "0.2")),
+                max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "2048")),
+            ),
+            tools=tools,
+            sandbox_config={
+                "type": "local",
+                "_work_dir": str(work_dir),
+                "persist_sandbox": False,
+            },
+        )
+
+        agent = Agent(config=agent_config)
+        output = agent.run(message=task, context={"working_directory": str(work_dir)})
+        print(json.dumps({"ok": True, "output": output}, ensure_ascii=False))
+        return 0
+    except Exception as e:
+        logging.getLogger(__name__).error("NexAU proposer child failed: %s", e)
+        logging.getLogger(__name__).error(traceback.format_exc())
+        print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
+        return 1
 
 
 def validate_candidate(candidate_dir: Path) -> bool:
@@ -152,18 +417,28 @@ def validate_candidate(candidate_dir: Path) -> bool:
     print(f"[VALIDATE] Checking {candidate_dir}/harness/...")
 
     harness_dir = candidate_dir / "harness"
-    required_files = ["SOUL.md", "IDENTITY.md", "AGENTS.md", "TOOLS.md"]
-    for f in required_files:
-        fp = harness_dir / f
-        if not fp.exists():
-            print(f"[VALIDATE] Missing required file: {f}")
-            return False
+    if not harness_dir.exists():
+        print(f"[VALIDATE] Missing harness directory")
+        return False
 
-    # Basic sanity checks
-    for md_file in harness_dir.glob("*.md"):
-        content = md_file.read_text()
-        if len(content) < 50:
-            print(f"[VALIDATE] WARNING: {md_file.name} seems too short ({len(content)} chars)")
+    files = list(iter_effective_files(harness_dir))
+    if not files:
+        print(f"[VALIDATE] No files found in harness directory")
+        return False
+
+    # Basic sanity checks for scripts/configs
+    for f in files:
+        if f.suffix == ".py":
+            import py_compile
+            try:
+                py_compile.compile(str(f), doraise=True)
+            except py_compile.PyCompileError as e:
+                print(f"[VALIDATE] Syntax error in {f.name}: {e}")
+                return False
+        elif f.suffix in [".md", ".yaml", ".json"]:
+            content = f.read_text()
+            if len(content) < 10:
+                print(f"[VALIDATE] WARNING: {f.name} seems too short ({len(content)} chars)")
 
     print("[VALIDATE] OK")
     return True
@@ -212,7 +487,7 @@ def update_best(candidate_dir: Path, scores: dict):
 
         import shutil
         candidate_harness = candidate_dir / "harness"
-        for f in candidate_harness.iterdir():
+        for f in iter_effective_files(candidate_harness):
             shutil.copy2(f, best_harness_dir / f.name)
 
         # Copy scores
@@ -244,9 +519,9 @@ def log_evolution(candidate_num: int, candidate_dir: Path, scores: dict, propose
         lf.write(json.dumps(entry) + "\n")
 
 
-def post_to_discord(candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
-    """Post summary to #research Discord channel."""
-    print("[DISCORD] Posting to #research...")
+def post_to_feishu(candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
+    """Post summary to Feishu (Lark)."""
+    print("[FEISHU] Posting message...")
     post_script = SCRIPTS_DIR / "post_to_research.py"
 
     result = subprocess.run(
@@ -258,9 +533,9 @@ def post_to_discord(candidate_num: int, candidate_dir: Path, scores: dict, propo
     )
 
     if result.returncode != 0:
-        print(f"[DISCORD] Failed: {result.stderr}")
+        print(f"[FEISHU] Failed: {result.stderr}")
     else:
-        print(f"[DISCORD] Posted successfully")
+        print(f"[FEISHU] Posted successfully")
 
 
 def main():
@@ -308,8 +583,8 @@ def main():
     # Step 6: Log evolution
     log_evolution(candidate_num, candidate_dir, scores, proposer_result["success"])
 
-    # Step 7: Post to Discord
-    post_to_discord(candidate_num, candidate_dir, scores, proposer_result["success"])
+    # Step 7: Post to Feishu
+    post_to_feishu(candidate_num, candidate_dir, scores, proposer_result["success"])
 
     print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
     print(f"{'='*60}\n")
@@ -318,4 +593,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 2 and sys.argv[1] == "--nexau-proposer-child":
+        if len(sys.argv) < 3:
+            raise SystemExit(2)
+        raise SystemExit(_nexau_proposer_child(Path(sys.argv[2])))
     main()

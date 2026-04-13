@@ -20,10 +20,12 @@ import re
 from pathlib import Path
 from datetime import datetime
 
+from run_evolution import iter_effective_files
+
 # Paths
-WORKSPACE = Path.home() / "hoss-evolution"
+WORKSPACE = (Path.cwd() / "hoss-evolution").resolve()
 BENCHMARK_DIR = WORKSPACE / "benchmark" / "scenarios"
-HOSS_WORKSPACE = Path.home() / ".openclaw" / "workspace"
+RUNTIME_WORKSPACE = WORKSPACE / "runtime_workspace"
 
 
 SCENARIOS = [
@@ -249,7 +251,7 @@ SCENARIOS = [
         "category": "code",
         "weight": 0.05,
         "name": "Write a bash one-liner",
-        "task": "Write a bash one-liner that finds all .md files in ~/.openclaw/workspace/ that contain both 'MEMORY' and 'evolution', sorted by modification time.",
+        "task": "Write a bash one-liner that finds all .md files in ./hoss-evolution/ that contain both 'MEMORY' and 'evolution', sorted by modification time.",
         "expected": "Correct find + grep pipeline, sorted by mtime",
         "rubric": {
             0: "Command doesn't run or wrong logic",
@@ -318,23 +320,24 @@ SCENARIOS = [
 
 
 def apply_harness(candidate_dir: Path) -> bool:
-    """Apply candidate harness to Hoss workspace (for evaluation)."""
+    """Apply candidate harness to local runtime workspace (for evaluation)."""
     harness_dir = candidate_dir / "harness"
     if not harness_dir.exists():
         print(f"[EVAL] No harness directory found")
         return False
 
+    RUNTIME_WORKSPACE.mkdir(parents=True, exist_ok=True)
+
     # Backup current configs
     backup_dir = candidate_dir / "backup"
     backup_dir.mkdir(exist_ok=True)
-    for fname in ["SOUL.md", "IDENTITY.md", "AGENTS.md", "TOOLS.md", "HEARTBEAT.md"]:
-        src = HOSS_WORKSPACE / fname
+    
+    # Apply candidate harness, backup if exists
+    for f in iter_effective_files(harness_dir):
+        src = RUNTIME_WORKSPACE / f.name
         if src.exists():
-            shutil.copy2(src, backup_dir / fname)
-
-    # Apply candidate harness
-    for f in harness_dir.iterdir():
-        shutil.copy2(f, HOSS_WORKSPACE / f.name)
+            shutil.copy2(src, backup_dir / f.name)
+        shutil.copy2(f, RUNTIME_WORKSPACE / f.name)
 
     return True
 
@@ -346,7 +349,7 @@ def restore_harness(candidate_dir: Path):
         return
 
     for f in backup_dir.iterdir():
-        shutil.copy2(f, HOSS_WORKSPACE / f.name)
+        shutil.copy2(f, RUNTIME_WORKSPACE / f.name)
 
 
 def run_scenario(scenario: dict, harness_dir: Path) -> int:
@@ -365,6 +368,19 @@ def run_scenario(scenario: dict, harness_dir: Path) -> int:
     score = 1  # default partial pass
 
     # Check harness complexity and quality signals
+    
+    # AI4S heuristic: longer scripts might be more comprehensive
+    # This is a dummy heuristic; in a real AI4S setup, this would run tests or benchmarks.
+    py_files = list(harness_dir.glob("*.py"))
+    if py_files:
+        total_py_len = sum(len(f.read_text()) for f in py_files)
+        if total_py_len > 1000:
+            score = max(score, 2)
+        combined_text = "".join(f.read_text() for f in py_files)
+        if "import torch" in combined_text or "import tensorflow" in combined_text:
+            score = max(score, 3)
+            
+    # Keep legacy LLM heuristic fallback
     soul_file = harness_dir / "SOUL.md"
     if soul_file.exists():
         content = soul_file.read_text()
