@@ -3,47 +3,31 @@
 Post evolution results to Feishu (Lark) via lark-oapi.
 
 Usage:
-  python3 post_to_research.py <candidate_num> <candidate_dir> <score> <proposer_success>
+  python3 post_to_research.py <candidate_num> <candidate_dir> <score> <proposer_success> [--workspace DIR] [--prev-best-score FLOAT]
 """
 
+import argparse
 import os
-import sys
 import json
 import uuid
 from pathlib import Path
 from datetime import datetime
 
-from run_evolution import iter_effective_files
+from shared import get_workspace, iter_effective_files, load_env_file
 
-WORKSPACE = (Path.cwd() / "hoss-evolution").resolve()
-ENV_FILE = Path(__file__).parent.parent / ".env"
+SCRIPTS_DIR = Path(__file__).resolve().parent
+ROOT_DIR = SCRIPTS_DIR.parent
+ENV_FILE = ROOT_DIR / ".env"
+load_env_file(ENV_FILE)
 
 FEISHU_APP_ID_ENV = "FEISHU_APP_ID"
 FEISHU_APP_SECRET_ENV = "FEISHU_APP_SECRET"
 FEISHU_RECEIVE_ID_ENV = "FEISHU_RECEIVE_ID"
 FEISHU_RECEIVE_ID_TYPE_ENV = "FEISHU_RECEIVE_ID_TYPE"
 
-
-def _load_env_file(path: Path) -> None:
-    if not path.exists():
-        return
-    for raw_line in path.read_text().splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip("'").strip('"')
-        if key:
-            os.environ.setdefault(key, value)
-
-
-_load_env_file(ENV_FILE)
-
-
-def get_history_summary() -> str:
+def get_history_summary(workspace: Path) -> str:
     """Get evolution history from log."""
-    log_file = WORKSPACE / "evolution_log.jsonl"
+    log_file = workspace / "evolution_log.jsonl"
     if not log_file.exists():
         return "No prior history."
 
@@ -52,8 +36,8 @@ def get_history_summary() -> str:
         for line in f:
             try:
                 entries.append(json.loads(line.strip()))
-            except:
-                pass
+            except json.JSONDecodeError:
+                continue
 
     if not entries:
         return "No prior history."
@@ -68,9 +52,9 @@ def get_history_summary() -> str:
     return "\n".join(lines) if lines else "No prior history."
 
 
-def get_best_score() -> float:
+def get_best_score(workspace: Path) -> float:
     """Get the current best score."""
-    best_file = WORKSPACE / "best" / "current" / "eval_scores.json"
+    best_file = workspace / "best" / "current" / "eval_scores.json"
     if best_file.exists():
         return json.loads(best_file.read_text()).get("final_score", 0)
     return 0
@@ -88,9 +72,9 @@ def get_proposer_reasoning(candidate_dir: Path) -> str:
     return "No reasoning trace found."
 
 
-def get_change_summary(candidate_dir: Path) -> str:
+def get_change_summary(workspace: Path, candidate_dir: Path) -> str:
     """Diff harness files vs best to show what changed."""
-    best_dir = WORKSPACE / "best" / "current" / "harness"
+    best_dir = workspace / "best" / "current" / "harness"
     candidate_harness = candidate_dir / "harness"
 
     if not candidate_harness.exists():
@@ -118,16 +102,16 @@ def get_change_summary(candidate_dir: Path) -> str:
     return "\n".join(changes[:5])  # Limit to 5 changes
 
 
-def build_message(candidate_num: int, candidate_dir: Path, score: float, proposer_ok: bool) -> str:
+def build_message(workspace: Path, candidate_num: int, candidate_dir: Path, score: float, proposer_ok: bool, prev_best_score: float | None) -> str:
     """Build the Feishu text message."""
 
-    best_score = get_best_score()
+    best_score = prev_best_score if prev_best_score is not None else get_best_score(workspace)
     delta = score - best_score
     delta_str = f"+{delta:.1f}" if delta > 0 else f"{delta:.1f}"
 
-    history = get_history_summary()
+    history = get_history_summary(workspace)
     reasoning = get_proposer_reasoning(candidate_dir)
-    changes = get_change_summary(candidate_dir)
+    changes = get_change_summary(workspace, candidate_dir)
 
     candidate_dir = Path(candidate_dir)
 
@@ -212,23 +196,43 @@ def send_feishu_text(message: str) -> bool:
 
 
 def main():
-    if len(sys.argv) < 5:
-        print("Usage: post_to_research.py <candidate_num> <candidate_dir> <score> <proposer_success>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Post evolution results to Feishu (Lark)")
+    parser.add_argument("candidate_num", type=int)
+    parser.add_argument("candidate_dir", type=Path)
+    parser.add_argument("score", type=float)
+    parser.add_argument("proposer_success", type=int, choices=[0, 1])
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=None,
+        help="Evolution workspace directory (default: $EVOLVER_WORKSPACE or ~/hoss-evolution)",
+    )
+    parser.add_argument(
+        "--prev-best-score",
+        type=float,
+        default=None,
+        help="Best score before this iteration (used to compute delta correctly)",
+    )
+    args = parser.parse_args()
 
-    candidate_num = sys.argv[1]
-    candidate_dir = Path(sys.argv[2])
-    score = float(sys.argv[3])
-    proposer_ok = bool(int(sys.argv[4]))
+    workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
+    proposer_ok = bool(args.proposer_success)
 
-    message = build_message(candidate_num, candidate_dir, score, proposer_ok)
+    message = build_message(
+        workspace=workspace,
+        candidate_num=args.candidate_num,
+        candidate_dir=args.candidate_dir,
+        score=args.score,
+        proposer_ok=proposer_ok,
+        prev_best_score=args.prev_best_score,
+    )
 
     print("FEISHU_MESSAGE:")
     print(message)
     print("END_FEISHU_MESSAGE")
 
     if not send_feishu_text(message):
-        sys.exit(1)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

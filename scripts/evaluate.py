@@ -7,25 +7,17 @@ Each scenario is scored 0-3: fail / partial / pass / excellent.
 Final score is a weighted average across categories.
 
 Usage:
-  python3 evaluate.py <candidate_dir>
+  python3 evaluate.py [--workspace DIR] <candidate_dir>
 """
 
 import argparse
 import json
-import os
 import sys
-import tempfile
 import shutil
-import re
 from pathlib import Path
 from datetime import datetime
 
-from run_evolution import iter_effective_files
-
-# Paths
-WORKSPACE = (Path.cwd() / "hoss-evolution").resolve()
-BENCHMARK_DIR = WORKSPACE / "benchmark" / "scenarios"
-RUNTIME_WORKSPACE = WORKSPACE / "runtime_workspace"
+from shared import get_workspace, iter_effective_files
 
 
 SCENARIOS = [
@@ -319,14 +311,14 @@ SCENARIOS = [
 ]
 
 
-def apply_harness(candidate_dir: Path) -> bool:
+def apply_harness(candidate_dir: Path, runtime_workspace: Path) -> bool:
     """Apply candidate harness to local runtime workspace (for evaluation)."""
     harness_dir = candidate_dir / "harness"
     if not harness_dir.exists():
         print(f"[EVAL] No harness directory found")
         return False
 
-    RUNTIME_WORKSPACE.mkdir(parents=True, exist_ok=True)
+    runtime_workspace.mkdir(parents=True, exist_ok=True)
 
     # Backup current configs
     backup_dir = candidate_dir / "backup"
@@ -334,25 +326,25 @@ def apply_harness(candidate_dir: Path) -> bool:
     
     # Apply candidate harness, backup if exists
     for f in iter_effective_files(harness_dir):
-        src = RUNTIME_WORKSPACE / f.name
+        src = runtime_workspace / f.name
         if src.exists():
             shutil.copy2(src, backup_dir / f.name)
-        shutil.copy2(f, RUNTIME_WORKSPACE / f.name)
+        shutil.copy2(f, runtime_workspace / f.name)
 
     return True
 
 
-def restore_harness(candidate_dir: Path):
+def restore_harness(candidate_dir: Path, runtime_workspace: Path):
     """Restore the backed-up harness after evaluation."""
     backup_dir = candidate_dir / "backup"
     if not backup_dir.exists():
         return
 
     for f in backup_dir.iterdir():
-        shutil.copy2(f, RUNTIME_WORKSPACE / f.name)
+        shutil.copy2(f, runtime_workspace / f.name)
 
 
-def run_scenario(scenario: dict, harness_dir: Path) -> int:
+def run_scenario(scenario: dict, harness_dir: Path, runtime_workspace: Path) -> int:
     """
     Run a single scenario against the candidate harness.
     Returns score 0-3 based on rubric.
@@ -361,7 +353,7 @@ def run_scenario(scenario: dict, harness_dir: Path) -> int:
 
     # Apply harness
     candidate_dir = harness_dir.parent
-    apply_harness(candidate_dir)
+    apply_harness(candidate_dir, runtime_workspace)
 
     # Simulate evaluation — in production this would actually run Hoss on the task
     # For now, we do a heuristic evaluation based on the harness files
@@ -400,13 +392,13 @@ def run_scenario(scenario: dict, harness_dir: Path) -> int:
             score = max(score, 2)
 
     # Restore original harness
-    restore_harness(candidate_dir)
+    restore_harness(candidate_dir, runtime_workspace)
 
     print(f"[EVAL] {scenario['id']}: score={score}/3")
     return score
 
 
-def evaluate(candidate_dir: Path) -> dict:
+def evaluate(candidate_dir: Path, runtime_workspace: Path) -> dict:
     """Run full benchmark on a candidate harness."""
     harness_dir = candidate_dir / "harness"
 
@@ -417,7 +409,7 @@ def evaluate(candidate_dir: Path) -> dict:
     category_scores = {}
 
     for scenario in SCENARIOS:
-        score = run_scenario(scenario, harness_dir)
+        score = run_scenario(scenario, harness_dir, runtime_workspace)
         results[scenario["id"]] = {
             "score": score,
             "max": 3,
@@ -453,6 +445,12 @@ def evaluate(candidate_dir: Path) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Benchmark Evaluator")
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=None,
+        help="Evolution workspace directory (default: $EVOLVER_WORKSPACE or ~/hoss-evolution)",
+    )
     parser.add_argument("candidate_dir", type=Path, help="Path to candidate directory")
     args = parser.parse_args()
 
@@ -460,11 +458,14 @@ def main():
         print(f"Error: {args.candidate_dir} does not exist")
         sys.exit(1)
 
+    workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
+    runtime_workspace = workspace / "runtime_workspace"
+
     print(f"\n{'='*50}")
     print(f"Benchmark Evaluation — {args.candidate_dir.name}")
     print(f"{'='*50}")
 
-    results = evaluate(args.candidate_dir)
+    results = evaluate(args.candidate_dir, runtime_workspace)
 
     if "error" in results:
         print(f"Error: {results['error']}")

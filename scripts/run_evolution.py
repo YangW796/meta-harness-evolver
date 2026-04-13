@@ -3,7 +3,7 @@
 Meta-Harness Evolution Loop — Main Entry Point
 
 Runs the full Meta-Harness outer loop:
-  1. Read prior candidates from ./hoss-evolution/candidates/
+  1. Read prior candidates from <workspace>/candidates/
   2. Spawn proposer sub-agent to propose a new candidate
   3. Validate the candidate
   4. Evaluate against benchmark
@@ -11,7 +11,7 @@ Runs the full Meta-Harness outer loop:
   6. Post summary to Feishu
 
 Usage:
-  python3 run_evolution.py [--candidate-num N]
+  python3 run_evolution.py [--workspace DIR] [--candidate-num N] [--evaluate-script PATH]
 
 Exit codes:
   0 = success (candidate evaluated)
@@ -25,114 +25,76 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
-import textwrap
-import time
 import traceback
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-WORKSPACE = (Path.cwd() / "hoss-evolution").resolve()
-CANDIDATES_DIR = WORKSPACE / "candidates"
-BEST_DIR = WORKSPACE / "best" / "current"
-SCRIPTS_DIR = Path(__file__).parent
-ENV_FILE = SCRIPTS_DIR.parent / ".env"
+from shared import get_workspace, iter_effective_files, load_env_file
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+ROOT_DIR = SCRIPTS_DIR.parent
+ENV_FILE = ROOT_DIR / ".env"
+load_env_file(ENV_FILE)
 
 
-def _load_env_file(path: Path) -> None:
-    if not path.exists():
-        return
-    for raw_line in path.read_text().splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip("'").strip('"')
-        if key:
-            os.environ.setdefault(key, value)
+@dataclass(frozen=True)
+class EvolverPaths:
+    workspace: Path
+    candidates_dir: Path
+    best_dir: Path
+    scripts_dir: Path
+
+    @staticmethod
+    def from_workspace(workspace: Path) -> "EvolverPaths":
+        ws = workspace.resolve()
+        return EvolverPaths(
+            workspace=ws,
+            candidates_dir=ws / "candidates",
+            best_dir=ws / "best" / "current",
+            scripts_dir=SCRIPTS_DIR,
+        )
 
 
-_load_env_file(ENV_FILE)
-
-
-_IGNORED_DIR_NAMES = {
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".ipynb_checkpoints",
-    "node_modules",
-    "dist",
-    "build",
-}
-_IGNORED_FILE_NAMES = {
-    ".DS_Store",
-    ".env",
-    ".env.local",
-}
-_IGNORED_SUFFIXES = {
-    ".pyc",
-    ".pyo",
-}
-
-
-def should_ignore_path(path: Path) -> bool:
-    name = path.name
-    if name in _IGNORED_FILE_NAMES:
-        return True
-    if name.endswith(".egg-info"):
-        return True
-    if name.startswith(".") and name not in {".gitkeep"}:
-        return True
-    if path.is_dir() and name in _IGNORED_DIR_NAMES:
-        return True
-    if path.is_file() and path.suffix in _IGNORED_SUFFIXES:
-        return True
-    return False
-
-
-def iter_effective_files(directory: Path):
-    for p in directory.iterdir():
-        if should_ignore_path(p):
-            continue
-        if p.is_file():
-            yield p
-
-
-def get_next_candidate_num() -> int:
+def get_next_candidate_num(paths: EvolverPaths) -> int:
     """Find the next candidate number."""
-    if not CANDIDATES_DIR.exists():
-        CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
+    if not paths.candidates_dir.exists():
+        paths.candidates_dir.mkdir(parents=True, exist_ok=True)
         return 1
-    existing = [int(d.name.split("_")[1]) for d in CANDIDATES_DIR.iterdir()
-                if d.is_dir() and d.name.startswith("candidate_")]
-    return max(existing, default=0) + 1
+    nums: list[int] = []
+    for d in paths.candidates_dir.iterdir():
+        if not (d.is_dir() and d.name.startswith("candidate_")):
+            continue
+        try:
+            nums.append(int(d.name.split("_", 1)[1]))
+        except Exception:
+            continue
+    return max(nums, default=0) + 1
 
 
-def get_best_candidate() -> dict | None:
+def get_best_candidate(paths: EvolverPaths) -> dict | None:
     """Get the best candidate's scores."""
-    scores_file = BEST_DIR / "eval_scores.json"
+    scores_file = paths.best_dir / "eval_scores.json"
     if scores_file.exists():
         return json.loads(scores_file.read_text())
     return None
 
 
-def run_proposer(candidate_num: int) -> dict:
+def run_proposer(paths: EvolverPaths, candidate_num: int) -> dict:
     """
     Spawn the proposer sub-agent to propose a candidate modification.
     Returns dict with 'success', 'candidate_dir', and 'reasoning'.
     """
     import uuid
 
-    candidate_dir = CANDIDATES_DIR / f"candidate_{candidate_num}"
+    candidate_dir = paths.candidates_dir / f"candidate_{candidate_num}"
     candidate_dir.mkdir(parents=True, exist_ok=True)
     (candidate_dir / "harness").mkdir(exist_ok=True)
     (candidate_dir / "traces").mkdir(exist_ok=True)
 
     # Read evolution history for context
     history = []
-    for d in sorted(CANDIDATES_DIR.iterdir(), key=lambda x: x.name):
+    for d in sorted(paths.candidates_dir.iterdir(), key=lambda x: x.name):
         if d.name == f"candidate_{candidate_num}":
             continue
         if d.is_dir():
@@ -143,13 +105,13 @@ def run_proposer(candidate_num: int) -> dict:
                     "scores": json.loads(scores_file.read_text())
                 })
 
-    best = get_best_candidate()
+    best = get_best_candidate(paths)
 
     # Spawn the sub-agent
     agent_session_id = str(uuid.uuid4())[:8]
 
     # Dynamically list files in the current best directory for AI4S
-    best_harness_dir = BEST_DIR / "harness"
+    best_harness_dir = paths.best_dir / "harness"
     if best_harness_dir.exists():
         files = [f.name for f in iter_effective_files(best_harness_dir)]
         target_files_str = "\n".join([f"   - {f}" for f in files])
@@ -161,21 +123,21 @@ def run_proposer(candidate_num: int) -> dict:
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
 ## Your Workspace
-- Evolution history: {WORKSPACE}/candidates/
-- Current best codebase: {WORKSPACE}/best/current/
-- Your output: {WORKSPACE}/candidates/candidate_{candidate_num}/harness/
+- Evolution history: {paths.workspace}/candidates/
+- Current best codebase: {paths.workspace}/best/current/
+- Your output: {paths.workspace}/candidates/candidate_{candidate_num}/harness/
 
 ## What You Must Do
 
-1. Read ALL prior candidates from {WORKSPACE}/candidates/ (sorted by number)
-2. Read the current best from {WORKSPACE}/best/current/
+1. Read ALL prior candidates from {paths.workspace}/candidates/ (sorted by number)
+2. Read the current best from {paths.workspace}/best/current/
 3. Identify patterns: what's working? What's failing?
 4. Propose ONE targeted, specific edit to ONE of the files. The current files include:
 {target_files_str}
 
 5. Copy the current best files to your output dir
 6. Apply your targeted edit to the ONE file you chose (e.g., modifying a PyTorch model, loss function, or hyperparameters).
-7. Write a BRIEF reasoning trace to {WORKSPACE}/candidates/candidate_{candidate_num}/proposer_reasoning.md
+7. Write a BRIEF reasoning trace to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
    explaining: what you changed, why, what you expect to improve
 
 ## Constraints
@@ -188,8 +150,8 @@ Total prior candidates: {len(history)}
 Best score so far: {best['final_score'] if best else 'N/A'}
 
 ## Output Format
-Write your modified file to {WORKSPACE}/candidates/candidate_{candidate_num}/harness/<FILENAME>
-Write reasoning to {WORKSPACE}/candidates/candidate_{candidate_num}/proposer_reasoning.md
+Write your modified file to {paths.workspace}/candidates/candidate_{candidate_num}/harness/<FILENAME>
+Write reasoning to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
 
 Start now. Read the history first, then propose.
 """
@@ -219,7 +181,7 @@ Start now. Read the history first, then propose.
         result = _run_proposer_with_nexau(
             task=proposer_task,
             label=f"evolver-proposer-{agent_session_id}",
-            work_dir=WORKSPACE,
+            work_dir=paths.workspace,
             timeout_seconds=300,
             log_dir=candidate_dir / "traces",
         )
@@ -444,7 +406,7 @@ def validate_candidate(candidate_dir: Path) -> bool:
     return True
 
 
-def evaluate_candidate(candidate_dir: Path, evaluate_script: str | None) -> dict:
+def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
     """Run the benchmark against the candidate harness."""
     print(f"[EVALUATE] Running benchmark for {candidate_dir.name}...")
 
@@ -460,7 +422,7 @@ def evaluate_candidate(candidate_dir: Path, evaluate_script: str | None) -> dict
         else:
             cmd = [str(script_path), str(candidate_dir)]
     else:
-        cmd = [sys.executable, str(SCRIPTS_DIR / "evaluate.py"), str(candidate_dir)]
+        cmd = [sys.executable, str(paths.scripts_dir / "evaluate.py"), str(candidate_dir)]
 
     result = subprocess.run(
         cmd,
@@ -481,21 +443,21 @@ def evaluate_candidate(candidate_dir: Path, evaluate_script: str | None) -> dict
         return {"error": str(e), "scores": {}}
 
 
-def update_best(candidate_dir: Path, scores: dict):
+def update_best(paths: EvolverPaths, candidate_dir: Path, scores: dict) -> float | None:
     """Update the best harness if this candidate is better."""
-    best_scores_file = BEST_DIR / "eval_scores.json"
-    best_harness_dir = BEST_DIR / "harness"
+    best_scores_file = paths.best_dir / "eval_scores.json"
+    best_harness_dir = paths.best_dir / "harness"
 
-    current_best = None
+    current_best: float | None = None
     if best_scores_file.exists():
-        current_best = json.loads(best_scores_file.read_text())["final_score"]
+        current_best = float(json.loads(best_scores_file.read_text()).get("final_score", 0))
 
     new_score = scores.get("final_score", 0)
 
     if current_best is None or new_score > current_best:
         print(f"[BEST] New best! {new_score} > {current_best}")
         # Copy candidate harness to best
-        BEST_DIR.mkdir(parents=True, exist_ok=True)
+        paths.best_dir.mkdir(parents=True, exist_ok=True)
         best_harness_dir.mkdir(parents=True, exist_ok=True)
 
         import shutil
@@ -508,18 +470,19 @@ def update_best(candidate_dir: Path, scores: dict):
             json.dump(scores, sf, indent=2)
 
         # Note the winner
-        with open(BEST_DIR / "winner_note.md", "w") as wn:
+        with open(paths.best_dir / "winner_note.md", "w") as wn:
             wn.write(f"# Best Harness — {datetime.now().isoformat()}\n\n")
             wn.write(f"Winner: {candidate_dir.name}\n")
             wn.write(f"Score: {new_score}\n")
             wn.write(f"Improvement over previous: {new_score - (current_best or 0):+.2f}\n")
     else:
         print(f"[BEST] No update. Current best: {current_best}, this candidate: {new_score}")
+    return current_best if current_best is not None else 0.0
 
 
-def log_evolution(candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
+def log_evolution(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
     """Append to the evolution log."""
-    log_file = WORKSPACE / "evolution_log.jsonl"
+    log_file = paths.workspace / "evolution_log.jsonl"
     entry = {
         "timestamp": datetime.now().isoformat(),
         "candidate": f"candidate_{candidate_num}",
@@ -532,14 +495,24 @@ def log_evolution(candidate_num: int, candidate_dir: Path, scores: dict, propose
         lf.write(json.dumps(entry) + "\n")
 
 
-def post_to_feishu(candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
+def post_to_feishu(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool, prev_best_score: float | None):
     """Post summary to Feishu (Lark)."""
     print("[FEISHU] Posting message...")
-    post_script = SCRIPTS_DIR / "post_to_research.py"
+    post_script = paths.scripts_dir / "post_to_research.py"
+
+    cmd = [
+        sys.executable,
+        str(post_script),
+        str(candidate_num),
+        str(candidate_dir),
+        str(scores.get("final_score", 0)),
+        str(int(proposer_ok)),
+    ]
+    if prev_best_score is not None:
+        cmd.extend(["--prev-best-score", str(prev_best_score)])
 
     result = subprocess.run(
-        [sys.executable, str(post_script), str(candidate_num), str(candidate_dir),
-         str(scores.get("final_score", 0)), str(int(proposer_ok))],
+        cmd,
         capture_output=True,
         text=True,
         timeout=30,
@@ -553,6 +526,12 @@ def post_to_feishu(candidate_num: int, candidate_dir: Path, scores: dict, propos
 
 def main():
     parser = argparse.ArgumentParser(description="Meta-Harness Evolution Loop")
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=None,
+        help="Evolution workspace directory (default: $EVOLVER_WORKSPACE or ~/hoss-evolution)",
+    )
     parser.add_argument("--candidate-num", type=int, default=None,
                         help="Candidate number (default: auto)")
     parser.add_argument(
@@ -563,15 +542,19 @@ def main():
     )
     args = parser.parse_args()
 
+    workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
+    paths = EvolverPaths.from_workspace(workspace)
+
     print(f"\n{'='*60}")
     print(f"Meta-Harness Evolution — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
+    print(f"[MAIN] Workspace: {paths.workspace}")
 
-    candidate_num = args.candidate_num or get_next_candidate_num()
+    candidate_num = args.candidate_num or get_next_candidate_num(paths)
     print(f"[MAIN] Candidate: {candidate_num}")
 
     # Step 1: Run proposer
-    proposer_result = run_proposer(candidate_num)
+    proposer_result = run_proposer(paths, candidate_num)
     candidate_dir = Path(proposer_result["candidate_dir"])
 
     if not proposer_result["success"]:
@@ -585,7 +568,7 @@ def main():
         sys.exit(1)
 
     # Step 3: Evaluate
-    scores = evaluate_candidate(candidate_dir, args.evaluate_script)
+    scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)
     if not scores or "error" in scores:
         print(f"[MAIN] Evaluation failed: {scores.get('error')}")
         sys.exit(1)
@@ -597,13 +580,13 @@ def main():
     print(f"[MAIN] Scores: {json.dumps(scores, indent=2)}")
 
     # Step 5: Update best if needed
-    update_best(candidate_dir, scores)
+    prev_best_score = update_best(paths, candidate_dir, scores)
 
     # Step 6: Log evolution
-    log_evolution(candidate_num, candidate_dir, scores, proposer_result["success"])
+    log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"])
 
     # Step 7: Post to Feishu
-    post_to_feishu(candidate_num, candidate_dir, scores, proposer_result["success"])
+    post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
 
     print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
     print(f"{'='*60}\n")
