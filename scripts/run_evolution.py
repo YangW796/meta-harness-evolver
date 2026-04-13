@@ -444,13 +444,26 @@ def validate_candidate(candidate_dir: Path) -> bool:
     return True
 
 
-def evaluate_candidate(candidate_dir: Path) -> dict:
+def evaluate_candidate(candidate_dir: Path, evaluate_script: str | None) -> dict:
     """Run the benchmark against the candidate harness."""
     print(f"[EVALUATE] Running benchmark for {candidate_dir.name}...")
-    eval_script = SCRIPTS_DIR / "evaluate.py"
+
+    if evaluate_script:
+        script_path = Path(evaluate_script).expanduser()
+        if not script_path.is_absolute():
+            script_path = (Path.cwd() / script_path).resolve()
+
+        if script_path.suffix == ".py":
+            cmd = [sys.executable, str(script_path), str(candidate_dir)]
+        elif script_path.suffix == ".sh":
+            cmd = ["bash", str(script_path), str(candidate_dir)]
+        else:
+            cmd = [str(script_path), str(candidate_dir)]
+    else:
+        cmd = [sys.executable, str(SCRIPTS_DIR / "evaluate.py"), str(candidate_dir)]
 
     result = subprocess.run(
-        [sys.executable, str(eval_script), str(candidate_dir)],
+        cmd,
         capture_output=True,
         text=True,
         timeout=600,
@@ -542,6 +555,12 @@ def main():
     parser = argparse.ArgumentParser(description="Meta-Harness Evolution Loop")
     parser.add_argument("--candidate-num", type=int, default=None,
                         help="Candidate number (default: auto)")
+    parser.add_argument(
+        "--evaluate-script",
+        type=str,
+        default=os.environ.get("EVALUATE_SCRIPT"),
+        help="Path to an evaluation program (bash/sh/py/executable) that accepts <candidate_dir> and prints JSON as the last line",
+    )
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
@@ -566,7 +585,7 @@ def main():
         sys.exit(1)
 
     # Step 3: Evaluate
-    scores = evaluate_candidate(candidate_dir)
+    scores = evaluate_candidate(candidate_dir, args.evaluate_script)
     if not scores or "error" in scores:
         print(f"[MAIN] Evaluation failed: {scores.get('error')}")
         sys.exit(1)
