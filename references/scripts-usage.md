@@ -41,6 +41,7 @@ python3 scripts/run_evolution.py
 
 - `--workspace <DIR>`：进化 workspace 目录（默认：`$EVOLVER_WORKSPACE` 或 `~/hoss-evolution`）
 - `--candidate-num <N>`：指定本次候选编号；不传则自动取 `candidates/` 下最大编号 + 1
+- `--iterations <K>`：连续执行 K 轮外循环（默认：`$EVOLVER_ITERATIONS` 或 `1`）。若同时指定了 `--candidate-num N`，将依次运行 `candidate_N, candidate_{N+1}, ...` 共 K 轮
 - `--evaluate-script <PATH>`：指定评测脚本/可执行文件（默认从环境变量 `EVALUATE_SCRIPT` 读取；若也未设置则使用 `scripts/evaluate.py`）
   - 该程序必须接受一个参数 `<candidate_dir>`
   - 且最后一行 stdout 必须输出 JSON（`run_evolution.py` 读取最后一行并 `json.loads`）
@@ -53,6 +54,11 @@ python3 scripts/run_evolution.py
 - `LLM_BASE_URL` / `LLM_API_TYPE` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`：透传给 NexAU 的 LLM 配置（可选）
 - `PROPOSER_MAX_ITERATIONS`：NexAU agent 最大迭代次数（默认：`20`）
 - `PROPOSER_TIMEOUT_SECONDS`：NexAU proposer 超时时间（秒，默认：`300`）
+- `EVOLVER_ITERATIONS`：`run_evolution.py --iterations` 的默认值（默认：`1`）
+
+说明：
+
+- `run_evolution.py` / `evaluate.py` / `post_to_research.py` 启动时都会自动读取 `meta-harness-evolver/.env`（若存在）并将其中的键值加载到环境变量（不会覆盖已经在 shell 中设置的变量）
 
 退出码：
 
@@ -119,4 +125,3 @@ python3 scripts/post_to_research.py 7 /path/to/candidate_7 72.3 1
 ```bash
 bash scripts/validate.sh /path/to/hoss-evolution/candidates/candidate_7
 ```
-

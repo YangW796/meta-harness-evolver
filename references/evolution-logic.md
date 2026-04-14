@@ -8,8 +8,8 @@ From the Meta-Harness paper: **richer feedback enables better search**. The key 
 - OPRO/TextGrad/etc.: compress feedback to 100-30K tokens
 - Meta-Harness: exposes full history (~10M tokens possible) via filesystem
 
-For Hoss, this means:
-- Proposer reads ALL prior candidates' source + traces
+For AI4S tasks, this means:
+- Proposer reads ALL prior candidates' code/config + traces
 - NOT just "score improved" or "failed" — actual reasoning about WHY
 - The proposer decides what to inspect, like a developer navigating a codebase
 
@@ -17,8 +17,8 @@ For Hoss, this means:
 
 ```
 Iteration t:
-  1. Proposer reads ~/hoss-evolution/candidates/ (all prior candidates)
-  2. Proposer reads ~/hoss-evolution/best/current/ (current best)
+  1. Proposer reads $EVOLVER_WORKSPACE/candidates/ (all prior candidates)
+  2. Proposer reads $EVOLVER_WORKSPACE/best/current/ (current best)
   3. Proposer identifies failure patterns across candidates
   4. Proposer proposes 1 targeted harness edit
   5. Candidate validated (lightweight check)
@@ -55,7 +55,7 @@ def is_pareto_optimal(candidate, all_candidates):
 
 **Why Pareto?** We care about both performance AND simplicity. A harness that's 1 point better but 10× more complex isn't actually better — it's overfit.
 
-**Complexity measure:** Sum of diff sizes between candidate harness and iteration 0 (the original Hoss configs). Larger changes = higher complexity.
+**Complexity measure:** Sum of diff sizes between candidate harness and a baseline (e.g. iteration 0). Larger changes = higher complexity.
 
 ## Proposer Reasoning Patterns
 
@@ -138,16 +138,10 @@ When converged: the best harness is the current Pareto-optimal candidate with th
 
 ## Initialization
 
-Iteration 0 = Hoss's current workspace configs. These are the seed:
-```bash
-cp ~/.openclaw/workspace/SOUL.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/IDENTITY.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/AGENTS.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/TOOLS.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/HEARTBEAT.md ~/hoss-evolution/candidates/candidate_0/harness/
-```
+Seed iteration 0 as the baseline for your task. Recommended:
 
-This gets evaluated as the baseline — everything else is improvement over Hoss-as-is.
+1. Put the baseline into `$EVOLVER_WORKSPACE/best/current/harness/`
+2. (Optional) Also copy baseline into `$EVOLVER_WORKSPACE/candidates/candidate_0/harness/` and evaluate it once
 
 ## Diversity Maintenance
 
@@ -165,11 +159,9 @@ The proposer might converge to a local optimum. To prevent:
 | Benchmark size | 20 | Larger = more signal, slower |
 | Pareto frontier size | unbounded | Tracked but not pruned |
 
-## Interaction with Tyler
+## Human-in-the-Loop
 
-Tyler should NOT be evaluating candidates — the benchmark does that. Tyler's role:
+Humans typically:
 1. Define/approve benchmark scenarios (does this test what matters?)
-2. Subjective spot-check (does score match your quality impression?)
-3. Emergency override (if a proposal is dangerous, flag it)
-
-Tyler's NOT supposed to read proposer reasoning traces unless something looks wrong.
+2. Spot-check high-score candidates for regressions
+3. Add safety constraints if a proposal is dangerous

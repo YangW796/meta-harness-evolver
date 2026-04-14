@@ -1,19 +1,19 @@
 ---
 name: meta-harness-evolver
-description: End-to-end Meta-Harness evolution for Hoss (OpenClaw agent). Runs nightly at 3 AM via OpenClaw cron. Reads Hoss's current workspace configs (SOUL.md, IDENTITY.md, AGENTS.md, TOOLS.md, MEMORY.md), proposes harness modifications via a coding-agent proposer, evaluates against a benchmark, logs results to ~/hoss-evolution/, and posts a summary to the #research Discord channel. Triggered: (1) automatically via cron at 3 AM CDT, (2) when Tyler says "run harness evolution", "evolve Hoss", or "run meta-harness".
+description: Meta-Harness-style evolution loop for AI4S / agentic codebases. Reads prior candidates from $EVOLVER_WORKSPACE, proposes one targeted code/config edit via NexAU, evaluates via a user-provided evaluate program, logs results, and posts a summary to Feishu.
 ---
 
 # Meta-Harness Evolver
 
-## What This Skill Does
+## What This Does
 
-Implements the **Meta-Harness** paper's outer-loop optimization for Hoss — your OpenClaw agent. Each night at 3 AM CDT, this skill:
+Implements a **Meta-Harness**-style outer loop. Each run:
 
-1. **Reads** Hoss's current workspace configs + all prior evolution logs
-2. **Proposes** a targeted harness modification via a coding-agent sub-agent
-3. **Evaluates** the proposed harness against a benchmark of ~20 diverse task scenarios
+1. **Reads** the current best + all prior candidates in the evolution workspace
+2. **Proposes** one targeted modification via a NexAU coding agent
+3. **Evaluates** the candidate via `--evaluate-script` (bash/py/executable) which prints JSON as the last line
 4. **Logs** the candidate harness + scores + execution traces to the evolution filesystem
-5. **Posts** a summary report to #research Discord channel
+5. **Posts** a summary report to Feishu (Lark)
 
 ## The Meta-Harness Loop
 
@@ -24,24 +24,21 @@ Proposer Agent ──(filesystem access)──► Hoss Workspace
       │                                   ▼
       │                          Evaluate on benchmark
       │                                   ▼
-log ───┴── store: code + scores + traces ──► ~/hoss-evolution/
+log ───┴── store: code + scores + traces ──► $EVOLVER_WORKSPACE/
 ```
 
 ## Quick Start
 
-### Cron Schedule
-- **3 AM CDT daily** — configured via `openclaw cron`
-- Cron command: `SKILL=meta-harness-evolution TASK=run_evolution openclaw run`
+Run from repo root:
 
-### Manual Trigger
-```
-/openclaw run --skill meta-harness-evolver --task run_evolution
+```bash
+bash meta-harness-evolver/scripts/example_run_evolution.sh
 ```
 
 ## Directory Structure
 
 ```
-~/hoss-evolution/
+$EVOLVER_WORKSPACE/
 ├── best/                  # Best harness found so far
 │   └── current/
 ├── candidates/            # All evaluated harnesses
@@ -58,26 +55,12 @@ log ───┴── store: code + scores + traces ──► ~/hoss-evolution/
 
 ## What Can Be Evolved
 
-Hoss's "harness" = the configs that wrap the LLM brain:
-
-| File | What It Controls |
-|------|-----------------|
-| `SOUL.md` | Core identity, personality, decision-making style |
-| `IDENTITY.md` | Role, voice, tone, signature patterns |
-| `AGENTS.md` | Sub-agent architecture, coordination protocol |
-| `TOOLS.md` | Tool configurations, credentials, key hosts |
-| `MEMORY.md` | Long-term memory structure, what to persist |
-| `HEARTBEAT.md` | Active hours, check priorities, alert thresholds |
-
-**Constraints (do NOT modify):**
-- Credentials, API keys, or secrets in TOOLS.md
-- Git safety rules (NEVER mutate git config from ~/flume/)
-- Security-sensitive groupPolicy settings
+Any files inside `candidate_N/harness/` (e.g., `model.py`, `train.py`, `config.yaml`). Do not commit secrets into this workspace.
 
 ## The Evolution Algorithm
 
 1. **Seed**: Start with Hoss's current configs as iteration 0
-2. **Propose**: Sub-agent reads full history from ~/hoss-evolution/candidates/, identifies failure patterns, proposes 1-2 targeted edits
+2. **Propose**: Proposer reads full history from `$EVOLVER_WORKSPACE/candidates/`, identifies failure patterns, proposes 1 targeted edit
 3. **Validate**: Lightweight import/syntax check before running full benchmark
 4. **Evaluate**: Run proposed harness against all 20 benchmark scenarios, score each
 5. **Log**: Store candidate harness + scores + proposer reasoning traces
@@ -87,16 +70,16 @@ Hoss's "harness" = the configs that wrap the LLM brain:
 ### Key Insight from the Paper
 The **skill text is the strongest lever** — it steers the proposer. Iterating on the proposer's prompt/role description had more effect than changing iteration count or population size.
 
-## The Benchmark
+## Evaluation
 
-The benchmark lives at `~/hoss-evolution/benchmark/`. See [references/benchmark-design.md](references/benchmark-design.md) for how to design scenarios and [references/harness-spec.md](references/harness-spec.md) for the full harness spec.
+Evaluation is delegated to a user-provided program via `--evaluate-script`. It must accept `<candidate_dir>` and print JSON as the last stdout line.
 
 Default benchmark has **20 scenarios** across categories:
 - **Memory**: Recall, update, synthesize from memory files
 - **Code**: Write, review, debug code tasks
 - **Coordination**: Spawn sub-agents, synthesize results
 - **Research**: Web search, fetch, summarize, synthesize
-- **Communication**: Draft emails, Discord messages, iMessages
+- **Communication**: Draft emails, Feishu messages
 - **Quality**: Spot errors, inconsistencies, broken links
 
 Each scenario has:
@@ -113,26 +96,22 @@ The proposer is a **coding-agent sub-agent** (default: coder) that:
 - Writes proposed configs to the new candidate directory
 - Logs its reasoning trace so future iterations can build on it
 
-### Proposer Skill (passed to sub-agent)
+### Proposer Prompt
 
-The proposer's role is defined by the task prompt in `scripts/propose_harness.py`. Key constraints:
-- Can only propose edits to files in the harness spec (SOUL.md, IDENTITY.md, AGENTS.md, TOOLS.md, MEMORY.md, HEARTBEAT.md)
-- Must pass lightweight validation before full evaluation
-- Should prefer targeted edits over full rewrites
-- Must log reasoning trace to proposer/logs/
+The proposer's role is defined by the task prompt in `scripts/run_evolution.py` and should prefer targeted edits over full rewrites.
 
 ## Workflow Steps
 
 ### Step 1: Read Prior Candidates
 ```bash
 # List all prior candidates
-ls ~/hoss-evolution/candidates/
+ls "$EVOLVER_WORKSPACE/candidates/"
 
 # Read best candidate
 cat ~/hoss-evolution/best/current/eval_scores.json
 
 # Read history log
-tail -20 ~/hoss-evolution/evolution_log.jsonl
+tail -20 "$EVOLVER_WORKSPACE/evolution_log.jsonl"
 ```
 
 ### Step 2: Run Proposer
@@ -147,10 +126,9 @@ tail -20 ~/hoss-evolution/evolution_log.jsonl
 bash ~/hoss-evolution/scripts/validate.sh <candidate_dir>
 ```
 
-### Step 4: Run Benchmark
+### Step 4: Run Evaluation
 ```bash
-# Evaluate candidate against all 20 scenarios
-python3 ~/hoss-evolution/scripts/evaluate.py <candidate_dir>
+python3 meta-harness-evolver/scripts/run_evolution.py --evaluate-script /path/to/evaluate.sh
 ```
 
 ### Step 5: Log Results
@@ -159,10 +137,9 @@ python3 ~/hoss-evolution/scripts/evaluate.py <candidate_dir>
 # Evolution log updated
 ```
 
-### Step 6: Post to Discord
+### Step 6: Post to Feishu
 ```bash
-# Posts summary to #research
-python3 ~/hoss-evolution/scripts/post_to_research.py <candidate_dir>
+python3 meta-harness-evolver/scripts/post_to_research.py <candidate_num> <candidate_dir> <score> <proposer_success>
 ```
 
 ## Scoring
@@ -185,12 +162,9 @@ Results are tracked as a Pareto frontier: for each candidate, log both score and
 - [scripts/run_evolution.py](scripts/run_evolution.py) — Main entry point, runs the full loop
 - [scripts/propose_harness.py](scripts/propose_harness.py) — The proposer sub-agent task definition
 - [scripts/evaluate.py](scripts/evaluate.py) — Benchmark runner
-- [scripts/post_to_research.py](scripts/post_to_research.py) — Discord reporter
+- [scripts/post_to_research.py](scripts/post_to_research.py) — Feishu reporter
 
 ## Notes
 
-- The proposer sub-agent runs with `runtime=subagent`, not ACP — it needs filesystem access to ~/hoss-evolution/
-- Cron is configured outside this skill via `openclaw cron`
-- If the proposer fails to produce a valid candidate, the iteration is skipped (no penalty)
-- Benchmark scenarios should be diverse enough that no single strategy can game all of them
-- The evolution workspace is NOT inside ~/.openclaw/ — it's at ~/hoss-evolution/ to keep it separate from operational configs
+- If the proposer fails to produce a valid candidate, the iteration is skipped
+- Keep evaluation scenarios diverse enough that no single strategy can game all of them

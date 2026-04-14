@@ -1,10 +1,10 @@
 # ⚡ Meta-Harness Evolver
 
-**An OpenClaw agent skill that implements the Meta-Harness paper for autonomous self-improvement.**
+**A Meta-Harness-style outer-loop runner for AI4S / agentic codebases.**
 
 > *"The harness around a fixed LLM can produce a 6× performance gap on the same benchmark."* — [Meta-Harness Paper](https://yoonholee.com/meta-harness/)
 
-This skill runs a nightly outer-loop optimization for Hoss (or any OpenClaw agent) — reading prior execution traces, proposing targeted harness modifications, evaluating against a benchmark, and iterating.
+This project runs an outer-loop optimization — reading prior candidates, proposing targeted code/config modifications, evaluating against a benchmark, logging results, and iterating.
 
 ---
 
@@ -20,7 +20,7 @@ Meta-Harness is an outer-loop system that searches over **harness code** — the
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Proposer Agent ──(filesystem access)──► ~/hoss-evolution/
+│  Proposer Agent ──(filesystem access)──► $EVOLVER_WORKSPACE/
 │         ▲                                           │
 │         │                               propose harness
 │         │                                           ▼
@@ -30,66 +30,39 @@ Meta-Harness is an outer-loop system that searches over **harness code** — the
 └─────────────────────────────────────────────────────────┘
 ```
 
-Each night at 3 AM CDT:
+Each run:
 
 1. **Read** — Proposer reads all prior candidates from the evolution filesystem
-2. **Propose** — Identifies failure patterns, proposes 1 targeted harness edit
+2. **Propose** — Identifies failure patterns, proposes 1 targeted edit (any file types)
 3. **Validate** — Lightweight syntax/constraint check
 4. **Evaluate** — Run benchmark (~20 diverse scenarios)
 5. **Log** — Store candidate + scores + proposer reasoning traces
-6. **Post** — Summary posted to Discord #research channel
+6. **Post** — Summary posted to Feishu (Lark)
 
 ---
 
 ## What Can Be Evolved
 
-Hoss's "harness" = all configs wrapping the LLM brain:
-
-| File | What It Controls |
-|------|-----------------|
-| `SOUL.md` | Core identity, personality, decision-making style |
-| `IDENTITY.md` | Role, voice, tone, signature patterns |
-| `AGENTS.md` | Sub-agent architecture, coordination protocol |
-| `TOOLS.md` | Tool configurations, credentials, key hosts |
-| `MEMORY.md` | Long-term memory structure |
-| `HEARTBEAT.md` | Active hours, check priorities, alert thresholds |
+The evolver treats `candidate_N/harness/` as the "mutable surface". It can contain any files relevant to your AI4S task (e.g. `model.py`, `train.py`, `config.yaml`).
 
 ---
 
-## Installation
+## Quick Start
 
-### Prerequisites
+1. Create and configure `meta-harness-evolver/.env` (not committed). At minimum:
+   - `EVOLVER_WORKSPACE=./hoss-evolution`
+   - `NEXAU_HOME=/path/to/NexAU`
+   - `LLM_MODEL / LLM_BASE_URL / LLM_API_KEY` (for the NexAU proposer)
+   - `FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_RECEIVE_ID(_TYPE)` (for Feishu posting)
 
-- OpenClaw installed and configured
-- Python 3.8+
-- `gh` CLI authenticated (`gh auth login`)
+2. Seed the workspace:
+   - Put your baseline code/config into: `$EVOLVER_WORKSPACE/best/current/harness/`
+   - Optional baseline candidate: `$EVOLVER_WORKSPACE/candidates/candidate_0/harness/`
 
-### Setup
+3. Run:
 
 ```bash
-# 1. Install the skill
-git clone https://github.com/tylerdotai/meta-harness-evolver.git
-cd meta-harness-evolver
-openclaw skill install ./meta-harness-evolver
-
-# 2. Create the evolution workspace
-mkdir -p ~/hoss-evolution/{candidates,best/current,benchmark/scenarios,proposer/logs}
-touch ~/hoss-evolution/evolution_log.jsonl
-
-# 3. Seed iteration 0 (current Hoss configs)
-mkdir -p ~/hoss-evolution/candidates/candidate_0/harness
-cp ~/.openclaw/workspace/SOUL.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/IDENTITY.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/AGENTS.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/TOOLS.md ~/hoss-evolution/candidates/candidate_0/harness/
-cp ~/.openclaw/workspace/HEARTBEAT.md ~/hoss-evolution/candidates/candidate_0/harness/
-
-# 4. Configure cron (3 AM CDT daily)
-openclaw cron add \
-  --name "meta-harness-evolution" \
-  --schedule "0 3 * * *" \
-  --timezone "America/Chicago" \
-  --command "SKILL=meta-harness-evolver TASK=run_evolution openclaw run"
+bash meta-harness-evolver/scripts/example_run_evolution.sh
 ```
 
 ---
@@ -97,7 +70,7 @@ openclaw cron add \
 ## Directory Structure
 
 ```
-~/hoss-evolution/
+$EVOLVER_WORKSPACE/
 ├── candidates/              # All evaluated candidates
 │   └── candidate_N/
 │       ├── harness/          # Proposed config files
@@ -160,29 +133,29 @@ Stanford / MIT / KRAFTON
 
 ---
 
-## Adapting for Your Agent
+## Adapting for Your Task
 
-This skill is built for Hoss (an OpenClaw agent), but the framework is agent-agnostic:
+This runner is agent/task-agnostic:
 
-1. **Update `references/harness-spec.md`** — define what files constitute YOUR agent's harness
-2. **Update benchmark scenarios** — `scripts/evaluate.py` SCENARIOS list — test what matters for your agent
+1. **Update `references/harness-spec.md`** — define what files constitute your mutable surface
+2. **Replace evaluation** — point `--evaluate-script` to your own benchmark program
 3. **Adjust weights** — if coordination matters more than code for your use case
-4. **Update proposer prompt** — `scripts/run_evolution.py` proposer_task — describe your agent's context
+4. **Update proposer prompt** — `scripts/run_evolution.py` proposer_task — describe your task and constraints
 
 ---
 
-## Example Discord Output
+## Example Feishu Output
 
 ```
-⚡ Meta-Harness Evolution — Nightly Report
+Meta-Harness Evolution — Report
 
 Candidate: candidate_7
 Score: 72.3/100 🔺 +3.1 vs best
-Proposer: ✅ Success
+Proposer: SUCCESS
 
 What Changed:
-  ~ SOUL.md (+12 lines)
-  ~ HEARTBEAT.md (+3 lines)
+  ~ model.py (+12 lines)
+  ~ config.yaml (+3 lines)
 
 Proposer's Reasoning:
   "candidate_5 and candidate_6 both failed on memory_2

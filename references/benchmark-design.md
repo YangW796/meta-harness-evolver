@@ -147,7 +147,7 @@ Scenarios live in `scripts/evaluate.py` in the `SCENARIOS` list. Add your own by
 - Synthesize multi-agent results
 
 ### Communication Scenarios (target: 10% of score)
-- Draft Discord messages
+- Draft Feishu messages
 - Write email responses
 - Handle disagreeable feedback
 - Professional escalation
@@ -160,7 +160,7 @@ Scenarios live in `scripts/evaluate.py` in the `SCENARIOS` list. Add your own by
 
 ## Self-Improvement Loop
 
-After each evolution iteration, Tyler should review:
+After each evolution iteration, humans should review:
 1. Did the new score match subjective quality?
 2. Which scenarios regressed? Which improved?
 3. Any scenario that seems gaming-prone?

@@ -11,7 +11,7 @@ Runs the full Meta-Harness outer loop:
   6. Post summary to Feishu
 
 Usage:
-  python3 run_evolution.py [--workspace DIR] [--candidate-num N] [--evaluate-script PATH]
+  python3 run_evolution.py [--workspace DIR] [--candidate-num N] [--iterations K] [--evaluate-script PATH]
 
 Exit codes:
   0 = success (candidate evaluated)
@@ -540,6 +540,12 @@ def main():
         default=os.environ.get("EVALUATE_SCRIPT"),
         help="Path to an evaluation program (bash/sh/py/executable) that accepts <candidate_dir> and prints JSON as the last line",
     )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=int(os.environ.get("EVOLVER_ITERATIONS", "1")),
+        help="How many evolution iterations to run in this process (default: $EVOLVER_ITERATIONS or 1)",
+    )
     args = parser.parse_args()
 
     workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
@@ -550,48 +556,73 @@ def main():
     print(f"{'='*60}\n")
     print(f"[MAIN] Workspace: {paths.workspace}")
 
-    candidate_num = args.candidate_num or get_next_candidate_num(paths)
-    print(f"[MAIN] Candidate: {candidate_num}")
+    def run_one(candidate_num: int) -> int:
+        print(f"[MAIN] Candidate: {candidate_num}")
 
-    # Step 1: Run proposer
-    proposer_result = run_proposer(paths, candidate_num)
-    candidate_dir = Path(proposer_result["candidate_dir"])
+        # Step 1: Run proposer
+        proposer_result = run_proposer(paths, candidate_num)
+        candidate_dir = Path(proposer_result["candidate_dir"])
 
-    if not proposer_result["success"]:
-        print(f"[MAIN] Proposer failed: {proposer_result.get('error')}")
-        print("[MAIN] Skipping this iteration.")
-        sys.exit(1)
+        if not proposer_result["success"]:
+            print(f"[MAIN] Proposer failed: {proposer_result.get('error')}")
+            print("[MAIN] Skipping this iteration.")
+            return 1
 
-    # Step 2: Validate
-    if not validate_candidate(candidate_dir):
-        print("[MAIN] Validation failed. Skipping.")
-        sys.exit(1)
+        # Step 2: Validate
+        if not validate_candidate(candidate_dir):
+            print("[MAIN] Validation failed. Skipping.")
+            return 1
 
-    # Step 3: Evaluate
-    scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)
-    if not scores or "error" in scores:
-        print(f"[MAIN] Evaluation failed: {scores.get('error')}")
-        sys.exit(1)
+        # Step 3: Evaluate
+        scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)
+        if not scores or "error" in scores:
+            print(f"[MAIN] Evaluation failed: {scores.get('error')}")
+            return 2
 
-    # Step 4: Log eval scores to candidate dir
-    scores_file = candidate_dir / "eval_scores.json"
-    with open(scores_file, "w") as sf:
-        json.dump(scores, sf, indent=2)
-    print(f"[MAIN] Scores: {json.dumps(scores, indent=2)}")
+        # Step 4: Log eval scores to candidate dir
+        scores_file = candidate_dir / "eval_scores.json"
+        with open(scores_file, "w") as sf:
+            json.dump(scores, sf, indent=2)
+        print(f"[MAIN] Scores: {json.dumps(scores, indent=2)}")
 
-    # Step 5: Update best if needed
-    prev_best_score = update_best(paths, candidate_dir, scores)
+        # Step 5: Update best if needed
+        prev_best_score = update_best(paths, candidate_dir, scores)
 
-    # Step 6: Log evolution
-    log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"])
+        # Step 6: Log evolution
+        log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"])
 
-    # Step 7: Post to Feishu
-    post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
+        # Step 7: Post to Feishu
+        post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
 
-    print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
-    print(f"{'='*60}\n")
+        print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
+        print(f"{'='*60}\n")
+        return 0
 
-    sys.exit(0)
+    success = 0
+    skipped = 0
+    errors = 0
+
+    iterations = max(int(args.iterations), 1)
+    for i in range(iterations):
+        if i > 0:
+            print(f"\n{'-'*60}")
+            print(f"[MAIN] Iteration {i+1}/{iterations}")
+            print(f"{'-'*60}\n")
+
+        candidate_num = (args.candidate_num + i) if args.candidate_num is not None else get_next_candidate_num(paths)
+        code = run_one(candidate_num)
+        if code == 0:
+            success += 1
+        elif code == 1:
+            skipped += 1
+        else:
+            errors += 1
+
+    if errors > 0:
+        sys.exit(2)
+    if success > 0:
+        sys.exit(0)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

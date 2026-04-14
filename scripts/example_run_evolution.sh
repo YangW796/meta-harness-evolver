@@ -20,10 +20,15 @@ if [[ "${1:-}" != "" ]]; then
   CANDIDATE_NUM="$1"
 fi
 
+ITERATIONS="${ITERATIONS:-${EVOLVER_ITERATIONS:-1}}"
+if [[ "${2:-}" != "" ]]; then
+  ITERATIONS="$2"
+fi
+
 export FEISHU_DRY_RUN="${FEISHU_DRY_RUN:-1}"
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
-ARGS=(python "$EVOLVER_DIR/scripts/run_evolution.py" --workspace "$WORKSPACE_DIR" --evaluate-script "$EVALUATE_SCRIPT_PATH")
+ARGS=(python "$EVOLVER_DIR/scripts/run_evolution.py" --workspace "$WORKSPACE_DIR" --iterations "$ITERATIONS" --evaluate-script "$EVALUATE_SCRIPT_PATH")
 if [[ -n "$CANDIDATE_NUM" ]]; then
   ARGS+=(--candidate-num "$CANDIDATE_NUM")
 fi
@@ -33,3 +38,4 @@ conda run -n "$CONDA_ENV" "${ARGS[@]}"
 
 #bash meta-harness-evolver/scripts/example_run_evolution.sh
 #bash meta-harness-evolver/scripts/example_run_evolution.sh 8
+#bash meta-harness-evolver/scripts/example_run_evolution.sh 8 3
