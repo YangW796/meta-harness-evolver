@@ -411,93 +411,38 @@ def validate_candidate(candidate_dir: Path) -> bool:
     return True
 
 
-def _resolve_harness_entrypoint(harness_dir: Path, cfg: EvolverConfig) -> Path | None:
-    for name in cfg.harness_entrypoints:
-        p = harness_dir / name
-        if p.exists() and p.is_file():
-            return p
-    return None
+def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig, candidate_num: int) -> dict:
+    script = str(cfg.harness_run_script or "").strip()
+    if not script:
+        if cfg.require_harness_run_script:
+            return {"ok": False, "error": "Missing HARNESS_RUN_SCRIPT"}
+        return {"ok": True, "skipped": True, "reason": "no harness run script"}
 
+    script_path = Path(script).expanduser()
+    if not script_path.is_absolute():
+        script_path = (Path.cwd() / script_path).resolve()
 
-def _prepare_ai4s_files(candidate_dir: Path, cfg: EvolverConfig, candidate_num: int) -> tuple[Path, Path, Path]:
-    import shutil
-
-    in_path = candidate_dir / cfg.harness_input_filename
-    out_path = candidate_dir / cfg.harness_output_filename
-    meta_path = candidate_dir / cfg.harness_meta_filename
-
-    source = os.environ.get("AI4S_INPUT_FILE")
-    if source:
-        src = Path(source).expanduser()
-        if src.exists():
-            shutil.copy2(src, in_path)
-        else:
-            in_path.write_text(json.dumps({"ok": False, "error": f"AI4S_INPUT_FILE not found: {src}"}), encoding="utf-8")
-    elif not in_path.exists():
-        in_path.write_text(
-            json.dumps(
-                {
-                    "candidate_num": candidate_num,
-                    "created_at": datetime.now().isoformat(),
-                    "data": {},
-                },
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
-
-    meta_path.write_text(
-        json.dumps(
-            {
-                "candidate_num": candidate_num,
-                "created_at": datetime.now().isoformat(),
-            },
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
-    return in_path, out_path, meta_path
-
-
-def run_harness_if_present(candidate_dir: Path, cfg: EvolverConfig, candidate_num: int) -> dict:
-    if not cfg.enable_harness_execution:
-        return {"ok": True, "skipped": True, "reason": "ENABLE_HARNESS_EXECUTION=0"}
-
-    harness_dir = candidate_dir / "harness"
-    entrypoint = _resolve_harness_entrypoint(harness_dir, cfg)
-    if entrypoint is None:
-        if cfg.require_harness_execution:
-            return {"ok": False, "error": f"Missing harness entrypoint; expected one of: {cfg.harness_entrypoints}"}
-        return {"ok": True, "skipped": True, "reason": "no entrypoint"}
-
-    in_path, out_path, meta_path = _prepare_ai4s_files(candidate_dir, cfg, candidate_num)
     traces_dir = candidate_dir / "traces"
     traces_dir.mkdir(parents=True, exist_ok=True)
     log_path = traces_dir / "harness_run.log"
 
-    cmd = [str(entrypoint)]
-    if entrypoint.suffix == ".py":
-        cmd = [sys.executable, str(entrypoint)]
-    elif entrypoint.suffix == ".sh":
-        cmd = ["bash", str(entrypoint)]
-
-    cmd += ["--input", str(in_path), "--output", str(out_path), "--meta", str(meta_path)]
-
+    cmd = ["bash", str(script_path), str(candidate_dir)]
+    env = os.environ.copy()
+    env.setdefault("EVOLVER_WORKSPACE", str(workspace))
+    env.setdefault("CANDIDATE_NUM", str(candidate_num))
+    env.setdefault("CANDIDATE_DIR", str(candidate_dir))
     try:
         result = subprocess.run(
             cmd,
-            cwd=str(harness_dir),
+            cwd=str(candidate_dir),
+            env=env,
             capture_output=True,
             text=True,
             timeout=int(cfg.harness_run_timeout_seconds),
         )
     except subprocess.TimeoutExpired:
-        out_path.write_text(
-            json.dumps({"ok": False, "error": f"harness timed out after {cfg.harness_run_timeout_seconds}s"}, ensure_ascii=False),
-            encoding="utf-8",
-        )
         log_path.write_text(f"CMD: {' '.join(cmd)}\nTIMEOUT\n", encoding="utf-8")
-        return {"ok": False, "error": "timeout", "output_path": str(out_path)}
+        return {"ok": False, "error": "timeout"}
 
     log_path.write_text(
         "\n".join(
@@ -512,34 +457,9 @@ def run_harness_if_present(candidate_dir: Path, cfg: EvolverConfig, candidate_nu
         ),
         encoding="utf-8",
     )
-
-    if not out_path.exists():
-        out_path.write_text(
-            json.dumps(
-                {
-                    "ok": False,
-                    "error": "harness did not create output file",
-                    "exit_code": result.returncode,
-                    "stdout": (result.stdout or "")[-4000:],
-                    "stderr": (result.stderr or "")[-4000:],
-                },
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
-
-    try:
-        payload = json.loads(out_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        out_path.write_text(json.dumps({"ok": False, "error": f"invalid output json: {e}"}, ensure_ascii=False), encoding="utf-8")
-        payload = {"ok": False, "error": "invalid output json"}
-
-    if result.returncode != 0 and payload.get("ok") is not True:
-        payload.setdefault("exit_code", result.returncode)
-        return payload
-
-    payload.setdefault("ok", True)
-    return payload
+    if result.returncode != 0:
+        return {"ok": False, "error": "harness run script failed", "exit_code": result.returncode}
+    return {"ok": True}
 
 
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
@@ -710,7 +630,7 @@ def main():
             print("[MAIN] Validation failed. Skipping.")
             return 1
 
-        harness_run = run_harness_if_present(candidate_dir, cfg, candidate_num)
+        harness_run = run_harness_script(candidate_dir, paths.workspace, cfg, candidate_num)
         if not harness_run.get("ok", False):
             print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
             return 2

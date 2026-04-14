@@ -31,11 +31,30 @@ ITERATIONS="1"
 
 # --- 调试开关 ---
 
+# 统一指定 Python 侧的默认 workspace（evaluate-example.py 等会读取该环境变量）
+export EVOLVER_WORKSPACE="$WORKSPACE_DIR"
+
 # 飞书推送开关：1=仅打印不真实发送，0=真实发送
 export FEISHU_DRY_RUN="1"
 
 # 测试模式开关：1=跳过真实 NexAU Proposer 的大模型调用（只在 config.yaml 里加一行内容用于快速测试全流程），0=真实调用
 export EVOLVER_TEST_MODE="0"
+
+# Proposer prompt 前缀：可在这里追加项目背景/规则/约束（留空表示不追加）
+export PROPOSER_PROMPT_PREFIX=""
+
+# --- Harness 运行脚本配置 ---
+
+# 候选 harness 修改完成后、evaluate 之前，运行的 bash 脚本路径（可选；留空则跳过）
+# 该脚本会被这样调用：bash <script> <candidate_dir>
+# 同时会注入环境变量：EVOLVER_WORKSPACE / CANDIDATE_NUM / CANDIDATE_DIR（脚本可按需使用）
+export HARNESS_RUN_SCRIPT=""
+
+# 是否强制要求必须提供 HARNESS_RUN_SCRIPT（1=强制，0=不强制）
+export REQUIRE_HARNESS_RUN_SCRIPT="0"
+
+# 运行 HARNESS_RUN_SCRIPT 的超时时间（秒）
+export HARNESS_RUN_TIMEOUT_SECONDS="600"
 
 # --- 组装命令并执行 ---
 
@@ -46,5 +65,3 @@ fi
 
 cd "$ROOT_DIR"
 conda run -n "$CONDA_ENV" "${ARGS[@]}"
-
-

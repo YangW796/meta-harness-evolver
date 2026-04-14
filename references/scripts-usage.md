@@ -57,20 +57,18 @@ python3 scripts/run_evolution.py
 - `PROPOSER_TIMEOUT_SECONDS`：NexAU proposer 超时时间（秒，默认：`300`）
 - `EVOLVER_ITERATIONS`：`run_evolution.py --iterations` 的默认值（默认：`1`）
 
-Harness 可执行（AI4S 数据输入/输出）相关环境变量：
+Harness 运行脚本相关环境变量：
 
-- `AI4S_INPUT_FILE`：AI4S 输入数据 JSON 文件路径；若不设置，会在 candidate 目录里生成一个最小输入 JSON
-- `ENABLE_HARNESS_EXECUTION=0|1`：是否在 evaluate 前运行 harness 的可执行入口（默认：`1`）
-- `REQUIRE_HARNESS_EXECUTION=0|1`：是否强制要求 harness 必须存在可执行入口（默认：`0`，为兼容纯文档型 harness）
-- `HARNESS_RUN_TIMEOUT_SECONDS`：运行 harness 的超时时间（秒，默认：`600`）
-- `HARNESS_ENTRYPOINTS`：逗号分隔的入口文件名候选（默认：`run.py,main.py,entry.py,model.py`）
-- `HARNESS_INPUT_FILENAME` / `HARNESS_OUTPUT_FILENAME` / `HARNESS_META_FILENAME`：输入/输出/meta 文件名（默认分别为 `ai4s_input.json` / `ai4s_output.json` / `ai4s_meta.json`）
+- `HARNESS_RUN_SCRIPT`：在 evaluate 前运行的 bash 脚本路径（可选；为空则跳过）
+  - 调用方式：`bash <script> <candidate_dir>`
+  - 同时注入环境变量：`EVOLVER_WORKSPACE` / `CANDIDATE_NUM` / `CANDIDATE_DIR`
+- `REQUIRE_HARNESS_RUN_SCRIPT=0|1`：是否强制要求必须提供 `HARNESS_RUN_SCRIPT`（默认：`0`）
+- `HARNESS_RUN_TIMEOUT_SECONDS`：运行 `HARNESS_RUN_SCRIPT` 的超时时间（秒，默认：`600`）
 
 说明：
 
 - `run_evolution.py` / `evaluate-example.py` / `post_to_research.py` 启动时都会自动读取 `meta-harness-evolver/.env`（若存在）并将其中的键值加载到环境变量（不会覆盖已经在 shell 中设置的变量）
-- Harness 可执行入口约定：在 `candidate_N/harness/` 下放置 `run.py` / `main.py` / `entry.py` / `model.py` 之一，并实现 CLI：`--input <json> --output <json> --meta <json>`；输出 JSON 必须写到 `candidate_N/ai4s_output.json`
-- 可调整默认约定：修改 [evolver_config.py](file:///home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/scripts/evolver_config.py)（或用上述环境变量覆盖）
+- Harness 的输入/输出协议由 `HARNESS_RUN_SCRIPT` 自行负责；evolver 只负责在 evaluate 前调用该脚本
 
 退出码：
 

@@ -17,7 +17,6 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-from evolver_config import load_config
 from shared import get_workspace, iter_effective_files
 
 
@@ -435,29 +434,12 @@ def evaluate(candidate_dir: Path, runtime_workspace: Path) -> dict:
         for cat, scores in category_scores.items()
     }
 
-    cfg = load_config()
-    ai4s_output_path = candidate_dir / cfg.harness_output_filename
-    ai4s_output_ok = None
-    ai4s_output_error = None
-    if ai4s_output_path.exists():
-        try:
-            ai4s_payload = json.loads(ai4s_output_path.read_text(encoding="utf-8"))
-            ai4s_output_ok = bool(ai4s_payload.get("ok")) if isinstance(ai4s_payload, dict) else None
-            if ai4s_output_ok is False and isinstance(ai4s_payload, dict):
-                ai4s_output_error = ai4s_payload.get("error")
-        except Exception as e:
-            ai4s_output_ok = False
-            ai4s_output_error = f"invalid ai4s output json: {e}"
-
     return {
         "final_score": round(final_score, 1),
         "category_scores": {k: round(v, 1) for k, v in category_avgs.items()},
         "scenario_scores": {k: v["score"] for k, v in results.items()},
         "total_scenarios": len(SCENARIOS),
         "evaluated_at": datetime.now().isoformat(),
-        "ai4s_output_file": str(ai4s_output_path) if ai4s_output_path.exists() else None,
-        "ai4s_output_ok": ai4s_output_ok,
-        "ai4s_output_error": ai4s_output_error,
     }
 
 
