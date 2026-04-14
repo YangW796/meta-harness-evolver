@@ -18,5 +18,5 @@ build/
 *.local
 .env
 .env.*
-hoss-evolution/
+
 .tool_cache/
