@@ -8,7 +8,7 @@
 
 - 默认：`~/hoss-evolution`
 - 可通过环境变量覆盖：`EVOLVER_WORKSPACE=/path/to/hoss-evolution`
-- 或通过脚本参数覆盖：`--workspace /path/to/hoss-evolution`（`run_evolution.py` / `evaluate.py` / `post_to_research.py` 都支持）
+- 或通过脚本参数覆盖：`--workspace /path/to/hoss-evolution`（`run_evolution.py` / `evaluate-example.py` / `post_to_research.py` 都支持）
 
 workspace 目录结构（示例）：
 
@@ -42,13 +42,14 @@ python3 scripts/run_evolution.py
 - `--workspace <DIR>`：进化 workspace 目录（默认：`$EVOLVER_WORKSPACE` 或 `~/hoss-evolution`）
 - `--candidate-num <N>`：指定本次候选编号；不传则自动取 `candidates/` 下最大编号 + 1
 - `--iterations <K>`：连续执行 K 轮外循环（默认：`$EVOLVER_ITERATIONS` 或 `1`）。若同时指定了 `--candidate-num N`，将依次运行 `candidate_N, candidate_{N+1}, ...` 共 K 轮
-- `--evaluate-script <PATH>`：指定评测脚本/可执行文件（默认从环境变量 `EVALUATE_SCRIPT` 读取；若也未设置则使用 `scripts/evaluate.py`）
+- `--evaluate-script <PATH>`：指定评测脚本/可执行文件（默认从环境变量 `EVALUATE_SCRIPT` 读取；若也未设置则使用 `scripts/evaluate-example.py`）
   - 该程序必须接受一个参数 `<candidate_dir>`
   - 且最后一行 stdout 必须输出 JSON（`run_evolution.py` 读取最后一行并 `json.loads`）
 
 相关环境变量（提案器 / NexAU）：
 
 - `EVOLVER_TEST_MODE=1`：跳过真实 proposer，直接在 candidate 的 `harness/config.yaml` 里写入一个最小改动，并生成 `proposer_reasoning.md`（用于本地联调）
+- `PROPOSER_PROMPT_PREFIX`：在 proposer 的任务 prompt 最前面追加一段可自定义的前缀文本（用于加项目背景/规则）
 - `NEXAU_HOME`：NexAU 仓库路径（默认：`/home/wy/Documents/NexAU`）
 - `LLM_MODEL` / `LLM_API_KEY`：NexAU proposer 运行所需（缺失会报错）
 - `LLM_BASE_URL` / `LLM_API_TYPE` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`：透传给 NexAU 的 LLM 配置（可选）
@@ -56,9 +57,20 @@ python3 scripts/run_evolution.py
 - `PROPOSER_TIMEOUT_SECONDS`：NexAU proposer 超时时间（秒，默认：`300`）
 - `EVOLVER_ITERATIONS`：`run_evolution.py --iterations` 的默认值（默认：`1`）
 
+Harness 可执行（AI4S 数据输入/输出）相关环境变量：
+
+- `AI4S_INPUT_FILE`：AI4S 输入数据 JSON 文件路径；若不设置，会在 candidate 目录里生成一个最小输入 JSON
+- `ENABLE_HARNESS_EXECUTION=0|1`：是否在 evaluate 前运行 harness 的可执行入口（默认：`1`）
+- `REQUIRE_HARNESS_EXECUTION=0|1`：是否强制要求 harness 必须存在可执行入口（默认：`0`，为兼容纯文档型 harness）
+- `HARNESS_RUN_TIMEOUT_SECONDS`：运行 harness 的超时时间（秒，默认：`600`）
+- `HARNESS_ENTRYPOINTS`：逗号分隔的入口文件名候选（默认：`run.py,main.py,entry.py,model.py`）
+- `HARNESS_INPUT_FILENAME` / `HARNESS_OUTPUT_FILENAME` / `HARNESS_META_FILENAME`：输入/输出/meta 文件名（默认分别为 `ai4s_input.json` / `ai4s_output.json` / `ai4s_meta.json`）
+
 说明：
 
-- `run_evolution.py` / `evaluate.py` / `post_to_research.py` 启动时都会自动读取 `meta-harness-evolver/.env`（若存在）并将其中的键值加载到环境变量（不会覆盖已经在 shell 中设置的变量）
+- `run_evolution.py` / `evaluate-example.py` / `post_to_research.py` 启动时都会自动读取 `meta-harness-evolver/.env`（若存在）并将其中的键值加载到环境变量（不会覆盖已经在 shell 中设置的变量）
+- Harness 可执行入口约定：在 `candidate_N/harness/` 下放置 `run.py` / `main.py` / `entry.py` / `model.py` 之一，并实现 CLI：`--input <json> --output <json> --meta <json>`；输出 JSON 必须写到 `candidate_N/ai4s_output.json`
+- 可调整默认约定：修改 [evolver_config.py](file:///home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/scripts/evolver_config.py)（或用上述环境变量覆盖）
 
 退出码：
 
@@ -66,14 +78,14 @@ python3 scripts/run_evolution.py
 - `1`：跳过/失败（例如 proposer 失败、校验失败、评测失败）
 - `2`：内部错误（例如 child mode 参数不足）
 
-## evaluate.py（评测器：对单个 candidate 打分）
+## evaluate-example.py（评测器示例：对单个 candidate 打分）
 
 作用：对某个 `candidate_dir` 执行 benchmark，最后一行输出 JSON（供 `run_evolution.py` 解析）。
 
 执行：
 
 ```bash
-python3 scripts/evaluate.py /path/to/hoss-evolution/candidates/candidate_7
+python3 scripts/evaluate-example.py /path/to/hoss-evolution/candidates/candidate_7
 ```
 
 参数：

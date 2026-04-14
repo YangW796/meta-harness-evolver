@@ -161,7 +161,7 @@ Results are tracked as a Pareto frontier: for each candidate, log both score and
 - [references/evolution-logic.md](references/evolution-logic.md) — Detailed evolution algorithm, parent selection, Pareto frontier logic
 - [scripts/run_evolution.py](scripts/run_evolution.py) — Main entry point, runs the full loop
 - [scripts/propose_harness.py](scripts/propose_harness.py) — The proposer sub-agent task definition
-- [scripts/evaluate.py](scripts/evaluate.py) — Benchmark runner
+- [scripts/evaluate-example.py](scripts/evaluate-example.py) — Benchmark runner (example)
 - [scripts/post_to_research.py](scripts/post_to_research.py) — Feishu reporter
 
 ## Notes

@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from evolver_config import EvolverConfig, load_config
 from shared import get_workspace, iter_effective_files, load_env_file
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -80,7 +81,7 @@ def get_best_candidate(paths: EvolverPaths) -> dict | None:
     return None
 
 
-def run_proposer(paths: EvolverPaths, candidate_num: int) -> dict:
+def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) -> dict:
     """
     Spawn the proposer sub-agent to propose a candidate modification.
     Returns dict with 'success', 'candidate_dir', and 'reasoning'.
@@ -118,7 +119,10 @@ def run_proposer(paths: EvolverPaths, candidate_num: int) -> dict:
     else:
         target_files_str = "   - (No files found, please create the necessary Python scripts or configs)"
 
-    proposer_task = f"""You are the Evolution Proposer for an AI4S (AI for Science) project.
+    prompt_prefix = cfg.proposer_prompt_prefix
+    if prompt_prefix and not prompt_prefix.endswith("\n"):
+        prompt_prefix += "\n\n"
+    proposer_task = f"""{prompt_prefix}You are the Evolution Proposer for an AI4S (AI for Science) project.
 
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
@@ -155,6 +159,7 @@ Write reasoning to {paths.workspace}/candidates/candidate_{candidate_num}/propos
 
 Start now. Read the history first, then propose.
 """
+    proposer_task += cfg.proposer_prompt_suffix(paths.workspace, candidate_num)
 
     print(f"[PROPOSER] Spawning sub-agent for candidate_{candidate_num}...")
     print(f"[PROPOSER] History: {len(history)} prior candidates")
@@ -406,6 +411,137 @@ def validate_candidate(candidate_dir: Path) -> bool:
     return True
 
 
+def _resolve_harness_entrypoint(harness_dir: Path, cfg: EvolverConfig) -> Path | None:
+    for name in cfg.harness_entrypoints:
+        p = harness_dir / name
+        if p.exists() and p.is_file():
+            return p
+    return None
+
+
+def _prepare_ai4s_files(candidate_dir: Path, cfg: EvolverConfig, candidate_num: int) -> tuple[Path, Path, Path]:
+    import shutil
+
+    in_path = candidate_dir / cfg.harness_input_filename
+    out_path = candidate_dir / cfg.harness_output_filename
+    meta_path = candidate_dir / cfg.harness_meta_filename
+
+    source = os.environ.get("AI4S_INPUT_FILE")
+    if source:
+        src = Path(source).expanduser()
+        if src.exists():
+            shutil.copy2(src, in_path)
+        else:
+            in_path.write_text(json.dumps({"ok": False, "error": f"AI4S_INPUT_FILE not found: {src}"}), encoding="utf-8")
+    elif not in_path.exists():
+        in_path.write_text(
+            json.dumps(
+                {
+                    "candidate_num": candidate_num,
+                    "created_at": datetime.now().isoformat(),
+                    "data": {},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+    meta_path.write_text(
+        json.dumps(
+            {
+                "candidate_num": candidate_num,
+                "created_at": datetime.now().isoformat(),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return in_path, out_path, meta_path
+
+
+def run_harness_if_present(candidate_dir: Path, cfg: EvolverConfig, candidate_num: int) -> dict:
+    if not cfg.enable_harness_execution:
+        return {"ok": True, "skipped": True, "reason": "ENABLE_HARNESS_EXECUTION=0"}
+
+    harness_dir = candidate_dir / "harness"
+    entrypoint = _resolve_harness_entrypoint(harness_dir, cfg)
+    if entrypoint is None:
+        if cfg.require_harness_execution:
+            return {"ok": False, "error": f"Missing harness entrypoint; expected one of: {cfg.harness_entrypoints}"}
+        return {"ok": True, "skipped": True, "reason": "no entrypoint"}
+
+    in_path, out_path, meta_path = _prepare_ai4s_files(candidate_dir, cfg, candidate_num)
+    traces_dir = candidate_dir / "traces"
+    traces_dir.mkdir(parents=True, exist_ok=True)
+    log_path = traces_dir / "harness_run.log"
+
+    cmd = [str(entrypoint)]
+    if entrypoint.suffix == ".py":
+        cmd = [sys.executable, str(entrypoint)]
+    elif entrypoint.suffix == ".sh":
+        cmd = ["bash", str(entrypoint)]
+
+    cmd += ["--input", str(in_path), "--output", str(out_path), "--meta", str(meta_path)]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(harness_dir),
+            capture_output=True,
+            text=True,
+            timeout=int(cfg.harness_run_timeout_seconds),
+        )
+    except subprocess.TimeoutExpired:
+        out_path.write_text(
+            json.dumps({"ok": False, "error": f"harness timed out after {cfg.harness_run_timeout_seconds}s"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        log_path.write_text(f"CMD: {' '.join(cmd)}\nTIMEOUT\n", encoding="utf-8")
+        return {"ok": False, "error": "timeout", "output_path": str(out_path)}
+
+    log_path.write_text(
+        "\n".join(
+            [
+                f"CMD: {' '.join(cmd)}",
+                f"EXIT_CODE: {result.returncode}",
+                "STDOUT:",
+                result.stdout or "",
+                "STDERR:",
+                result.stderr or "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    if not out_path.exists():
+        out_path.write_text(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": "harness did not create output file",
+                    "exit_code": result.returncode,
+                    "stdout": (result.stdout or "")[-4000:],
+                    "stderr": (result.stderr or "")[-4000:],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+    try:
+        payload = json.loads(out_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        out_path.write_text(json.dumps({"ok": False, "error": f"invalid output json: {e}"}, ensure_ascii=False), encoding="utf-8")
+        payload = {"ok": False, "error": "invalid output json"}
+
+    if result.returncode != 0 and payload.get("ok") is not True:
+        payload.setdefault("exit_code", result.returncode)
+        return payload
+
+    payload.setdefault("ok", True)
+    return payload
+
+
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
     """Run the benchmark against the candidate harness."""
     print(f"[EVALUATE] Running benchmark for {candidate_dir.name}...")
@@ -422,7 +558,7 @@ def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script
         else:
             cmd = [str(script_path), str(candidate_dir)]
     else:
-        cmd = [sys.executable, str(paths.scripts_dir / "evaluate.py"), str(candidate_dir)]
+        cmd = [sys.executable, str(paths.scripts_dir / "evaluate-example.py"), str(candidate_dir)]
 
     result = subprocess.run(
         cmd,
@@ -550,6 +686,7 @@ def main():
 
     workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
     paths = EvolverPaths.from_workspace(workspace)
+    cfg = load_config()
 
     print(f"\n{'='*60}")
     print(f"Meta-Harness Evolution — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -560,7 +697,7 @@ def main():
         print(f"[MAIN] Candidate: {candidate_num}")
 
         # Step 1: Run proposer
-        proposer_result = run_proposer(paths, candidate_num)
+        proposer_result = run_proposer(paths, cfg, candidate_num)
         candidate_dir = Path(proposer_result["candidate_dir"])
 
         if not proposer_result["success"]:
@@ -572,6 +709,11 @@ def main():
         if not validate_candidate(candidate_dir):
             print("[MAIN] Validation failed. Skipping.")
             return 1
+
+        harness_run = run_harness_if_present(candidate_dir, cfg, candidate_num)
+        if not harness_run.get("ok", False):
+            print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
+            return 2
 
         # Step 3: Evaluate
         scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)

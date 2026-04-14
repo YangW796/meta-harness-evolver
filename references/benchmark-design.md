@@ -52,7 +52,7 @@ Adjust these if you want to optimize for different traits.
 2. **Write the scenario** following the anatomy above
 3. **Set weight** — new scenarios should steal weight from existing ones
 4. **Test it manually** — run it against current harness and verify score makes sense
-5. **Update SCENARIOS list** in `scripts/evaluate.py`
+5. **Update SCENARIOS list** in `scripts/evaluate-example.py`
 
 Example new scenario addition:
 ```python
@@ -118,7 +118,7 @@ Complexity = sum of diff sizes across changed files.
 
 ## Scenario Library (Add Your Own)
 
-Scenarios live in `scripts/evaluate.py` in the `SCENARIOS` list. Add your own by appending to that list. Keep categories balanced.
+Scenarios live in `scripts/evaluate-example.py` in the `SCENARIOS` list. Add your own by appending to that list. Keep categories balanced.
 
 ### Memory Scenarios (target: 20-25% of score)
 - Recall from daily memory logs

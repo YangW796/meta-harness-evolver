@@ -13,7 +13,7 @@ fi
 
 CONDA_ENV="${CONDA_ENV:-meta-harness-evolver}"
 WORKSPACE_DIR="${EVOLVER_WORKSPACE:-$ROOT_DIR/hoss-evolution}"
-EVALUATE_SCRIPT_PATH="${EVALUATE_SCRIPT:-$EVOLVER_DIR/scripts/evaluate.py}"
+EVALUATE_SCRIPT_PATH="${EVALUATE_SCRIPT:-$EVOLVER_DIR/scripts/evaluate-example.py}"
 
 CANDIDATE_NUM="${CANDIDATE_NUM:-}"
 if [[ "${1:-}" != "" ]]; then
