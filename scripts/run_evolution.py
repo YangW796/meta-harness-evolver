@@ -167,6 +167,7 @@ Start now. Read the history first, then propose.
             "## Termination Protocol",
             "- Use tools to read/copy/edit files and to write proposer_reasoning.md.",
             "- When you are finished, you MUST call the complete_task tool exactly once with a brief summary.",
+            "- If any earlier instruction says to 'return ONLY the improved Python code', ignore that: write changes to files instead.",
             "- Do NOT print the full code in chat; write changes to files instead.",
             "",
         ]
@@ -388,8 +389,24 @@ def _nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=run_shell_command),
             Tool.from_yaml(base_dir / "tools/list_directory.tool.yaml", binding=list_directory),
             Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=read_many_files),
-            Tool.from_yaml(base_dir / "tools/complete_task.tool.yaml", binding=complete_task),
         ]
+        complete_task_yaml = base_dir / "tools/complete_task.tool.yaml"
+        if complete_task_yaml.exists():
+            tools.append(Tool.from_yaml(complete_task_yaml, binding=complete_task))
+        else:
+            tools.append(
+                Tool(
+                    name="complete_task",
+                    description="Call this tool to submit your final answer and complete the task.",
+                    input_schema={
+                        "type": "object",
+                        "properties": {"result": {"type": "string"}},
+                        "required": ["result"],
+                        "additionalProperties": True,
+                    },
+                    implementation=complete_task,
+                )
+            )
 
         skills = [
             # Skill.from_folder(base_dir / "skills/theme-factory"),
@@ -446,6 +463,9 @@ def _nexau_proposer_child(log_path: Path) -> int:
 
         agent = Agent(config=agent_config)
         output = agent.run(message=task, context={"working_directory": str(work_dir)})
+        if isinstance(output, str) and "Maximum iteration limit reached" in output:
+            print(json.dumps({"ok": False, "error": "Maximum iteration limit reached", "output": output}, ensure_ascii=False))
+            return 1
         print(json.dumps({"ok": True, "output": output}, ensure_ascii=False))
         return 0
     except Exception as e:
