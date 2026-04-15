@@ -11,7 +11,7 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-CONDA_ENV="meta-harness-evolver"
+CONDA_ENV="meta-harness-evolver0"
 WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate_project1.py"
 CANDIDATE_NUM=""

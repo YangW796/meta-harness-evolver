@@ -297,17 +297,70 @@ def _nexau_proposer_child(log_path: Path) -> int:
     logging.getLogger(__name__).info("label=%s work_dir=%s task_len=%s max_iterations=%s", label, work_dir, len(task), max_iterations)
 
     try:
-        nexau_home = Path(os.environ.get("NEXAU_HOME", "")).resolve()
+        nexau_home_env = (os.environ.get("NEXAU_HOME") or "").strip()
+        if not nexau_home_env:
+            raise RuntimeError("Missing NEXAU_HOME in environment for NexAU proposer.")
+
+        nexau_home = Path(nexau_home_env).expanduser().resolve()
         if not nexau_home.exists():
             raise RuntimeError(f"NexAU not found at {nexau_home}. Set NEXAU_HOME to your NexAU repo path.")
 
-        if str(nexau_home) not in sys.path:
-            sys.path.insert(0, str(nexau_home))
+        code_agent_dir_env = (os.environ.get("NEXAU_CODE_AGENT_DIR") or "").strip()
+        code_agent_dir: Path | None = None
+        if code_agent_dir_env:
+            code_agent_dir = Path(code_agent_dir_env).expanduser().resolve()
+        else:
+            if (nexau_home / "tool_impl").exists() and (nexau_home / "tools").exists():
+                code_agent_dir = nexau_home
+            else:
+                candidate_code_agent_dir = nexau_home / "examples" / "code_agent"
+                if candidate_code_agent_dir.exists():
+                    code_agent_dir = candidate_code_agent_dir
+                else:
+                    examples_dir = nexau_home / "examples"
+                    if examples_dir.exists():
+                        for root, dirnames, _ in os.walk(examples_dir):
+                            if "tool_impl" not in dirnames:
+                                continue
+                            maybe_code_agent_dir = Path(root)
+                            if not (maybe_code_agent_dir / "tools").exists():
+                                continue
+                            if not (maybe_code_agent_dir / "systemprompt.md").exists():
+                                continue
+                            code_agent_dir = maybe_code_agent_dir
+                            break
 
-        code_agent_dir = nexau_home / "examples" / "code_agent"
-        if not code_agent_dir.exists():
-            raise RuntimeError(f"NexAU code_agent example not found at {code_agent_dir}")
+        if code_agent_dir is None or not code_agent_dir.exists():
+            raise RuntimeError(
+                "Failed to locate NexAU code_agent directory. "
+                "Set NEXAU_HOME to the NexAU repo root, or set NEXAU_CODE_AGENT_DIR to the code_agent directory."
+            )
 
+        tool_impl_dir = code_agent_dir / "tool_impl"
+        if not tool_impl_dir.exists():
+            raise RuntimeError(
+                f"Failed to locate tool_impl at {tool_impl_dir}. "
+                "Set NEXAU_HOME to a NexAU checkout that includes examples/code_agent/tool_impl, "
+                "or set NEXAU_CODE_AGENT_DIR to a directory that contains tool_impl/."
+            )
+
+        nexau_repo_root_env = (os.environ.get("NEXAU_REPO_ROOT") or "").strip()
+        nexau_repo_root: Path | None = None
+        if nexau_repo_root_env:
+            nexau_repo_root = Path(nexau_repo_root_env).expanduser().resolve()
+        else:
+            if (nexau_home / "nexau").exists():
+                nexau_repo_root = nexau_home
+            else:
+                for p in [code_agent_dir, *code_agent_dir.parents]:
+                    if (p / "nexau").exists() and (p / "pyproject.toml").exists():
+                        nexau_repo_root = p
+                        break
+                if nexau_repo_root is None:
+                    nexau_repo_root = nexau_home
+
+        if str(nexau_repo_root) not in sys.path:
+            sys.path.insert(0, str(nexau_repo_root))
         if str(code_agent_dir) not in sys.path:
             sys.path.insert(0, str(code_agent_dir))
 
@@ -318,24 +371,8 @@ def _nexau_proposer_child(log_path: Path) -> int:
 
         from nexau import Agent, AgentConfig, LLMConfig, Tool
 
-        import importlib
         import types
 
-        tool_impl_dir = code_agent_dir / "tool_impl"
-        if not tool_impl_dir.exists():
-            examples_dir = nexau_home / "examples"
-            if examples_dir.exists():
-                for root, dirnames, _ in os.walk(examples_dir):
-                    if "tool_impl" not in dirnames:
-                        continue
-                    candidate_dir = Path(root)
-                    if not (candidate_dir / "tools").exists():
-                        continue
-                    if not (candidate_dir / "systemprompt.md").exists():
-                        continue
-                    code_agent_dir = candidate_dir
-                    tool_impl_dir = code_agent_dir / "tool_impl"
-                    break
         if tool_impl_dir.exists():
             if str(code_agent_dir) not in sys.path:
                 sys.path.insert(0, str(code_agent_dir))
