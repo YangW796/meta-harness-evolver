@@ -341,11 +341,28 @@ def _nexau_proposer_child(log_path: Path) -> int:
             Skill.from_folder(base_dir / "skills/algorithmic-art"),
         ]
 
+        system_workflow = base_dir / "system-workflow.md"
+        system_prompt_legacy = base_dir / "systemprompt.md"
+        if system_workflow.exists():
+            system_prompt_value = str(system_workflow)
+            system_prompt_type = "jinja"
+        elif system_prompt_legacy.exists():
+            system_prompt_value = system_prompt_legacy.read_text(encoding="utf-8")
+            system_prompt_type = "string"
+            logging.getLogger(__name__).warning(
+                "system-workflow.md not found under %s; fallback to systemprompt.md (string mode).",
+                base_dir,
+            )
+        else:
+            raise RuntimeError(
+                f"Neither system-workflow.md nor systemprompt.md found under {base_dir}"
+            )
+
         agent_config = AgentConfig(
             name="nexau_code_agent",
             max_context_tokens=100000,
-            system_prompt=str(base_dir / "system-workflow.md"),
-            system_prompt_type="jinja",
+            system_prompt=system_prompt_value,
+            system_prompt_type=system_prompt_type,
             tool_call_mode="structured",
             max_iterations=max_iterations,
             llm_config=LLMConfig(
