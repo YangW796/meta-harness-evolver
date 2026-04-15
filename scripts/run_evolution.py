@@ -297,142 +297,74 @@ def _nexau_proposer_child(log_path: Path) -> int:
     logging.getLogger(__name__).info("label=%s work_dir=%s task_len=%s max_iterations=%s", label, work_dir, len(task), max_iterations)
 
     try:
-        nexau_home_env = (os.environ.get("NEXAU_HOME") or "").strip()
-        if not nexau_home_env:
-            raise RuntimeError("Missing NEXAU_HOME in environment for NexAU proposer.")
-
-        nexau_home = Path(nexau_home_env).expanduser().resolve()
-        if not nexau_home.exists():
-            raise RuntimeError(f"NexAU not found at {nexau_home}. Set NEXAU_HOME to your NexAU repo path.")
-
-        code_agent_dir_env = (os.environ.get("NEXAU_CODE_AGENT_DIR") or "").strip()
-        code_agent_dir: Path | None = None
-        if code_agent_dir_env:
-            code_agent_dir = Path(code_agent_dir_env).expanduser().resolve()
-        else:
-            if (nexau_home / "tool_impl").exists() and (nexau_home / "tools").exists():
-                code_agent_dir = nexau_home
-            else:
-                candidate_code_agent_dir = nexau_home / "examples" / "code_agent"
-                if candidate_code_agent_dir.exists():
-                    code_agent_dir = candidate_code_agent_dir
-                else:
-                    examples_dir = nexau_home / "examples"
-                    if examples_dir.exists():
-                        for root, dirnames, _ in os.walk(examples_dir):
-                            if "tool_impl" not in dirnames:
-                                continue
-                            maybe_code_agent_dir = Path(root)
-                            if not (maybe_code_agent_dir / "tools").exists():
-                                continue
-                            if not (maybe_code_agent_dir / "systemprompt.md").exists():
-                                continue
-                            code_agent_dir = maybe_code_agent_dir
-                            break
-
-        if code_agent_dir is None or not code_agent_dir.exists():
-            raise RuntimeError(
-                "Failed to locate NexAU code_agent directory. "
-                "Set NEXAU_HOME to the NexAU repo root, or set NEXAU_CODE_AGENT_DIR to the code_agent directory."
-            )
-
-        tool_impl_dir = code_agent_dir / "tool_impl"
-        if not tool_impl_dir.exists():
-            raise RuntimeError(
-                f"Failed to locate tool_impl at {tool_impl_dir}. "
-                "Set NEXAU_HOME to a NexAU checkout that includes examples/code_agent/tool_impl, "
-                "or set NEXAU_CODE_AGENT_DIR to a directory that contains tool_impl/."
-            )
-
-        nexau_repo_root_env = (os.environ.get("NEXAU_REPO_ROOT") or "").strip()
-        nexau_repo_root: Path | None = None
-        if nexau_repo_root_env:
-            nexau_repo_root = Path(nexau_repo_root_env).expanduser().resolve()
-        else:
-            if (nexau_home / "nexau").exists():
-                nexau_repo_root = nexau_home
-            else:
-                for p in [code_agent_dir, *code_agent_dir.parents]:
-                    if (p / "nexau").exists() and (p / "pyproject.toml").exists():
-                        nexau_repo_root = p
-                        break
-                if nexau_repo_root is None:
-                    nexau_repo_root = nexau_home
-
-        if str(nexau_repo_root) not in sys.path:
-            sys.path.insert(0, str(nexau_repo_root))
-        if str(code_agent_dir) not in sys.path:
-            sys.path.insert(0, str(code_agent_dir))
-
         llm_model = os.environ.get("LLM_MODEL")
         llm_api_key = os.environ.get("LLM_API_KEY")
         if not llm_model or not llm_api_key:
             raise RuntimeError("Missing LLM_MODEL / LLM_API_KEY in environment for NexAU proposer.")
 
-        from nexau import Agent, AgentConfig, LLMConfig, Tool
+        from nexau import Agent, AgentConfig, LLMConfig, Skill, Tool
+        from nexau.archs.main_sub.execution.hooks import LoggingMiddleware
+        from nexau.archs.tool.builtin import (
+            glob,
+            google_web_search,
+            list_directory,
+            read_file,
+            read_many_files,
+            replace,
+            run_shell_command,
+            search_file_content,
+            web_fetch,
+            write_file,
+            write_todos,
+        )
 
-        import types
+        base_dir = Path(os.environ.get("NEXAU_CODE_AGENT_DIR", "examples/code_agent")).expanduser().resolve()
+        if not base_dir.exists():
+            raise RuntimeError(f"NEXAU_CODE_AGENT_DIR does not exist: {base_dir}")
 
-        if tool_impl_dir.exists():
-            if str(code_agent_dir) not in sys.path:
-                sys.path.insert(0, str(code_agent_dir))
-            if "tool_impl" not in sys.modules:
-                pkg = types.ModuleType("tool_impl")
-                pkg.__path__ = [str(tool_impl_dir)]
-                sys.modules["tool_impl"] = pkg
-
-        try:
-            from tool_impl.complete_task import complete_task
-            from tool_impl.glob_tool import glob
-            from tool_impl.list_directory import list_directory
-            from tool_impl.read_file import read_file
-            from tool_impl.read_many_files import read_many_files
-            from tool_impl.replace import replace
-            from tool_impl.run_shell_command import run_shell_command
-            from tool_impl.search_file_content import search_file_content
-            from tool_impl.write_file import write_file
-            from tool_impl.write_todos import write_todos
-            from tool_impl.web_fetch import web_fetch
-        except ModuleNotFoundError as e:
-            if str(getattr(e, "name", "")) == "tool_impl" or str(getattr(e, "name", "")).startswith("tool_impl."):
-                raise RuntimeError(
-                    "Failed to import NexAU code_agent tool implementations. "
-                    f"Expected tool_impl at {tool_impl_dir}. "
-                    "Set NEXAU_HOME to a NexAU checkout that includes examples/code_agent/tool_impl."
-                ) from e
-            raise
-
-        tools_dir = code_agent_dir / "tools"
         tools = [
-            Tool.from_yaml(str(tools_dir / "read_file.tool.yaml"), binding=read_file),
-            Tool.from_yaml(str(tools_dir / "read_many_files.tool.yaml"), binding=read_many_files),
-            Tool.from_yaml(str(tools_dir / "write_file.tool.yaml"), binding=write_file),
-            Tool.from_yaml(str(tools_dir / "list_directory.tool.yaml"), binding=list_directory),
-            Tool.from_yaml(str(tools_dir / "Glob.tool.yaml"), binding=glob),
-            Tool.from_yaml(str(tools_dir / "search_file_content.tool.yaml"), binding=search_file_content),
-            Tool.from_yaml(str(tools_dir / "replace.tool.yaml"), binding=replace),
-            Tool.from_yaml(str(tools_dir / "run_shell_command.tool.yaml"), binding=run_shell_command),
-            Tool.from_yaml(str(tools_dir / "write_todos.tool.yaml"), binding=write_todos),
-            Tool.from_yaml(str(tools_dir / "complete_task.tool.yaml"), binding=complete_task),
-            Tool.from_yaml(str(tools_dir / "WebFetch.tool.yaml"), binding=web_fetch),
+            Tool.from_yaml(base_dir / "tools/WebSearch.tool.yaml", binding=google_web_search),
+            Tool.from_yaml(base_dir / "tools/WebFetch.tool.yaml", binding=web_fetch),
+            Tool.from_yaml(base_dir / "tools/write_todos.tool.yaml", binding=write_todos),
+            Tool.from_yaml(base_dir / "tools/search_file_content.tool.yaml", binding=search_file_content),
+            Tool.from_yaml(base_dir / "tools/Glob.tool.yaml", binding=glob),
+            Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=read_file),
+            Tool.from_yaml(base_dir / "tools/write_file.tool.yaml", binding=write_file),
+            Tool.from_yaml(base_dir / "tools/replace.tool.yaml", binding=replace),
+            Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=run_shell_command),
+            Tool.from_yaml(base_dir / "tools/list_directory.tool.yaml", binding=list_directory),
+            Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=read_many_files),
         ]
 
-        system_prompt = (code_agent_dir / "systemprompt.md").read_text()
+        skills = [
+            Skill.from_folder(base_dir / "skills/theme-factory"),
+            Skill.from_folder(base_dir / "skills/algorithmic-art"),
+        ]
+
         agent_config = AgentConfig(
-            name=label,
-            system_prompt=system_prompt,
-            system_prompt_type="string",
-            tool_call_mode="openai",
+            name="nexau_code_agent",
+            max_context_tokens=100000,
+            system_prompt=str(base_dir / "system-workflow.md"),
+            system_prompt_type="jinja",
+            tool_call_mode="structured",
             max_iterations=max_iterations,
             llm_config=LLMConfig(
+                temperature=float(os.environ.get("LLM_TEMPERATURE", "0.7")),
+                max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "4096")),
                 model=llm_model,
-                base_url=os.environ.get("LLM_BASE_URL"),
+                base_url=os.getenv("LLM_BASE_URL"),
                 api_key=llm_api_key,
-                api_type=os.environ.get("LLM_API_TYPE", "openai_chat_completion"),
-                temperature=float(os.environ.get("LLM_TEMPERATURE", "0.2")),
-                max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "2048")),
+                api_type="openai_chat_completion",
             ),
             tools=tools,
+            skills=skills,
+            middlewares=[
+                LoggingMiddleware(
+                    model_logger="nexau_code_agent",
+                    tool_logger="nexau_code_agent",
+                    log_model_calls=True,
+                ),
+            ],
             sandbox_config={
                 "type": "local",
                 "_work_dir": str(work_dir),
