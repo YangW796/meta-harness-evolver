@@ -796,6 +796,10 @@ def log_evolution(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, 
 
 def post_to_feishu(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool, prev_best_score: float | None):
     """Post summary to Feishu (Lark)."""
+    if os.environ.get("FEISHU_POST_ENABLED", "1") != "1":
+        print("[FEISHU] Disabled (FEISHU_POST_ENABLED!=1). Skipping.")
+        return
+
     print("[FEISHU] Posting message...")
     post_script = paths.scripts_dir / "post_to_research.py"
 
@@ -810,12 +814,17 @@ def post_to_feishu(paths: EvolverPaths, candidate_num: int, candidate_dir: Path,
     if prev_best_score is not None:
         cmd.extend(["--prev-best-score", str(prev_best_score)])
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
+    timeout_seconds = int(os.environ.get("FEISHU_POST_TIMEOUT_SECONDS", "30"))
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[FEISHU] Timeout after {timeout_seconds}s. Skipping.")
+        return
 
     if result.returncode != 0:
         print(f"[FEISHU] Failed: {result.stderr}")
