@@ -161,6 +161,16 @@ Write reasoning to {paths.workspace}/candidates/candidate_{candidate_num}/propos
 Start now. Read the history first, then propose.
 """
     proposer_task += cfg.proposer_prompt_suffix(paths.workspace, candidate_num)
+    proposer_task += "\n".join(
+        [
+            "",
+            "## Termination Protocol",
+            "- Use tools to read/copy/edit files and to write proposer_reasoning.md.",
+            "- When you are finished, you MUST call the complete_task tool exactly once with a brief summary.",
+            "- Do NOT print the full code in chat; write changes to files instead.",
+            "",
+        ]
+    )
 
     print(f"[PROPOSER] Spawning sub-agent for candidate_{candidate_num}...")
     print(f"[PROPOSER] History: {len(history)} prior candidates")
@@ -184,13 +194,29 @@ Start now. Read the history first, then propose.
             )
             return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": {"mode": "test"}}
 
+        proposer_timeout_seconds = 300
         result = _run_proposer_with_nexau(
             task=proposer_task,
             label=f"evolver-proposer-{agent_session_id}",
             work_dir=paths.workspace,
-            timeout_seconds=300,
+            timeout_seconds=proposer_timeout_seconds,
             log_dir=candidate_dir / "traces",
         )
+        output_text = result.get("output")
+        if isinstance(output_text, str) and "Maximum iteration limit reached" in output_text:
+            base_max_iter = int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20"))
+            retry_max_iter = max(base_max_iter * 3, base_max_iter + 10)
+            retry_max_iter = min(retry_max_iter, 120)
+            retry_timeout = min(proposer_timeout_seconds * 2, 900)
+            print(f"[PROPOSER] Detected max-iterations termination; retrying with max_iterations={retry_max_iter}, timeout_seconds={retry_timeout}")
+            result = _run_proposer_with_nexau(
+                task=proposer_task,
+                label=f"evolver-proposer-{agent_session_id}-retry",
+                work_dir=paths.workspace,
+                timeout_seconds=retry_timeout,
+                log_dir=candidate_dir / "traces",
+                max_iterations_override=retry_max_iter,
+            )
         print(f"[PROPOSER] NexAU returned: {result}")
         return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": result}
     except Exception as e:
@@ -213,11 +239,20 @@ def _tail_file(path: Path, max_bytes: int = 8000) -> str:
     return data[-max_bytes:].decode("utf-8", errors="replace")
 
 
-def _run_proposer_with_nexau(task: str, label: str, work_dir: Path, timeout_seconds: int, log_dir: Path) -> dict:
+def _run_proposer_with_nexau(
+    task: str,
+    label: str,
+    work_dir: Path,
+    timeout_seconds: int,
+    log_dir: Path,
+    max_iterations_override: int | None = None,
+) -> dict:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{label}.log"
 
     proposer_max_iterations = int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20"))
+    if max_iterations_override is not None:
+        proposer_max_iterations = int(max_iterations_override)
     proposer_timeout_seconds = int(os.environ.get("PROPOSER_TIMEOUT_SECONDS", str(timeout_seconds)))
 
     print("[PROPOSER] LLM input (truncated):")
@@ -273,7 +308,10 @@ def _run_proposer_with_nexau(task: str, label: str, work_dir: Path, timeout_seco
         err = parsed.get("error") or f"child_exit_code={result.returncode}"
         raise RuntimeError(err)
 
-    return {"label": label, "output": parsed.get("output"), "timeout_seconds": timeout_seconds, "log_path": str(log_path)}
+    output = parsed.get("output")
+    if isinstance(output, str) and "Maximum iteration limit reached" in output:
+        raise RuntimeError("NexAU proposer reached the maximum iteration limit (complete_task likely not called).")
+    return {"label": label, "output": output, "timeout_seconds": timeout_seconds, "log_path": str(log_path)}
 
 
 def _nexau_proposer_child(log_path: Path) -> int:
@@ -323,6 +361,21 @@ def _nexau_proposer_child(log_path: Path) -> int:
         if not base_dir.exists():
             raise RuntimeError(f"NEXAU_CODE_AGENT_DIR does not exist: {base_dir}")
 
+        def complete_task(result: str | None = None, **kwargs: object) -> str:
+            payload: dict[str, object] = {}
+            if result is not None:
+                payload["result"] = result
+            payload.update(kwargs)
+            return json.dumps(
+                {
+                    "success": True,
+                    "status": "TASK_COMPLETED",
+                    "task_completed": True,
+                    "output": payload,
+                },
+                ensure_ascii=False,
+            )
+
         tools = [
             Tool.from_yaml(base_dir / "tools/WebSearch.tool.yaml", binding=google_web_search),
             Tool.from_yaml(base_dir / "tools/WebFetch.tool.yaml", binding=web_fetch),
@@ -335,6 +388,7 @@ def _nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=run_shell_command),
             Tool.from_yaml(base_dir / "tools/list_directory.tool.yaml", binding=list_directory),
             Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=read_many_files),
+            Tool.from_yaml(base_dir / "tools/complete_task.tool.yaml", binding=complete_task),
         ]
 
         skills = [
@@ -573,6 +627,20 @@ def _compute_line_diff(before: list[str], after: list[str]) -> tuple[int, int]:
     return added, deleted
 
 
+def _unified_diff(before_text: str, after_text: str, from_name: str, to_name: str) -> str:
+    before_lines = before_text.splitlines(keepends=True)
+    after_lines = after_text.splitlines(keepends=True)
+    diff_lines = difflib.unified_diff(
+        before_lines,
+        after_lines,
+        fromfile=from_name,
+        tofile=to_name,
+        lineterm="",
+        n=3,
+    )
+    return "\n".join(diff_lines)
+
+
 def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir: Path) -> dict:
     """Collect a per-round change record (candidate harness vs current best harness)."""
     best_harness_dir = paths.best_dir / "harness"
@@ -590,12 +658,14 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
 
     all_names = sorted(set(best_files) | set(candidate_files))
     changed_files = []
+    diffs: list[dict[str, str]] = []
     for name in all_names:
         best_file = best_files.get(name)
         candidate_file = candidate_files.get(name)
 
         if best_file is None and candidate_file is not None:
-            after_lines = candidate_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            after_text = candidate_file.read_text(encoding="utf-8", errors="replace")
+            after_lines = after_text.splitlines()
             changed_files.append(
                 {
                     "file": name,
@@ -605,10 +675,13 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
                     "line_delta": len(after_lines),
                 }
             )
+            diff_text = _unified_diff("", after_text, f"best/{name}", f"candidate/{name}")
+            diffs.append({"file": name, "status": "new", "diff": diff_text})
             continue
 
         if best_file is not None and candidate_file is None:
-            before_lines = best_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            before_text = best_file.read_text(encoding="utf-8", errors="replace")
+            before_lines = before_text.splitlines()
             changed_files.append(
                 {
                     "file": name,
@@ -618,10 +691,14 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
                     "line_delta": -len(before_lines),
                 }
             )
+            diff_text = _unified_diff(before_text, "", f"best/{name}", f"candidate/{name}")
+            diffs.append({"file": name, "status": "deleted", "diff": diff_text})
             continue
 
-        before_lines = best_file.read_text(encoding="utf-8", errors="replace").splitlines()
-        after_lines = candidate_file.read_text(encoding="utf-8", errors="replace").splitlines()
+        before_text = best_file.read_text(encoding="utf-8", errors="replace")
+        after_text = candidate_file.read_text(encoding="utf-8", errors="replace")
+        before_lines = before_text.splitlines()
+        after_lines = after_text.splitlines()
         if before_lines == after_lines:
             continue
 
@@ -635,6 +712,8 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
                 "line_delta": len(after_lines) - len(before_lines),
             }
         )
+        diff_text = _unified_diff(before_text, after_text, f"best/{name}", f"candidate/{name}")
+        diffs.append({"file": name, "status": "modified", "diff": diff_text})
 
     record = {
         "candidate": f"candidate_{candidate_num}",
@@ -665,6 +744,16 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
     else:
         lines.append("- (no changes)")
     lines.append("")
+    if diffs:
+        lines.append("## Diffs")
+        lines.append("")
+        for item in diffs:
+            lines.append(f"### {item['file']} ({item['status']})")
+            lines.append("")
+            lines.append("```diff")
+            lines.append(item["diff"] or "(no diff)")
+            lines.append("```")
+            lines.append("")
     (candidate_dir / "change_record.md").write_text("\n".join(lines), encoding="utf-8")
     return record
 
