@@ -18,8 +18,8 @@ fi
 # Data/runtime settings (override by env if needed)
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python}"
-PROJECT1_DATA_ROOT="${PROJECT1_DATA_ROOT:-$PROJECT_DIR}"
-PROJECT1_DATA_CSV="${PROJECT1_DATA_CSV:-$PROJECT_DIR/merged_results.csv}"
+PROJECT1_DATA_ROOT="/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli"
+PROJECT1_DATA_CSV="${PROJECT1_DATA_CSV:-$PROJECT1_DATA_ROOT/merged_results.csv}"
 PROJECT1_MODEL_PATH="${PROJECT1_MODEL_PATH:-$HARNESS_DIR/iptm_model.pt}"
 
 if [[ ! -f "$PROJECT1_DATA_CSV" ]]; then

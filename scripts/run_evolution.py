@@ -327,7 +327,7 @@ def _nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/WebFetch.tool.yaml", binding=web_fetch),
             Tool.from_yaml(base_dir / "tools/write_todos.tool.yaml", binding=write_todos),
             Tool.from_yaml(base_dir / "tools/search_file_content.tool.yaml", binding=search_file_content),
-            Tool.from_yaml(base_dir / "tools/Glob.tool.yaml", binding=glob),
+            # Tool.from_yaml(base_dir / "tools/Glob.tool.yaml", binding=glob),
             Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=read_file),
             Tool.from_yaml(base_dir / "tools/write_file.tool.yaml", binding=write_file),
             Tool.from_yaml(base_dir / "tools/replace.tool.yaml", binding=replace),
@@ -337,8 +337,8 @@ def _nexau_proposer_child(log_path: Path) -> int:
         ]
 
         skills = [
-            Skill.from_folder(base_dir / "skills/theme-factory"),
-            Skill.from_folder(base_dir / "skills/algorithmic-art"),
+            # Skill.from_folder(base_dir / "skills/theme-factory"),
+            # Skill.from_folder(base_dir / "skills/algorithmic-art"),
         ]
 
         system_workflow = base_dir / "system-workflow.md"
