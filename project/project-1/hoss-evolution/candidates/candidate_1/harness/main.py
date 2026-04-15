@@ -4,6 +4,8 @@ import esm
 import pandas as pd
 import os
 import argparse
+import json
+import math
 
 # ========= CIF解析 =========
 def parse_cif(cif_path):
@@ -116,6 +118,42 @@ def train(csv_path, root_dir, model_path):
 
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
+
+    # Save evaluator-compatible metrics file.
+    with torch.no_grad():
+        final_pred = model(X)
+    diff = final_pred - labels
+    mse = torch.mean(diff ** 2).item()
+    rmse = math.sqrt(mse)
+    mae = torch.mean(torch.abs(diff)).item()
+
+    y_mean = torch.mean(labels)
+    ss_res = torch.sum((labels - final_pred) ** 2).item()
+    ss_tot = torch.sum((labels - y_mean) ** 2).item()
+    r2 = 1.0 - ss_res / (ss_tot + 1e-12)
+
+    vx = final_pred - torch.mean(final_pred)
+    vy = labels - y_mean
+    pearson_num = torch.sum(vx * vy).item()
+    pearson_den = math.sqrt(torch.sum(vx ** 2).item() * torch.sum(vy ** 2).item()) + 1e-12
+    pearson = pearson_num / pearson_den
+
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(model_path)), "outputs")
+    os.makedirs(output_dir, exist_ok=True)
+    metrics_payload = {
+        "metrics": {
+            "test": {
+                "r2": float(r2),
+                "rmse": float(rmse),
+                "mae": float(mae),
+                "pearson": float(pearson),
+            }
+        }
+    }
+    metrics_path = os.path.join(output_dir, "metrics.json")
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics_payload, f, indent=2)
+    print(f"Metrics saved to {metrics_path}")
 
 
 # ========= 预测 =========

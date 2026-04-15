@@ -1,0 +1,17 @@
+{
+  "final_score": 58.2,
+  "category_scores": {
+    "r2": 46.0,
+    "pearson": 59.6,
+    "rmse_inverse": 96.5,
+    "mae_inverse": 97.5
+  },
+  "scenario_scores": {
+    "test_r2": -0.0801,
+    "test_rmse": 0.0361,
+    "test_mae": 0.0256,
+    "test_pearson": 0.1914
+  },
+  "total_scenarios": 4,
+  "evaluated_at": "2026-04-15T06:58:51.305651"
+}

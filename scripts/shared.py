@@ -42,6 +42,7 @@ _IGNORED_FILE_NAMES = {
 _IGNORED_SUFFIXES = {
     ".pyc",
     ".pyo",
+    ".pt"
 }
 
 
