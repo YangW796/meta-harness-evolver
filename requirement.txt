@@ -1,0 +1,13 @@
+# Core dependencies for this repository
+numpy>=1.24
+pandas>=2.0
+
+# Used by root/project model candidates
+torch>=2.1
+fair-esm>=2.0.0
+
+# Optional: Feishu/Lark notification in scripts/post_to_research.py
+lark-oapi>=1.4
+
+# NexAU proposer runtime (pinned by tag)
+nexau @ git+ssh://git@github.com/nex-agi/NexAU.git@v0.4.1

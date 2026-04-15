@@ -15,16 +15,21 @@ if [[ ! -d "$HARNESS_DIR" ]]; then
   exit 2
 fi
 
-
-DATA_ROOT="${PROJECT1_DATA_ROOT:-$PROJECT_DIR}"
-DATA_CSV="${PROJECT1_DATA_CSV:-}"
+# Data/runtime settings (override by env if needed)
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python}"
+PROJECT1_DATA_ROOT="${PROJECT1_DATA_ROOT:-$PROJECT_DIR}"
+PROJECT1_DATA_CSV="${PROJECT1_DATA_CSV:-$PROJECT_DIR/merged_results.csv}"
+PROJECT1_MODEL_PATH="${PROJECT1_MODEL_PATH:-$HARNESS_DIR/iptm_model.pt}"
 
-mkdir -p "$HARNESS_DIR/outputs"
-
-ARGS=("$HARNESS_DIR/main.py" "--data-root" "$DATA_ROOT" "--output-dir" "$HARNESS_DIR/outputs")
-if [[ -n "$DATA_CSV" ]]; then
-  ARGS+=("--data-csv" "$DATA_CSV")
+if [[ ! -f "$PROJECT1_DATA_CSV" ]]; then
+  echo "CSV not found: $PROJECT1_DATA_CSV"
+  echo "Set PROJECT1_DATA_CSV to your dataset path."
+  exit 2
 fi
 
-"$PYTHON_BIN" "${ARGS[@]}"
+"$PYTHON_BIN" "$HARNESS_DIR/main.py" \
+  --mode train \
+  --csv "$PROJECT1_DATA_CSV" \
+  --root_dir "$PROJECT1_DATA_ROOT" \
+  --model_path "$PROJECT1_MODEL_PATH"
