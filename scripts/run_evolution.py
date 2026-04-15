@@ -20,6 +20,7 @@ Exit codes:
 """
 
 import argparse
+import difflib
 import json
 import logging
 import os
@@ -557,7 +558,118 @@ def update_best(paths: EvolverPaths, candidate_dir: Path, scores: dict) -> float
     return current_best if current_best is not None else 0.0
 
 
-def log_evolution(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool):
+def _compute_line_diff(before: list[str], after: list[str]) -> tuple[int, int]:
+    added = 0
+    deleted = 0
+    matcher = difflib.SequenceMatcher(a=before, b=after)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "insert":
+            added += (j2 - j1)
+        elif tag == "delete":
+            deleted += (i2 - i1)
+        elif tag == "replace":
+            deleted += (i2 - i1)
+            added += (j2 - j1)
+    return added, deleted
+
+
+def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir: Path) -> dict:
+    """Collect a per-round change record (candidate harness vs current best harness)."""
+    best_harness_dir = paths.best_dir / "harness"
+    candidate_harness_dir = candidate_dir / "harness"
+
+    best_files = {}
+    if best_harness_dir.exists():
+        for f in iter_effective_files(best_harness_dir):
+            best_files[f.name] = f
+
+    candidate_files = {}
+    if candidate_harness_dir.exists():
+        for f in iter_effective_files(candidate_harness_dir):
+            candidate_files[f.name] = f
+
+    all_names = sorted(set(best_files) | set(candidate_files))
+    changed_files = []
+    for name in all_names:
+        best_file = best_files.get(name)
+        candidate_file = candidate_files.get(name)
+
+        if best_file is None and candidate_file is not None:
+            after_lines = candidate_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            changed_files.append(
+                {
+                    "file": name,
+                    "status": "new",
+                    "added_lines": len(after_lines),
+                    "deleted_lines": 0,
+                    "line_delta": len(after_lines),
+                }
+            )
+            continue
+
+        if best_file is not None and candidate_file is None:
+            before_lines = best_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            changed_files.append(
+                {
+                    "file": name,
+                    "status": "deleted",
+                    "added_lines": 0,
+                    "deleted_lines": len(before_lines),
+                    "line_delta": -len(before_lines),
+                }
+            )
+            continue
+
+        before_lines = best_file.read_text(encoding="utf-8", errors="replace").splitlines()
+        after_lines = candidate_file.read_text(encoding="utf-8", errors="replace").splitlines()
+        if before_lines == after_lines:
+            continue
+
+        added, deleted = _compute_line_diff(before_lines, after_lines)
+        changed_files.append(
+            {
+                "file": name,
+                "status": "modified",
+                "added_lines": added,
+                "deleted_lines": deleted,
+                "line_delta": len(after_lines) - len(before_lines),
+            }
+        )
+
+    record = {
+        "candidate": f"candidate_{candidate_num}",
+        "compared_against": str(best_harness_dir),
+        "generated_at": datetime.now().isoformat(),
+        "changed_files_count": len(changed_files),
+        "changed_files": changed_files,
+    }
+
+    json_path = candidate_dir / "change_record.json"
+    json_path.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    lines = [
+        f"# Change Record — candidate_{candidate_num}",
+        "",
+        f"- Compared against: `{best_harness_dir}`",
+        f"- Generated at: `{record['generated_at']}`",
+        "",
+        "## Changed Files",
+    ]
+    if changed_files:
+        for item in changed_files:
+            delta = item["line_delta"]
+            delta_str = f"+{delta}" if delta > 0 else str(delta)
+            lines.append(
+                f"- `{item['file']}` ({item['status']}): +{item['added_lines']} / -{item['deleted_lines']} (line delta {delta_str})"
+            )
+    else:
+        lines.append("- (no changes)")
+    lines.append("")
+    (candidate_dir / "change_record.md").write_text("\n".join(lines), encoding="utf-8")
+    return record
+
+
+def log_evolution(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, scores: dict, proposer_ok: bool, change_record: dict):
     """Append to the evolution log."""
     log_file = paths.workspace / "evolution_log.jsonl"
     entry = {
@@ -567,6 +679,7 @@ def log_evolution(paths: EvolverPaths, candidate_num: int, candidate_dir: Path, 
         "proposer_success": proposer_ok,
         "scores": scores,
         "final_score": scores.get("final_score", 0),
+        "changes": change_record,
     }
     with open(log_file, "a") as lf:
         lf.write(json.dumps(entry) + "\n")
@@ -668,13 +781,17 @@ def main():
             json.dump(scores, sf, indent=2)
         print(f"[MAIN] Scores: {json.dumps(scores, indent=2)}")
 
-        # Step 5: Update best if needed
+        # Step 5: Record this round's changed places before best gets updated
+        change_record = collect_change_record(paths, candidate_num, candidate_dir)
+        print(f"[MAIN] Changes recorded: {change_record['changed_files_count']} file(s)")
+
+        # Step 6: Update best if needed
         prev_best_score = update_best(paths, candidate_dir, scores)
 
-        # Step 6: Log evolution
-        log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"])
+        # Step 7: Log evolution
+        log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"], change_record)
 
-        # Step 7: Post to Feishu
+        # Step 8: Post to Feishu
         post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
 
         print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
