@@ -1,0 +1,85 @@
+You are an expert in machine learning for protein modeling. Your task is to improve an existing Python script for predicting ipTM scores.
+
+## Task Description
+
+We want to build a model that predicts ipTM using:
+
+* Protein sequence (Sequence)
+* Structure file (CIF, derived from Structure field)
+
+Input data comes from a CSV file with fields:
+
+* Structure
+* Sequence
+* iptm (label)
+
+The CIF file path is derived from Structure:
+root_dir/{pdb_id}/af3_output/{Structure}/{Structure}_model.cif
+
+## Objective
+
+Improve the model so that it better predicts ipTM.
+
+---
+
+## What You CAN Improve
+
+You are encouraged to improve:
+
+1. Model architecture
+
+   * Replace MLP with better models (Transformer, GNN, etc.)
+   * Add deeper layers, normalization, dropout
+
+2. Feature engineering
+
+   * Better use of sequence embeddings (e.g., ESM)
+   * Extract more informative structural features from CIF
+   * Interface-related features (if possible)
+
+3. Training strategy
+
+   * Add train/test split
+   * Add validation
+   * Improve loss function
+   * Add batching
+
+4. Efficiency
+
+   * Avoid recomputing embeddings
+   * Use GPU if available
+
+---
+
+## What You MUST NOT Change
+
+These constraints are STRICT:
+
+1. Do NOT change input/output format:
+
+   * Input: CSV with Structure, Sequence
+   * Output: predicted ipTM
+
+2. Do NOT change how CIF path is constructed:
+   root_dir/{pdb_id}/af3_output/{Structure}/{Structure}_model.cif
+
+3. Do NOT remove sequence or structure input (must use BOTH)
+
+4. Do NOT remove iptm as training label
+
+5. Do NOT introduce external datasets
+
+---
+
+## Additional Notes
+
+* Keep code runnable as a single Python script
+* Keep dependencies minimal (torch, esm, pandas, etc.)
+* Add comments explaining improvements
+* Ensure the code is robust to missing CIF files
+
+---
+
+## Output Requirement
+
+Return ONLY the improved Python code.

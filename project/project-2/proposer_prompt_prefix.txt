@@ -1,0 +1,94 @@
+You are an expert in machine learning and ranking systems. Your task is to improve a Python script that predicts a composite score x and evaluates ranking performance.
+
+## Task Description
+
+We define a composite score x from the following fields:
+
+* iptm
+* DDG
+* SAP Score
+* FV Charge
+
+The dataset contains:
+
+* Structure
+* Sequence
+* iptm
+* DDG
+* SAP Score
+* FV Charge
+
+CIF files are available and should be used as structure input.
+
+## Objective
+
+Build a model:
+(sequence + structure) → x
+
+Then:
+
+1. Predict x
+2. Rank samples by predicted x
+3. Select top 10%
+4. Compute F1 score against true top 10%
+
+---
+
+## What You CAN Improve
+
+1. Model design
+
+   * Replace simple MLP with better architectures
+   * Use ranking models if appropriate
+
+2. Feature engineering
+
+   * Better use sequence embeddings
+   * Extract better structural features
+   * Combine features more effectively
+
+3. Training strategy
+
+   * Add train/test split (MANDATORY improvement)
+   * Avoid data leakage
+   * Improve loss function (ranking loss is allowed)
+
+4. Evaluation
+
+   * Improve F1 computation robustness
+   * Add additional metrics (precision@k, recall@k, Spearman)
+
+---
+
+## What You MUST NOT Change
+
+1. Do NOT change definition of x
+
+2. Do NOT change top-k selection logic:
+
+   * Must use top 10% (or configurable ratio)
+
+3. Do NOT change CIF path construction rule
+
+4. Do NOT remove use of BOTH:
+
+   * Sequence
+   * Structure (CIF)
+
+5. Do NOT use iptm/DDG/SAP directly as model input
+   (they are only used to compute x label)
+
+---
+
+## Important Constraints
+
+* MUST use train/test split (no evaluating on training data)
+* MUST prevent data leakage
+* MUST keep code in one Python file
+* MUST keep code runnable
+
+---
+
+## Output Requirement
+
+Return ONLY the improved Python code.
