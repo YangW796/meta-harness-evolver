@@ -297,7 +297,7 @@ def _nexau_proposer_child(log_path: Path) -> int:
     logging.getLogger(__name__).info("label=%s work_dir=%s task_len=%s max_iterations=%s", label, work_dir, len(task), max_iterations)
 
     try:
-        nexau_home = Path(os.environ.get("NEXAU_HOME", "/home/wy/Documents/NexAU")).resolve()
+        nexau_home = Path(os.environ.get("NEXAU_HOME", "")).resolve()
         if not nexau_home.exists():
             raise RuntimeError(f"NexAU not found at {nexau_home}. Set NEXAU_HOME to your NexAU repo path.")
 
@@ -318,17 +318,52 @@ def _nexau_proposer_child(log_path: Path) -> int:
 
         from nexau import Agent, AgentConfig, LLMConfig, Tool
 
-        from tool_impl.complete_task import complete_task
-        from tool_impl.glob_tool import glob
-        from tool_impl.list_directory import list_directory
-        from tool_impl.read_file import read_file
-        from tool_impl.read_many_files import read_many_files
-        from tool_impl.replace import replace
-        from tool_impl.run_shell_command import run_shell_command
-        from tool_impl.search_file_content import search_file_content
-        from tool_impl.write_file import write_file
-        from tool_impl.write_todos import write_todos
-        from tool_impl.web_fetch import web_fetch
+        import importlib
+        import types
+
+        tool_impl_dir = code_agent_dir / "tool_impl"
+        if not tool_impl_dir.exists():
+            examples_dir = nexau_home / "examples"
+            if examples_dir.exists():
+                for root, dirnames, _ in os.walk(examples_dir):
+                    if "tool_impl" not in dirnames:
+                        continue
+                    candidate_dir = Path(root)
+                    if not (candidate_dir / "tools").exists():
+                        continue
+                    if not (candidate_dir / "systemprompt.md").exists():
+                        continue
+                    code_agent_dir = candidate_dir
+                    tool_impl_dir = code_agent_dir / "tool_impl"
+                    break
+        if tool_impl_dir.exists():
+            if str(code_agent_dir) not in sys.path:
+                sys.path.insert(0, str(code_agent_dir))
+            if "tool_impl" not in sys.modules:
+                pkg = types.ModuleType("tool_impl")
+                pkg.__path__ = [str(tool_impl_dir)]
+                sys.modules["tool_impl"] = pkg
+
+        try:
+            from tool_impl.complete_task import complete_task
+            from tool_impl.glob_tool import glob
+            from tool_impl.list_directory import list_directory
+            from tool_impl.read_file import read_file
+            from tool_impl.read_many_files import read_many_files
+            from tool_impl.replace import replace
+            from tool_impl.run_shell_command import run_shell_command
+            from tool_impl.search_file_content import search_file_content
+            from tool_impl.write_file import write_file
+            from tool_impl.write_todos import write_todos
+            from tool_impl.web_fetch import web_fetch
+        except ModuleNotFoundError as e:
+            if str(getattr(e, "name", "")) == "tool_impl" or str(getattr(e, "name", "")).startswith("tool_impl."):
+                raise RuntimeError(
+                    "Failed to import NexAU code_agent tool implementations. "
+                    f"Expected tool_impl at {tool_impl_dir}. "
+                    "Set NEXAU_HOME to a NexAU checkout that includes examples/code_agent/tool_impl."
+                ) from e
+            raise
 
         tools_dir = code_agent_dir / "tools"
         tools = [

@@ -50,7 +50,7 @@ python3 scripts/run_evolution.py
 
 - `EVOLVER_TEST_MODE=1`：跳过真实 proposer，直接在 candidate 的 `harness/config.yaml` 里写入一个最小改动，并生成 `proposer_reasoning.md`（用于本地联调）
 - `PROPOSER_PROMPT_PREFIX`：在 proposer 的任务 prompt 最前面追加一段可自定义的前缀文本（用于加项目背景/规则）
-- `NEXAU_HOME`：NexAU 仓库路径（默认：`/home/wy/Documents/NexAU`）
+- `NEXAU_HOME`：NexAU 仓库路径（默认：``）
 - `LLM_MODEL` / `LLM_API_KEY`：NexAU proposer 运行所需（缺失会报错）
 - `LLM_BASE_URL` / `LLM_API_TYPE` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`：透传给 NexAU 的 LLM 配置（可选）
 - `PROPOSER_MAX_ITERATIONS`：NexAU agent 最大迭代次数（默认：`20`）
