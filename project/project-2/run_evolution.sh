@@ -25,6 +25,16 @@ export HARNESS_RUN_TIMEOUT_SECONDS="3600"
 # Default: test mode off (set to 1 for quick dry run without real proposer edits)
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
+if [[ -z "${HARNESS_DEVICE:-}" ]]; then
+  USE_GPU="${USE_GPU:-0}"
+  if [[ "$USE_GPU" == "1" ]]; then
+    export HARNESS_DEVICE="cuda"
+  else
+    export HARNESS_DEVICE="cpu"
+  fi
+fi
+export HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
+
 PROPOSER_PROMPT_PREFIX_PATH="$PROJECT_DIR/proposer_prompt_prefix.txt"
 if [[ ! -f "$PROPOSER_PROMPT_PREFIX_PATH" ]]; then
   echo "Missing proposer prompt prefix file: $PROPOSER_PROMPT_PREFIX_PATH" >&2

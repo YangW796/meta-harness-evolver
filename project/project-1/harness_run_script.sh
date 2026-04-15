@@ -21,6 +21,8 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
 PROJECT1_DATA_ROOT="/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli"
 PROJECT1_DATA_CSV="${PROJECT1_DATA_CSV:-$PROJECT1_DATA_ROOT/merged_results.csv}"
 PROJECT1_MODEL_PATH="${PROJECT1_MODEL_PATH:-$HARNESS_DIR/iptm_model.pt}"
+HARNESS_DEVICE="${HARNESS_DEVICE:-cpu}"
+HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
 
 if [[ ! -f "$PROJECT1_DATA_CSV" ]]; then
   echo "CSV not found: $PROJECT1_DATA_CSV"
@@ -32,4 +34,6 @@ fi
   --mode train \
   --csv "$PROJECT1_DATA_CSV" \
   --root_dir "$PROJECT1_DATA_ROOT" \
-  --model_path "$PROJECT1_MODEL_PATH"
+  --model_path "$PROJECT1_MODEL_PATH" \
+  --device "$HARNESS_DEVICE" \
+  --batch_size "$HARNESS_BATCH_SIZE"

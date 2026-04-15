@@ -16,10 +16,12 @@ if [[ ! -d "$HARNESS_DIR" ]]; then
 fi
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
-PROJECT2_DATA_CSV="${PROJECT2_DATA_CSV:-}"
-PROJECT2_DATA_ROOT="${PROJECT2_DATA_ROOT:-}"
+PROJECT2_DATA_ROOT="${PROJECT2_DATA_ROOT:-/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli}"
+PROJECT2_DATA_CSV="${PROJECT2_DATA_CSV:-$PROJECT2_DATA_ROOT/merged_results.csv}"
 PROJECT2_MODEL_PATH="${PROJECT2_MODEL_PATH:-$HARNESS_DIR/iptm_model.pt}"
 PROJECT2_TOP_RATIO="${PROJECT2_TOP_RATIO:-0.1}"
+HARNESS_DEVICE="${HARNESS_DEVICE:-cpu}"
+HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
 
 if [[ -z "$PROJECT2_DATA_CSV" || ! -f "$PROJECT2_DATA_CSV" ]]; then
   echo "CSV not found: $PROJECT2_DATA_CSV"
@@ -38,4 +40,6 @@ fi
   --csv "$PROJECT2_DATA_CSV" \
   --root_dir "$PROJECT2_DATA_ROOT" \
   --model_path "$PROJECT2_MODEL_PATH" \
-  --top_ratio "$PROJECT2_TOP_RATIO"
+  --top_ratio "$PROJECT2_TOP_RATIO" \
+  --device "$HARNESS_DEVICE" \
+  --batch_size "$HARNESS_BATCH_SIZE"

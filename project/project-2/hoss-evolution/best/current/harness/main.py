@@ -10,6 +10,12 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score
 
+try:
+    from tqdm import tqdm  # type: ignore
+except ModuleNotFoundError:
+    def tqdm(it, **kwargs):
+        return it
+
 
 def parse_cif(cif_path: str) -> list[float]:
     atom_count = 0
@@ -51,15 +57,62 @@ class Model(nn.Module):
         return self.net(x).squeeze(-1)
 
 
-def load_esm():
+def _resolve_device(device: str) -> torch.device:
+    d = (device or "auto").strip().lower()
+    if d == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if d.startswith("cuda") and not torch.cuda.is_available():
+        return torch.device("cpu")
+    return torch.device(d)
+
+
+def load_esm(device: torch.device):
     print("Loading ESM...")
     model, alphabet = esm.pretrained.esm2_t6_8M_UR50D()
     batch_converter = alphabet.get_batch_converter()
     model.eval()
+    model = model.to(device)
     return model, batch_converter
 
 
-def train(csv_path: str, root_dir: str, model_path: str, top_ratio: float) -> dict:
+def _make_topk_labels(values: np.ndarray, top_ratio: float) -> np.ndarray:
+    n = len(values)
+    k = max(1, int(n * top_ratio))
+    idx = np.argsort(-values)
+    labels = np.zeros(n, dtype=np.int64)
+    labels[idx[:k]] = 1
+    return labels
+
+
+def _encode_sequences(
+    sequences: list[str],
+    esm_model,
+    batch_converter,
+    device: torch.device,
+    batch_size: int,
+) -> torch.Tensor:
+    out_chunks: list[torch.Tensor] = []
+    for start in tqdm(range(0, len(sequences), batch_size), desc="Encoding", unit="batch"):
+        batch = [(str(i), sequences[i]) for i in range(start, min(len(sequences), start + batch_size))]
+        _, _, tokens = batch_converter(batch)
+        tokens = tokens.to(device)
+        with torch.no_grad():
+            out = esm_model(tokens, repr_layers=[6])
+        emb = out["representations"][6].mean(1).detach().cpu()
+        out_chunks.append(emb)
+    return torch.cat(out_chunks, dim=0)
+
+
+def train(
+    csv_path: str,
+    root_dir: str,
+    model_path: str,
+    top_ratio: float,
+    test_ratio: float,
+    seed: int,
+    device: str,
+    batch_size: int,
+) -> dict:
     df = pd.read_csv(csv_path)
     required_columns = {"Sequence", "Structure", "iptm", "DDG", "SAP Score", "FV Charge"}
     missing = sorted(required_columns - set(df.columns))
@@ -67,55 +120,56 @@ def train(csv_path: str, root_dir: str, model_path: str, top_ratio: float) -> di
         raise ValueError(f"Missing required columns: {missing}")
 
     df["x"] = compute_x(df)
-    df = df.sort_values("x", ascending=False).reset_index(drop=True)
-    k = max(1, int(len(df) * top_ratio))
-
-    df["label"] = 0
-    df.iloc[:k, df.columns.get_loc("label")] = 1
-
     sequences = df["Sequence"].tolist()
     structures = df["Structure"].tolist()
-    y = torch.tensor(df["x"].values, dtype=torch.float32)
+    y_all = torch.tensor(df["x"].values, dtype=torch.float32)
 
-    esm_model, batch_converter = load_esm()
+    n = len(df)
+    if n < 2:
+        train_idx = np.arange(n)
+        test_idx = np.arange(n)
+    else:
+        test_n = max(1, int(n * float(test_ratio)))
+        test_n = min(test_n, n - 1)
+        rng = np.random.default_rng(int(seed))
+        perm = rng.permutation(n)
+        test_idx = perm[:test_n]
+        train_idx = perm[test_n:]
 
-    print("Encoding sequences...")
-    batch = [(str(i), seq) for i, seq in enumerate(sequences)]
-    _, _, tokens = batch_converter(batch)
+    resolved_device = _resolve_device(device)
+    esm_model, batch_converter = load_esm(resolved_device)
 
-    with torch.no_grad():
-        out = esm_model(tokens, repr_layers=[6])
-    seq_emb = out["representations"][6].mean(1)
+    seq_emb = _encode_sequences(sequences, esm_model, batch_converter, resolved_device, int(batch_size))
 
-    print("Parsing CIF...")
     struct_feats = []
-    for structure in structures:
+    for structure in tqdm(structures, desc="CIF", unit="item"):
         cif = get_cif_path(structure, root_dir)
         struct_feats.append(parse_cif(cif))
     struct_feats_t = torch.tensor(struct_feats, dtype=torch.float32)
 
-    X = torch.cat([seq_emb, struct_feats_t], dim=1)
+    X_all = torch.cat([seq_emb, struct_feats_t], dim=1).to(resolved_device)
+    y_all = y_all.to(resolved_device)
+    X_train = X_all[train_idx]
+    y_train = y_all[train_idx]
+    X_test = X_all[test_idx]
+    y_test = y_all[test_idx]
 
-    model = Model(X.shape[1])
+    model = Model(X_all.shape[1]).to(resolved_device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
 
-    print("Training...")
-    for epoch in range(30):
-        pred = model(X)
-        loss = loss_fn(pred, y)
+    for epoch in tqdm(range(30), desc="Train", unit="epoch"):
+        pred_train = model(X_train)
+        loss = loss_fn(pred_train, y_train)
         opt.zero_grad()
         loss.backward()
         opt.step()
-        print(f"Epoch {epoch}: loss={loss.item():.4f}")
 
-    pred = model(X).detach().numpy()
-    df["pred"] = pred
-    df = df.sort_values("pred", ascending=False).reset_index(drop=True)
-
-    pred_label = np.zeros(len(df))
-    pred_label[:k] = 1
-    true_label = df["label"].values
+    with torch.no_grad():
+        test_pred = model(X_test).detach().cpu().numpy()
+    y_test_np = y_test.detach().cpu().numpy()
+    true_label = _make_topk_labels(y_test_np, top_ratio)
+    pred_label = _make_topk_labels(test_pred, top_ratio)
     f1 = float(f1_score(true_label, pred_label))
 
     torch.save(model.state_dict(), model_path)
@@ -124,13 +178,17 @@ def train(csv_path: str, root_dir: str, model_path: str, top_ratio: float) -> di
 
     output_dir = Path(model_path).resolve().parent / "outputs"
     output_dir.mkdir(parents=True, exist_ok=True)
+    top_k_test = int(max(1, int(len(y_test_np) * top_ratio)))
     metrics_payload = {
         "metrics": {
             "test": {
                 "f1": f1,
                 "top_ratio": float(top_ratio),
-                "top_k": int(k),
-                "num_samples": int(len(df)),
+                "top_k": top_k_test,
+                "num_samples": int(len(test_idx)),
+                "test_ratio": float(test_ratio),
+                "seed": int(seed),
+                "device": str(resolved_device),
             }
         }
     }
@@ -141,19 +199,21 @@ def train(csv_path: str, root_dir: str, model_path: str, top_ratio: float) -> di
 
 
 def predict(sequence: str, structure: str, root_dir: str, model_path: str) -> float:
-    esm_model, batch_converter = load_esm()
-    model = Model(320 + 2)
+    resolved_device = _resolve_device(os.environ.get("HARNESS_DEVICE", "auto"))
+    esm_model, batch_converter = load_esm(resolved_device)
+    model = Model(320 + 2).to(resolved_device)
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
     model.eval()
 
     batch = [("x", sequence)]
     _, _, tokens = batch_converter(batch)
+    tokens = tokens.to(resolved_device)
     with torch.no_grad():
         out = esm_model(tokens, repr_layers=[6])
         seq_emb = out["representations"][6].mean(1)
 
     cif_path = get_cif_path(structure, root_dir)
-    struct_feat = torch.tensor(parse_cif(cif_path), dtype=torch.float32).unsqueeze(0)
+    struct_feat = torch.tensor(parse_cif(cif_path), dtype=torch.float32).unsqueeze(0).to(resolved_device)
     x = torch.cat([seq_emb, struct_feat], dim=1)
 
     pred = model(x)
@@ -167,6 +227,10 @@ def main() -> int:
     parser.add_argument("--root_dir", required=True)
     parser.add_argument("--model_path", default="iptm_model.pt")
     parser.add_argument("--top_ratio", type=float, default=0.1)
+    parser.add_argument("--test_ratio", type=float, default=0.2)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--device", type=str, default=os.environ.get("HARNESS_DEVICE", "auto"))
+    parser.add_argument("--batch_size", type=int, default=int(os.environ.get("HARNESS_BATCH_SIZE", "16")))
     parser.add_argument("--sequence", help="sequence for prediction")
     parser.add_argument("--structure", help="structure name")
     args = parser.parse_args()
@@ -174,7 +238,16 @@ def main() -> int:
     if args.mode == "train":
         if not args.csv:
             raise ValueError("Need --csv for training")
-        train(args.csv, args.root_dir, args.model_path, args.top_ratio)
+        train(
+            args.csv,
+            args.root_dir,
+            args.model_path,
+            args.top_ratio,
+            args.test_ratio,
+            args.seed,
+            args.device,
+            args.batch_size,
+        )
         return 0
 
     if not args.sequence or not args.structure:
