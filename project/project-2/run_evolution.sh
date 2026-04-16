@@ -15,18 +15,19 @@ CONDA_ENV="meta-harness-evolver0"
 WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate_project2.py"
 CANDIDATE_NUM=""
-ITERATIONS="${ITERATIONS:-1}"
+ITERATIONS="${ITERATIONS:-20}"
 
 export EVOLVER_WORKSPACE="$WORKSPACE_DIR"
 export HARNESS_RUN_SCRIPT="$PROJECT_DIR/harness_run_script.sh"
 export REQUIRE_HARNESS_RUN_SCRIPT="1"
 export HARNESS_RUN_TIMEOUT_SECONDS="3600"
-
+export FEISHU_POST_ENABLED=0
+export NEXAU_ENABLE_RUN_SHELL_COMMAND="0"
 # Default: test mode off (set to 1 for quick dry run without real proposer edits)
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
 if [[ -z "${HARNESS_DEVICE:-}" ]]; then
-  USE_GPU="${USE_GPU:-0}"
+  USE_GPU="${USE_GPU:-1}"
   if [[ "$USE_GPU" == "1" ]]; then
     export HARNESS_DEVICE="cuda"
   else

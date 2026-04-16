@@ -21,3 +21,5 @@ build/
 
 .tool_cache/
 *.pt
+
+project/project-2-test/

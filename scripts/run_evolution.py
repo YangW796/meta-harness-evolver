@@ -364,6 +364,63 @@ def _nexau_proposer_child(log_path: Path) -> int:
         if not base_dir.exists():
             raise RuntimeError(f"NEXAU_CODE_AGENT_DIR does not exist: {base_dir}")
 
+        allowed_roots = [work_dir]
+        extra_allowed = (os.environ.get("NEXAU_ALLOWED_DIRS") or "").strip()
+        if extra_allowed:
+            for raw in extra_allowed.split(os.pathsep):
+                raw = raw.strip()
+                if raw:
+                    allowed_roots.append(Path(raw).expanduser().resolve())
+
+        def _resolve_in_workspace(path_str: str) -> Path:
+            p = Path(path_str).expanduser()
+            if not p.is_absolute():
+                p = (work_dir / p)
+            resolved = p.resolve()
+            for root in allowed_roots:
+                root_resolved = root.resolve()
+                if resolved == root_resolved or root_resolved in resolved.parents:
+                    return resolved
+            raise PermissionError(f"Access denied outside workspace: {resolved}")
+
+        _orig_list_directory = list_directory
+        _orig_read_file = read_file
+        _orig_write_file = write_file
+        _orig_replace = replace
+        _orig_search_file_content = search_file_content
+        _orig_run_shell_command = run_shell_command
+
+        def list_directory(dir_path: str, **kwargs: object):
+            return _orig_list_directory(dir_path=str(_resolve_in_workspace(dir_path)), **kwargs)
+
+        def read_file(file_path: str, **kwargs: object):
+            return _orig_read_file(file_path=str(_resolve_in_workspace(file_path)), **kwargs)
+
+        def write_file(file_path: str, content: str, **kwargs: object):
+            return _orig_write_file(file_path=str(_resolve_in_workspace(file_path)), content=content, **kwargs)
+
+        def replace(file_path: str, old_string: str, new_string: str, **kwargs: object):
+            return _orig_replace(
+                file_path=str(_resolve_in_workspace(file_path)),
+                old_string=old_string,
+                new_string=new_string,
+                **kwargs,
+            )
+
+        def search_file_content(pattern: str, dir_path: str | None = None, **kwargs: object):
+            safe_dir = str(work_dir) if not dir_path else str(_resolve_in_workspace(dir_path))
+            return _orig_search_file_content(pattern=pattern, dir_path=safe_dir, **kwargs)
+
+        def run_shell_command(command: str, **kwargs: object):
+            if os.environ.get("NEXAU_ENABLE_RUN_SHELL_COMMAND", "0") != "1":
+                raise PermissionError("run_shell_command is disabled (set NEXAU_ENABLE_RUN_SHELL_COMMAND=1 to enable).")
+            dir_path = kwargs.get("dir_path")
+            if isinstance(dir_path, str) and dir_path:
+                kwargs["dir_path"] = str(_resolve_in_workspace(dir_path))
+            else:
+                kwargs["dir_path"] = str(work_dir)
+            return _orig_run_shell_command(command=command, **kwargs)
+
         def complete_task(result: str | None = None, **kwargs: object) -> str:
             payload: dict[str, object] = {}
             if result is not None:

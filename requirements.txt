@@ -1,9 +1,10 @@
 # Core dependencies for this repository
 numpy>=1.24
 pandas>=2.0
+scikit-learn>=1.3
 
 # Used by root/project model candidates
-torch>=2.1
+torch>=2.9.0
 fair-esm>=2.0.0
 
 # Optional: Feishu/Lark notification in scripts/post_to_research.py

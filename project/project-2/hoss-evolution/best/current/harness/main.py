@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from index import compute_x
 from sklearn.metrics import f1_score
 
 try:
@@ -39,9 +40,6 @@ def get_cif_path(structure: str, root_dir: str) -> str:
     pdb_id = structure.split("_")[0]
     return os.path.join(root_dir, pdb_id, "af3_output", structure, f"{structure}_model.cif")
 
-
-def compute_x(df: pd.DataFrame) -> pd.Series:
-    return df["iptm"] - 0.1 * df["DDG"] - 0.01 * df["SAP Score"] - 0.1 * df["FV Charge"].abs()
 
 
 class Model(nn.Module):
