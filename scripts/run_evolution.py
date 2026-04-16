@@ -156,6 +156,13 @@ Your job: Propose ONE targeted modification to the project code or configuration
 Total prior candidates: {len(history)}
 Best score so far: {best['final_score'] if best else 'N/A'}
 
+## Suggested Workflow
+1. Read prior candidates' `eval_scores.json` to determine which changes improved or degraded `final_score`.
+2. For the most relevant prior candidates, read `change_record.md` to see the exact diffs that caused the score change.
+3. Identify one concrete hypothesis (e.g., leakage, bad split, metric bug, feature weakness) supported by history.
+4. Make ONE minimal code edit that targets that hypothesis.
+5. Ensure the candidate writes `proposer_reasoning.md` summarizing: (a) what changed, (b) expected impact, (c) why this is better than prior attempts.
+
 ## Output Format
 Write your modified file to {paths.workspace}/candidates/candidate_{candidate_num}/harness/<FILENAME>
 Write reasoning to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
