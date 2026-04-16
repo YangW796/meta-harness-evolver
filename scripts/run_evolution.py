@@ -873,6 +873,7 @@ def main():
         print(f"[MAIN] Candidate: {candidate_num}")
 
         # Step 1: Run proposer
+        print("[STEP] Propose: running proposer...")
         proposer_result = run_proposer(paths, cfg, candidate_num)
         candidate_dir = Path(proposer_result["candidate_dir"])
 
@@ -880,12 +881,16 @@ def main():
             print(f"[MAIN] Proposer failed: {proposer_result.get('error')}")
             print("[MAIN] Skipping this iteration.")
             return 1
+        print("[STEP] Propose: done")
 
         # Step 2: Validate
+        print("[STEP] Validate: checking candidate...")
         if not validate_candidate(candidate_dir):
             print("[MAIN] Validation failed. Skipping.")
             return 1
+        print("[STEP] Validate: done")
 
+        print("[STEP] Harness: running harness_run_script.sh...")
         harness_run = run_harness_script(candidate_dir, paths.workspace, cfg, candidate_num)
         if harness_run.get("log_path"):
             print(f"[HARNESS] Log: {harness_run.get('log_path')}")
@@ -894,14 +899,18 @@ def main():
         if not harness_run.get("ok", False):
             print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
             return 2
+        print("[STEP] Harness: done")
 
         # Step 3: Evaluate
+        print("[STEP] Evaluate: running evaluation...")
         scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)
         if not scores or "error" in scores:
             print(f"[MAIN] Evaluation failed: {scores.get('error')}")
             return 2
+        print("[STEP] Evaluate: done")
 
         # Step 4: Log eval scores to candidate dir
+        print("[STEP] Log: writing eval scores and change record...")
         scores_file = candidate_dir / "eval_scores.json"
         with open(scores_file, "w") as sf:
             json.dump(scores, sf, indent=2)
@@ -916,9 +925,12 @@ def main():
 
         # Step 7: Log evolution
         log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"], change_record)
+        print("[STEP] Log: done")
 
         # Step 8: Post to Feishu
+        print("[STEP] Post: sending Feishu message...")
         post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
+        print("[STEP] Post: done")
 
         print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
         print(f"{'='*60}\n")
