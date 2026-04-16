@@ -201,7 +201,10 @@ def train(
 def predict(sequence: str, structure: str, root_dir: str, model_path: str) -> float:
     resolved_device = _resolve_device(os.environ.get("HARNESS_DEVICE", "auto"))
     esm_model, batch_converter = load_esm(resolved_device)
-    model = Model(320 + 2).to(resolved_device)
+    cif_path = get_cif_path(structure, root_dir)
+    struct_feat = torch.tensor(parse_cif(cif_path), dtype=torch.float32).unsqueeze(0)
+    model_input_dim = 320 + int(struct_feat.shape[1])
+    model = Model(model_input_dim).to(resolved_device)
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
     model.eval()
 
@@ -212,8 +215,7 @@ def predict(sequence: str, structure: str, root_dir: str, model_path: str) -> fl
         out = esm_model(tokens, repr_layers=[6])
         seq_emb = out["representations"][6].mean(1)
 
-    cif_path = get_cif_path(structure, root_dir)
-    struct_feat = torch.tensor(parse_cif(cif_path), dtype=torch.float32).unsqueeze(0).to(resolved_device)
+    struct_feat = struct_feat.to(resolved_device)
     x = torch.cat([seq_emb, struct_feat], dim=1)
 
     pred = model(x)
