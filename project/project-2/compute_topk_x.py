@@ -1,19 +1,7 @@
 import pandas as pd
 import argparse
 import numpy as np
-
-def compute_x(df):
-    # 权重（可调）
-    w1, w2, w3, w4 = 1.0, 0.1, 0.01, 0.1
-
-    x = (
-        w1 * df["iptm"] +
-        w2 * (-df["DDG"]) +
-        w3 * (-df["SAP Score"]) +
-        w4 * (-df["FV Charge"].abs())
-    )
-    return x
-
+from index import compute_x
 
 def main():
     parser = argparse.ArgumentParser()
