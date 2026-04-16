@@ -11,7 +11,7 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-CONDA_ENV="meta-harness-evolver0"
+CONDA_ENV="meta-harness-evolver"
 WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate_project2.py"
 CANDIDATE_NUM=""
@@ -34,6 +34,7 @@ if [[ -z "${HARNESS_DEVICE:-}" ]]; then
   fi
 fi
 export HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
 PROPOSER_PROMPT_PREFIX_PATH="$PROJECT_DIR/proposer_prompt_prefix.txt"
 if [[ ! -f "$PROPOSER_PROMPT_PREFIX_PATH" ]]; then
@@ -44,10 +45,14 @@ export PROPOSER_PROMPT_PREFIX="$(cat "$PROPOSER_PROMPT_PREFIX_PATH")"$'\n'
 
 
 
-ARGS=(python "$EVOLVER_ROOT/scripts/run_evolution.py" --workspace "$WORKSPACE_DIR" --iterations "$ITERATIONS" --evaluate-script "$EVALUATE_SCRIPT_PATH")
+ARGS=(python -u "$EVOLVER_ROOT/scripts/run_evolution.py" --workspace "$WORKSPACE_DIR" --iterations "$ITERATIONS" --evaluate-script "$EVALUATE_SCRIPT_PATH")
 if [[ -n "$CANDIDATE_NUM" ]]; then
   ARGS+=(--candidate-num "$CANDIDATE_NUM")
 fi
 
 cd "$EVOLVER_ROOT"
-conda run -n "$CONDA_ENV" "${ARGS[@]}"
+CONDA_RUN_ARGS=(-n "$CONDA_ENV")
+if conda run --help 2>/dev/null | grep -q -- "--no-capture-output"; then
+  CONDA_RUN_ARGS=(--no-capture-output -n "$CONDA_ENV")
+fi
+conda run "${CONDA_RUN_ARGS[@]}" "${ARGS[@]}"
