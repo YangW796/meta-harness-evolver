@@ -160,8 +160,10 @@ Best score so far: {best['final_score'] if best else 'N/A'}
 1. Read prior candidates' `eval_scores.json` to determine which changes improved or degraded `final_score`.
 2. For the most relevant prior candidates, read `change_record.md` to see the exact diffs that caused the score change.
 3. Identify one concrete hypothesis (e.g., leakage, bad split, metric bug, feature weakness) supported by history.
-4. Make ONE minimal code edit that targets that hypothesis.
-5. Ensure the candidate writes `proposer_reasoning.md` summarizing: (a) what changed, (b) expected impact, (c) why this is better than prior attempts.
+4. You may try different underlying model architectures (for example, beyond a simple MLP) if justified by history and constraints.
+5. You may also try diverse data preprocessing strategies when preparing inputs/features, as long as task constraints are respected.
+6. Make ONE minimal code edit that targets your chosen hypothesis.
+7. Ensure the candidate writes `proposer_reasoning.md` summarizing: (a) what changed, (b) expected impact, (c) why this is better than prior attempts.
 
 ## Output Format
 Write your modified file to {paths.workspace}/candidates/candidate_{candidate_num}/harness/<FILENAME>
