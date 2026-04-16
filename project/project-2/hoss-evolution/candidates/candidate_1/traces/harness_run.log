@@ -1,8 +1,0 @@
-STATUS: FAILED
-CMD: bash /home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/project/project-2/harness_run_script.sh /home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/project/project-2/hoss-evolution/candidates/candidate_1
-EXIT_CODE: 2
-STDOUT:
-CSV not found: /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli/merged_results.csv
-Set PROJECT2_DATA_CSV to your dataset CSV path.
-
-STDERR:
