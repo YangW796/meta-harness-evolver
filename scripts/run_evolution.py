@@ -508,19 +508,21 @@ def validate_candidate(candidate_dir: Path) -> bool:
 
 
 def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig, candidate_num: int) -> dict:
+    traces_dir = candidate_dir / "traces"
+    traces_dir.mkdir(parents=True, exist_ok=True)
+    log_path = traces_dir / "harness_run.log"
+
     script = str(cfg.harness_run_script or "").strip()
     if not script:
         if cfg.require_harness_run_script:
-            return {"ok": False, "error": "Missing HARNESS_RUN_SCRIPT"}
-        return {"ok": True, "skipped": True, "reason": "no harness run script"}
+            log_path.write_text("STATUS: FAILED\nERROR: Missing HARNESS_RUN_SCRIPT\n", encoding="utf-8")
+            return {"ok": False, "error": "Missing HARNESS_RUN_SCRIPT", "log_path": str(log_path)}
+        log_path.write_text("STATUS: SKIPPED\nREASON: no harness run script\n", encoding="utf-8")
+        return {"ok": True, "skipped": True, "reason": "no harness run script", "log_path": str(log_path)}
 
     script_path = Path(script).expanduser()
     if not script_path.is_absolute():
         script_path = (Path.cwd() / script_path).resolve()
-
-    traces_dir = candidate_dir / "traces"
-    traces_dir.mkdir(parents=True, exist_ok=True)
-    log_path = traces_dir / "harness_run.log"
 
     cmd = ["bash", str(script_path), str(candidate_dir)]
     env = os.environ.copy()
@@ -537,12 +539,14 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
             timeout=int(cfg.harness_run_timeout_seconds),
         )
     except subprocess.TimeoutExpired:
-        log_path.write_text(f"CMD: {' '.join(cmd)}\nTIMEOUT\n", encoding="utf-8")
-        return {"ok": False, "error": "timeout"}
+        log_path.write_text(f"STATUS: TIMEOUT\nCMD: {' '.join(cmd)}\n", encoding="utf-8")
+        return {"ok": False, "error": "timeout", "log_path": str(log_path)}
 
+    status = "OK" if result.returncode == 0 else "FAILED"
     log_path.write_text(
         "\n".join(
             [
+                f"STATUS: {status}",
                 f"CMD: {' '.join(cmd)}",
                 f"EXIT_CODE: {result.returncode}",
                 "STDOUT:",
@@ -554,8 +558,8 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
         encoding="utf-8",
     )
     if result.returncode != 0:
-        return {"ok": False, "error": "harness run script failed", "exit_code": result.returncode}
-    return {"ok": True}
+        return {"ok": False, "error": "harness run script failed", "exit_code": result.returncode, "log_path": str(log_path)}
+    return {"ok": True, "log_path": str(log_path)}
 
 
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
@@ -883,6 +887,10 @@ def main():
             return 1
 
         harness_run = run_harness_script(candidate_dir, paths.workspace, cfg, candidate_num)
+        if harness_run.get("log_path"):
+            print(f"[HARNESS] Log: {harness_run.get('log_path')}")
+        if harness_run.get("skipped"):
+            print(f"[HARNESS] Skipped: {harness_run.get('reason')}")
         if not harness_run.get("ok", False):
             print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
             return 2
