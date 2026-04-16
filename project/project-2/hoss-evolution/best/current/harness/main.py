@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import esm
@@ -8,8 +9,22 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from index import compute_x
 from sklearn.metrics import f1_score
+
+try:
+    project_dir = Path(__file__).resolve().parents[4]
+except IndexError:
+    project_dir = None
+
+if project_dir is not None:
+    sys.path.insert(0, str(project_dir))
+else:
+    for p in Path(__file__).resolve().parents:
+        if (p / "index.py").exists():
+            sys.path.insert(0, str(p))
+            break
+
+from index import compute_x
 
 try:
     from tqdm import tqdm  # type: ignore
