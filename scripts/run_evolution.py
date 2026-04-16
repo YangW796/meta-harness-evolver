@@ -439,6 +439,7 @@ def _nexau_proposer_child(log_path: Path) -> int:
             system_prompt_type=system_prompt_type,
             tool_call_mode="structured",
             max_iterations=max_iterations,
+            stop_tools={"complete_task"},
             llm_config=LLMConfig(
                 temperature=float(os.environ.get("LLM_TEMPERATURE", "0.7")),
                 max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "4096")),
