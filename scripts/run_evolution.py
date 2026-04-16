@@ -390,36 +390,95 @@ def _nexau_proposer_child(log_path: Path) -> int:
         _orig_search_file_content = search_file_content
         _orig_run_shell_command = run_shell_command
 
-        def list_directory(dir_path: str, **kwargs: object):
-            return _orig_list_directory(dir_path=str(_resolve_in_workspace(dir_path)), **kwargs)
+        def list_directory(
+            dir_path: str,
+            ignore: list[str] | None = None,
+            file_filtering_options: dict[str, bool] | None = None,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
+            return _orig_list_directory(
+                dir_path=str(_resolve_in_workspace(dir_path)),
+                ignore=ignore,
+                file_filtering_options=file_filtering_options,
+                agent_state=agent_state,
+            )
 
-        def read_file(file_path: str, **kwargs: object):
-            return _orig_read_file(file_path=str(_resolve_in_workspace(file_path)), **kwargs)
+        def read_file(
+            file_path: str,
+            offset: int | None = None,
+            limit: int | None = None,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
+            return _orig_read_file(
+                file_path=str(_resolve_in_workspace(file_path)),
+                offset=offset,
+                limit=limit,
+                agent_state=agent_state,
+            )
 
-        def write_file(file_path: str, content: str, **kwargs: object):
-            return _orig_write_file(file_path=str(_resolve_in_workspace(file_path)), content=content, **kwargs)
+        def write_file(
+            file_path: str,
+            content: str,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
+            return _orig_write_file(
+                file_path=str(_resolve_in_workspace(file_path)),
+                content=content,
+                agent_state=agent_state,
+            )
 
-        def replace(file_path: str, old_string: str, new_string: str, **kwargs: object):
+        def replace(
+            file_path: str,
+            old_string: str,
+            new_string: str,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
             return _orig_replace(
                 file_path=str(_resolve_in_workspace(file_path)),
                 old_string=old_string,
                 new_string=new_string,
-                **kwargs,
+                agent_state=agent_state,
             )
 
-        def search_file_content(pattern: str, dir_path: str | None = None, **kwargs: object):
+        def search_file_content(
+            pattern: str,
+            dir_path: str | None = None,
+            include: str | None = None,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
             safe_dir = str(work_dir) if not dir_path else str(_resolve_in_workspace(dir_path))
-            return _orig_search_file_content(pattern=pattern, dir_path=safe_dir, **kwargs)
+            return _orig_search_file_content(pattern=pattern, dir_path=safe_dir, include=include, agent_state=agent_state)
 
-        def run_shell_command(command: str, **kwargs: object):
+        def run_shell_command(
+            command: str,
+            dir_path: str | None = None,
+            timeout: int | None = None,
+            agent_state=None,
+            sandbox=None,
+            **kwargs: object,
+        ):
             if os.environ.get("NEXAU_ENABLE_RUN_SHELL_COMMAND", "0") != "1":
                 raise PermissionError("run_shell_command is disabled (set NEXAU_ENABLE_RUN_SHELL_COMMAND=1 to enable).")
-            dir_path = kwargs.get("dir_path")
             if isinstance(dir_path, str) and dir_path:
-                kwargs["dir_path"] = str(_resolve_in_workspace(dir_path))
+                safe_dir = str(_resolve_in_workspace(dir_path))
             else:
-                kwargs["dir_path"] = str(work_dir)
-            return _orig_run_shell_command(command=command, **kwargs)
+                safe_dir = str(work_dir)
+            return _orig_run_shell_command(
+                command=command,
+                dir_path=safe_dir,
+                timeout=timeout,
+                agent_state=agent_state,
+            )
 
         def complete_task(result: str | None = None, **kwargs: object) -> str:
             payload: dict[str, object] = {}
