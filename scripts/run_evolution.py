@@ -26,6 +26,8 @@ import logging
 import os
 import subprocess
 import sys
+import threading
+import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
@@ -529,37 +531,84 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
     env.setdefault("EVOLVER_WORKSPACE", str(workspace))
     env.setdefault("CANDIDATE_NUM", str(candidate_num))
     env.setdefault("CANDIDATE_DIR", str(candidate_dir))
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=str(candidate_dir),
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=int(cfg.harness_run_timeout_seconds),
-        )
-    except subprocess.TimeoutExpired:
-        log_path.write_text(f"STATUS: TIMEOUT\nCMD: {' '.join(cmd)}\n", encoding="utf-8")
-        return {"ok": False, "error": "timeout", "log_path": str(log_path)}
 
-    status = "OK" if result.returncode == 0 else "FAILED"
-    log_path.write_text(
-        "\n".join(
-            [
-                f"STATUS: {status}",
-                f"CMD: {' '.join(cmd)}",
-                f"EXIT_CODE: {result.returncode}",
-                "STDOUT:",
-                result.stdout or "",
-                "STDERR:",
-                result.stderr or "",
+    def _stream_pipe(pipe, prefix: str, fh, lock: threading.Lock) -> None:
+        try:
+            for line in iter(pipe.readline, ""):
+                with lock:
+                    fh.write(f"[{prefix}] {line}")
+                    fh.flush()
+        finally:
+            pipe.close()
+
+    timeout_seconds = int(cfg.harness_run_timeout_seconds)
+    heartbeat_seconds = int(os.environ.get("HARNESS_RUN_LOG_HEARTBEAT_SECONDS", "5"))
+    lock = threading.Lock()
+    started = time.time()
+    proc: subprocess.Popen | None = None
+    timed_out = False
+
+    with open(log_path, "w", encoding="utf-8") as fh:
+        fh.write("STATUS: RUNNING\n")
+        fh.write(f"CMD: {' '.join(cmd)}\n")
+        fh.write(f"START_AT: {datetime.now().isoformat()}\n")
+        fh.flush()
+
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(candidate_dir),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
+
+            threads = [
+                threading.Thread(target=_stream_pipe, args=(proc.stdout, "STDOUT", fh, lock), daemon=True),
+                threading.Thread(target=_stream_pipe, args=(proc.stderr, "STDERR", fh, lock), daemon=True),
             ]
-        ),
-        encoding="utf-8",
-    )
-    if result.returncode != 0:
-        return {"ok": False, "error": "harness run script failed", "exit_code": result.returncode, "log_path": str(log_path)}
-    return {"ok": True, "log_path": str(log_path)}
+            for t in threads:
+                t.start()
+
+            last_heartbeat = started
+            while proc.poll() is None:
+                now = time.time()
+                if now - started > timeout_seconds:
+                    timed_out = True
+                    proc.kill()
+                    break
+                if now - last_heartbeat >= heartbeat_seconds:
+                    with lock:
+                        fh.write(f"[HEARTBEAT] running... elapsed={int(now - started)}s\n")
+                        fh.flush()
+                    last_heartbeat = now
+                time.sleep(0.2)
+
+            for t in threads:
+                t.join(timeout=2)
+
+            exit_code = proc.wait(timeout=3) if proc is not None else -1
+            end_at = datetime.now().isoformat()
+            if timed_out:
+                with lock:
+                    fh.write(f"STATUS: TIMEOUT\nEXIT_CODE: {exit_code}\nEND_AT: {end_at}\n")
+                    fh.flush()
+                return {"ok": False, "error": "timeout", "log_path": str(log_path)}
+
+            status = "OK" if exit_code == 0 else "FAILED"
+            with lock:
+                fh.write(f"STATUS: {status}\nEXIT_CODE: {exit_code}\nEND_AT: {end_at}\n")
+                fh.flush()
+            if exit_code != 0:
+                return {"ok": False, "error": "harness run script failed", "exit_code": exit_code, "log_path": str(log_path)}
+            return {"ok": True, "log_path": str(log_path)}
+        except Exception as e:
+            with lock:
+                fh.write(f"STATUS: FAILED\nERROR: {e}\n")
+                fh.flush()
+            return {"ok": False, "error": str(e), "log_path": str(log_path)}
 
 
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
