@@ -5,7 +5,7 @@
 - 数据：大 CSV（每行一个候选分子/结构/序列等字段）
 - 黑盒打分：`y = compute_x(row)`（见 [index.py](./index.py)）
 - 真实标签（只用于评测，policy 不可见）：
-  - 按 y 排序取 Top `top_k=1000` → `label=1`
+  - 按 y 排序取 Top `top_ratio=0.2`（约 20%）→ `label=1`
   - 其余 → `label=0`
 - 每轮行为：policy 从 5000 个候选中选 `batch_size=100` 个“没选过的”样本，oracle 揭示 label，history 增量更新
 - 目标指标：在固定查询预算内最大化 `total_hits`（累计命中数），并输出 hit curve / Precision@100 / Recall / AUC（可选）
@@ -75,7 +75,7 @@ def select(candidates, history, batch_size, seed) -> list[int]:
   - 也可以是“预生成的候选池文件”（见下面 `compute_x_generate_fix_train_test.py`）
 - `PROJECT3_FIXED_POOL`：=1 时强制把 `PROJECT3_DATA_CSV` 当作“固定候选池”（不再二次采样）
 - `PROJECT3_POOL_SIZE`：候选池大小（默认 5000；仅在输入是大 CSV 且未 fixed_pool 时生效）
-- `PROJECT3_TOP_K`：好分子数量（默认 1000；仅在输入 CSV 不含 label 且未提供 ground_truth 时生效）
+- `PROJECT3_TOP_RATIO`：好分子比例（默认 0.2；仅在输入 CSV 不含 label 且未提供 ground_truth 时生效）
 - `PROJECT3_BATCH_SIZE`：每轮查询数（默认 100）
 - `PROJECT3_ROUNDS`：本次运行执行的轮数（默认 1）
 - `PROJECT3_SEED`：采样与随机种子（默认 42）
@@ -114,7 +114,7 @@ def select(candidates, history, batch_size, seed) -> list[int]:
 ```bash
 PROJECT3_DATA_CSV=/path/to/merged_results.csv \
 PROJECT3_POOL_SIZE=5000 \
-PROJECT3_TOP_K=1000 \
+PROJECT3_TOP_RATIO=0.2 \
 PROJECT3_BATCH_SIZE=100 \
 PROJECT3_ROUNDS=1 \
 PROJECT3_SEED=42 \
@@ -128,7 +128,7 @@ python project/project-3/main_fix_train_test_input_output.py \
   --csv /path/to/merged_results.csv \
   --model_dir project/project-3/hoss-evolution/best/current/harness/model.py \
   --pool_size 5000 \
-  --top_k 1000 \
+  --top_ratio 0.2 \
   --batch_size 100 \
   --rounds 1 \
   --seed 42
@@ -146,13 +146,13 @@ python project/project-3/main_fix_train_test_input_output.py \
 python project/project-3/compute_x_generate_fix_train_test.py \
   --csv /path/to/merged_results.csv \
   --pool_size 5000 \
-  --top_k 1000 \
+  --top_ratio 0.2 \
   --seed 42 \
   --out /path/to/out_dir
 ```
 
 输出文件示例：
-- `candidate_pool_labeled_top1000_n5000_seed42.csv`（包含原始列 + `label` 列）
+- `candidate_pool_labeled_all_top0p2_n5000_seed42.csv`（包含原始列 + `label` 列）
 
 然后用这个文件跑 active search（不需要 `PROJECT3_GROUND_TRUTH_CSV`）：
 

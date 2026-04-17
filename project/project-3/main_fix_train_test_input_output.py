@@ -97,10 +97,14 @@ def _make_candidate_pool(rows: list[dict[str, object]], pool_size: int, seed: in
     return [rows[i] for i in keep_idx]
 
 
-def _make_ground_truth_labels(pool_rows: list[dict[str, object]], top_k: int) -> np.ndarray:
+def _make_ground_truth_labels(pool_rows: list[dict[str, object]], top_ratio: float) -> np.ndarray:
     if not pool_rows:
         return np.zeros((0,), dtype=np.int8)
-    k = int(max(0, min(int(top_k), len(pool_rows))))
+    r = float(top_ratio)
+    if not (0.0 < r < 1.0):
+        raise ValueError(f"top_ratio must be in (0, 1), got: {r}")
+    k = int(max(1, int(round(len(pool_rows) * r))))
+    k = int(min(k, len(pool_rows)))
     y = np.asarray(compute_x(pool_rows), dtype=np.float64).reshape(-1)
     order = np.argsort(-y, kind="mergesort")
     labels = np.zeros((len(pool_rows),), dtype=np.int8)
@@ -207,34 +211,49 @@ def run_active_search(
     initial_already_selected: set[int] | None = None,
     start_round: int = 0,
 ) -> dict:
+    # Active Search 核心循环：
+    # - pool_rows: 固定候选池（长度通常为 5000）
+    # - labels: oracle 的真实标签（policy 不可见）
+    # - select_fn: policy 的 select(...)，负责给出本轮要查询的 candidate_index 列表
+    # - initial_history/initial_already_selected/start_round: 用于断点续跑（从历史状态继续跑）
     n = int(len(pool_rows))
+    # already_selected：全局已查询过的 candidate_index 集合（确保跨轮不重复选）
     already_selected: set[int] = set(initial_already_selected or set())
+    # history：已查询过的样本记录（行内容 + candidate_index + label），会作为 policy 输入
     history: list[dict[str, object]] = [dict(r) for r in (initial_history or [])]
 
+    # seed_queries：可选的“冷启动”随机查询（仅在历史为空时生效）
     rng = np.random.default_rng(int(seed) + int(start_round))
     if seed_queries > 0 and n > 0 and not history:
         seed_queries = int(min(seed_queries, n))
         seed_idx = rng.choice(n, size=seed_queries, replace=False).tolist()
         seed_idx = _sanitize_selected_indices(seed_idx, n=n, already_selected=already_selected, batch_size=seed_queries, seed=seed)
         for i in seed_idx:
+            # oracle：把真实 label 写入 history（policy 的下一轮可见）
             r = dict(pool_rows[i])
             r["candidate_index"] = int(i)
             r["label"] = int(labels[int(i)])
             history.append(r)
         already_selected.update(int(i) for i in seed_idx)
 
+    # per_round：每轮的统计；hit_curve：累计命中曲线（x=累计查询数，y=累计 hits）
     per_round: list[dict] = []
     cumulative_hits = int(sum(int(r.get("label", 0)) for r in history))
     total_queries = int(len(history))
     hit_curve_queries: list[int] = [total_queries]
     hit_curve_hits: list[int] = [cumulative_hits]
 
+    # 主循环：每次执行 rounds 轮（默认 1），每轮查询 batch_size 个新样本
     executed_rounds = 0
     for t in range(int(rounds)):
+        # 候选池耗尽则提前结束
         if len(already_selected) >= n:
             break
+        # global_round：从 start_round 起累加，用于续跑时保证每轮 seed 不同
         global_round = int(start_round) + int(t)
+        # policy 输出：期望是 list[int] 的 candidate_index（可能包含重复/越界/已选）
         selected_raw = select_fn(pool_rows, history, int(batch_size), int(seed) + global_round)
+        # 统一清洗：去重、去已选、裁剪到 batch_size，不足则随机补齐（也保证不重复）
         selected = _sanitize_selected_indices(
             selected_raw,
             n=n,
@@ -242,8 +261,10 @@ def run_active_search(
             batch_size=int(batch_size),
             seed=int(seed) + 10_000 + global_round,
         )
+        # oracle 揭示：本轮命中数（hits_t）
         hits_t = int(labels[np.asarray(selected, dtype=np.int64)].sum()) if selected else 0
 
+        # 将本轮查询结果写入 history（带 label），并更新已选集合
         for i in selected:
             r = dict(pool_rows[int(i)])
             r["candidate_index"] = int(i)
@@ -251,12 +272,14 @@ def run_active_search(
             history.append(r)
         already_selected.update(int(i) for i in selected)
 
+        # 更新累计统计与曲线
         cumulative_hits += hits_t
         total_queries += int(len(selected))
         hit_curve_queries.append(total_queries)
         hit_curve_hits.append(cumulative_hits)
         executed_rounds += 1
 
+        # 记录本轮指标（Precision@batch_size 等）
         per_round.append(
             {
                 "round": int(global_round + 1),
@@ -266,19 +289,25 @@ def run_active_search(
                 "precision_at_batch": float(hits_t / max(1, int(len(selected)))),
             }
         )
+        # 已找到全部好分子（labels.sum()）则提前结束
         if cumulative_hits >= int(labels.sum()):
             break
 
+    # top_k：本次 ground truth 中好分子总数（由 labels 决定，通常约为 pool_size * top_ratio）
     top_k = int(labels.sum())
+    # recall：累计找到的好分子 / 全部好分子
     recall = float(cumulative_hits / max(1, top_k))
 
+    # AUC：对 hit curve 做梯形积分（越大表示越早找到更多好分子）
     area = 0.0
     for i in range(1, len(hit_curve_queries)):
         x0, x1 = float(hit_curve_queries[i - 1]), float(hit_curve_queries[i])
         y0, y1 = float(hit_curve_hits[i - 1]), float(hit_curve_hits[i])
         area += (x1 - x0) * (y0 + y1) / 2.0
+    # 归一化 AUC：除以 (总查询数 * top_k)，便于不同设置间对比
     auc_norm = float(area / max(1.0, float(hit_curve_queries[-1]) * float(max(1, top_k))))
 
+    # 将 history 压缩成可序列化的 queried_records（用于 state 持久化/断点续跑）
     queried_records: list[dict[str, int]] = []
     for r in history:
         try:
@@ -355,7 +384,7 @@ def main() -> int:
     parser.add_argument("--csv", required=True, help="large CSV path or prebuilt candidate_pool CSV path")
     parser.add_argument("--model_dir", default="model.py", help="selection policy implementation file")
     parser.add_argument("--pool_size", type=int, default=int(os.environ.get("PROJECT3_POOL_SIZE", "5000")))
-    parser.add_argument("--top_k", type=int, default=int(os.environ.get("PROJECT3_TOP_K", "1000")))
+    parser.add_argument("--top_ratio", type=float, default=float(os.environ.get("PROJECT3_TOP_RATIO", "0.2")))
     parser.add_argument("--batch_size", type=int, default=int(os.environ.get("PROJECT3_BATCH_SIZE", "100")))
     parser.add_argument("--rounds", type=int, default=int(os.environ.get("PROJECT3_ROUNDS", "1")))
     parser.add_argument("--seed", type=int, default=int(os.environ.get("PROJECT3_SEED", "42")))
@@ -377,7 +406,7 @@ def main() -> int:
     elif args.ground_truth_csv:
         labels = _load_ground_truth_csv(args.ground_truth_csv, n=len(pool_rows))
     else:
-        labels = _make_ground_truth_labels(pool_rows, top_k=int(args.top_k))
+        labels = _make_ground_truth_labels(pool_rows, top_ratio=float(args.top_ratio))
     select_fn = _load_selection_policy(args.model_dir)
 
     default_state_path = str(Path(args.model_dir).expanduser().resolve().parent / "outputs" / "active_search_state.json")
