@@ -42,6 +42,7 @@ def _load_model_api(model_dir: str):
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Failed to load model module from: {model_path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
 
     required = ["train_model", "predict_model", "save_model", "load_model"]
