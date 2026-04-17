@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: bash harness_run_script.sh <candidate_dir>
+CANDIDATE_DIR="${1:-${CANDIDATE_DIR:-}}"
+if [[ -z "$CANDIDATE_DIR" ]]; then
+  echo "Usage: bash harness_run_script.sh <candidate_dir>"
+  exit 2
+fi
+
+CANDIDATE_DIR="$(cd "$CANDIDATE_DIR" && pwd)"
+HARNESS_DIR="$CANDIDATE_DIR/harness"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_MAIN="$PROJECT_DIR/main_fix_train_test_input_output.py"
+if [[ ! -d "$HARNESS_DIR" ]]; then
+  echo "Missing harness dir: $HARNESS_DIR"
+  exit 2
+fi
+if [[ ! -f "$PROJECT_MAIN" ]]; then
+  echo "Missing main file: $PROJECT_MAIN"
+  exit 2
+fi
+
+PYTHON_BIN="${PYTHON_BIN:-python}"
+PROJECT3_DATA_ROOT="${PROJECT3_DATA_ROOT:-/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli}"
+PROJECT3_DATA_CSV="${PROJECT3_DATA_CSV:-$PROJECT3_DATA_ROOT/merged_results.csv}"
+PROJECT3_MODEL_IMPL_PATH="$HARNESS_DIR/model.py"
+PROJECT3_POOL_SIZE="${PROJECT3_POOL_SIZE:-5000}"
+PROJECT3_TOP_K="${PROJECT3_TOP_K:-1000}"
+PROJECT3_BATCH_SIZE="${PROJECT3_BATCH_SIZE:-100}"
+PROJECT3_ROUNDS="${PROJECT3_ROUNDS:-10}"
+PROJECT3_SEED="${PROJECT3_SEED:-42}"
+PROJECT3_SEED_QUERIES="${PROJECT3_SEED_QUERIES:-0}"
+
+if [[ -z "$PROJECT3_DATA_CSV" || ! -f "$PROJECT3_DATA_CSV" ]]; then
+  echo "CSV not found: $PROJECT3_DATA_CSV"
+  echo "Set PROJECT3_DATA_CSV to your dataset CSV path."
+  exit 2
+fi
+
+if [[ ! -f "$PROJECT3_MODEL_IMPL_PATH" ]]; then
+  echo "Model file not found: $PROJECT3_MODEL_IMPL_PATH"
+  exit 2
+fi
+"$PYTHON_BIN" "$PROJECT_MAIN" \
+  --mode active_search \
+  --csv "$PROJECT3_DATA_CSV" \
+  --model_dir "$PROJECT3_MODEL_IMPL_PATH" \
+  --pool_size "$PROJECT3_POOL_SIZE" \
+  --top_k "$PROJECT3_TOP_K" \
+  --batch_size "$PROJECT3_BATCH_SIZE" \
+  --rounds "$PROJECT3_ROUNDS" \
+  --seed "$PROJECT3_SEED" \
+  --seed_queries "$PROJECT3_SEED_QUERIES"

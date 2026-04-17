@@ -1,0 +1,51 @@
+You are working on an antibody-design-related science task. Your goal is to implement a better Active Search selection policy to discover as many "good molecules" as possible under a limited query budget.
+
+## High-Level Goal (Active Search)
+There is a fixed candidate pool of 5000 molecules (rows) sampled from a larger CSV.
+
+There is a hidden ground-truth label for each candidate:
+- label=True means "good molecule" (top 1000 by an unknown black-box score).
+- label=False otherwise.
+
+In each round, your policy selects 100 NEW candidates (no repeats). An oracle reveals their labels. The evaluation score is based on how many label=True molecules you discover within the total query budget (default: 10 rounds × 100 = 1000 queries).
+
+## What You Are Allowed To Change (ONLY MODEL)
+Do NOT modify anything except the model implementation file.
+Do NOT change any function signatures or IO behavior.
+
+## Policy Interface (MUST KEEP EXACTLY)
+Your model code must provide one of the following:
+1) A module-level function:
+   select(candidates, history, batch_size, seed) -> list[int]
+or
+2) A class with a select(...) method (class name can be SelectionPolicy / Policy / Model).
+
+The evaluator will call select(...) each round.
+
+## Input Semantics
+candidates:
+- A list of 5000 row-dicts (the full search space).
+- Each row-dict maps column name -> value (numbers are floats, others are strings).
+- Does NOT include the hidden label, and does NOT include the black-box score.
+
+history:
+- A list of previously queried row-dicts.
+- Each history row includes all original fields plus:
+  - candidate_index: int (row index into candidates)
+  - label: int (0 or 1)
+
+batch_size:
+- The number of NEW candidates to select each round (default: 100).
+
+seed:
+- An integer seed that may change each round.
+
+## Constraints
+- Do not import or call any hidden scoring function or labels.
+- Do not return duplicates or already-selected indices; if you do, they will be ignored and replaced.
+- The policy should run fast and be robust even when history is small (including empty at the beginning).
+
+## Ideas You Can Explore
+- Exploitation: fit a classifier/regressor from history_df and rank candidates by predicted probability of label=1.
+- Exploration: uncertainty sampling (e.g., near 0.5 probability), diversity, clustering, bandits.
+- Hybrid: mix exploitation and exploration with an annealing schedule.
