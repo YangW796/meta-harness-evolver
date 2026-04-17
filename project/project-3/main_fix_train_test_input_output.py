@@ -135,6 +135,24 @@ def _load_ground_truth_csv(path: str, n: int) -> np.ndarray:
     return labels
 
 
+def _extract_inline_labels(rows: list[dict[str, object]]) -> tuple[list[dict[str, object]], np.ndarray | None]:
+    if not rows:
+        return rows, None
+    if "label" not in rows[0]:
+        return rows, None
+    labels = np.zeros((len(rows),), dtype=np.int8)
+    stripped: list[dict[str, object]] = []
+    for i, r in enumerate(rows):
+        rr = dict(r)
+        v = rr.pop("label", 0)
+        try:
+            labels[i] = 1 if int(float(str(v).strip())) != 0 else 0
+        except Exception:
+            labels[i] = 0
+        stripped.append(rr)
+    return stripped, labels
+
+
 def _sanitize_selected_indices(
     selected: object,
     n: int,
@@ -185,13 +203,16 @@ def run_active_search(
     batch_size: int,
     seed: int,
     seed_queries: int,
+    initial_history: list[dict[str, object]] | None = None,
+    initial_already_selected: set[int] | None = None,
+    start_round: int = 0,
 ) -> dict:
     n = int(len(pool_rows))
-    already_selected: set[int] = set()
-    history: list[dict[str, object]] = []
+    already_selected: set[int] = set(initial_already_selected or set())
+    history: list[dict[str, object]] = [dict(r) for r in (initial_history or [])]
 
-    rng = np.random.default_rng(int(seed))
-    if seed_queries > 0 and n > 0:
+    rng = np.random.default_rng(int(seed) + int(start_round))
+    if seed_queries > 0 and n > 0 and not history:
         seed_queries = int(min(seed_queries, n))
         seed_idx = rng.choice(n, size=seed_queries, replace=False).tolist()
         seed_idx = _sanitize_selected_indices(seed_idx, n=n, already_selected=already_selected, batch_size=seed_queries, seed=seed)
@@ -208,10 +229,18 @@ def run_active_search(
     hit_curve_queries: list[int] = [total_queries]
     hit_curve_hits: list[int] = [cumulative_hits]
 
+    executed_rounds = 0
     for t in range(int(rounds)):
-        selected_raw = select_fn(pool_rows, history, int(batch_size), int(seed) + t)
+        if len(already_selected) >= n:
+            break
+        global_round = int(start_round) + int(t)
+        selected_raw = select_fn(pool_rows, history, int(batch_size), int(seed) + global_round)
         selected = _sanitize_selected_indices(
-            selected_raw, n=n, already_selected=already_selected, batch_size=int(batch_size), seed=int(seed) + 10_000 + t
+            selected_raw,
+            n=n,
+            already_selected=already_selected,
+            batch_size=int(batch_size),
+            seed=int(seed) + 10_000 + global_round,
         )
         hits_t = int(labels[np.asarray(selected, dtype=np.int64)].sum()) if selected else 0
 
@@ -226,16 +255,19 @@ def run_active_search(
         total_queries += int(len(selected))
         hit_curve_queries.append(total_queries)
         hit_curve_hits.append(cumulative_hits)
+        executed_rounds += 1
 
         per_round.append(
             {
-                "round": int(t + 1),
+                "round": int(global_round + 1),
                 "queried": int(len(selected)),
                 "hits": int(hits_t),
                 "cumulative_hits": int(cumulative_hits),
                 "precision_at_batch": float(hits_t / max(1, int(len(selected)))),
             }
         )
+        if cumulative_hits >= int(labels.sum()):
+            break
 
     top_k = int(labels.sum())
     recall = float(cumulative_hits / max(1, top_k))
@@ -247,10 +279,18 @@ def run_active_search(
         area += (x1 - x0) * (y0 + y1) / 2.0
     auc_norm = float(area / max(1.0, float(hit_curve_queries[-1]) * float(max(1, top_k))))
 
+    queried_records: list[dict[str, int]] = []
+    for r in history:
+        try:
+            queried_records.append({"candidate_index": int(r["candidate_index"]), "label": int(r["label"])})
+        except Exception:
+            continue
+
     return {
         "pool_size": int(n),
         "top_k": int(top_k),
-        "rounds": int(rounds),
+        "rounds": int(start_round + executed_rounds),
+        "executed_rounds": int(executed_rounds),
         "batch_size": int(batch_size),
         "seed": int(seed),
         "seed_queries": int(seed_queries),
@@ -261,7 +301,52 @@ def run_active_search(
         "auc_normalized": auc_norm,
         "hit_curve": {"queries": hit_curve_queries, "hits": hit_curve_hits},
         "round_details": per_round,
+        "queried_records": queried_records,
     }
+
+
+def _build_history_from_records(
+    pool_rows: list[dict[str, object]],
+    records: list[dict[str, int]],
+) -> tuple[list[dict[str, object]], set[int], int]:
+    history: list[dict[str, object]] = []
+    already_selected: set[int] = set()
+    total_hits = 0
+    n = len(pool_rows)
+    for rec in records:
+        try:
+            i = int(rec.get("candidate_index", -1))
+            lab = int(rec.get("label", 0))
+        except Exception:
+            continue
+        if i < 0 or i >= n or i in already_selected:
+            continue
+        row = dict(pool_rows[i])
+        row["candidate_index"] = i
+        row["label"] = 1 if lab != 0 else 0
+        history.append(row)
+        already_selected.add(i)
+        total_hits += int(row["label"])
+    return history, already_selected, total_hits
+
+
+def _load_state(path: str) -> dict:
+    p = Path(path).expanduser().resolve()
+    if not p.exists():
+        return {}
+    try:
+        payload = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return payload
+
+
+def _save_state(path: str, payload: dict) -> None:
+    p = Path(path).expanduser().resolve()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def main() -> int:
@@ -272,23 +357,45 @@ def main() -> int:
     parser.add_argument("--pool_size", type=int, default=int(os.environ.get("PROJECT3_POOL_SIZE", "5000")))
     parser.add_argument("--top_k", type=int, default=int(os.environ.get("PROJECT3_TOP_K", "1000")))
     parser.add_argument("--batch_size", type=int, default=int(os.environ.get("PROJECT3_BATCH_SIZE", "100")))
-    parser.add_argument("--rounds", type=int, default=int(os.environ.get("PROJECT3_ROUNDS", "10")))
+    parser.add_argument("--rounds", type=int, default=int(os.environ.get("PROJECT3_ROUNDS", "1")))
     parser.add_argument("--seed", type=int, default=int(os.environ.get("PROJECT3_SEED", "42")))
     parser.add_argument("--seed_queries", type=int, default=int(os.environ.get("PROJECT3_SEED_QUERIES", "0")))
     parser.add_argument("--fixed_pool", action="store_true")
     parser.add_argument("--ground_truth_csv", default=os.environ.get("PROJECT3_GROUND_TRUTH_CSV", ""))
+    parser.add_argument("--state_path", default=os.environ.get("PROJECT3_STATE_PATH", ""))
+    parser.add_argument("--resume_state", type=int, default=int(os.environ.get("PROJECT3_RESUME_STATE", "1")))
     args = parser.parse_args()
 
     rows = _read_csv_rows(args.csv)
     csv_name = Path(args.csv).name
     use_fixed = bool(args.fixed_pool) or csv_name.startswith("candidate_pool_")
     pool_rows = list(rows) if use_fixed else _make_candidate_pool(rows, pool_size=int(args.pool_size), seed=int(args.seed))
-    if args.ground_truth_csv:
+
+    pool_rows, inline_labels = _extract_inline_labels(pool_rows)
+    if inline_labels is not None:
+        labels = inline_labels
+    elif args.ground_truth_csv:
         labels = _load_ground_truth_csv(args.ground_truth_csv, n=len(pool_rows))
     else:
         labels = _make_ground_truth_labels(pool_rows, top_k=int(args.top_k))
     select_fn = _load_selection_policy(args.model_dir)
 
+    default_state_path = str(Path(args.model_dir).expanduser().resolve().parent / "outputs" / "active_search_state.json")
+    state_path = args.state_path if args.state_path else default_state_path
+    state = _load_state(state_path) if int(args.resume_state) != 0 else {}
+    record_list: list[dict[str, int]] = []
+    completed_rounds = 0
+    if state:
+        record_list = state.get("queried_records", [])
+        if not isinstance(record_list, list):
+            record_list = []
+        try:
+            completed_rounds = int(state.get("completed_rounds", 0))
+        except Exception:
+            completed_rounds = 0
+
+    history, already_selected, _ = _build_history_from_records(pool_rows, record_list)
+    seed_queries = int(args.seed_queries) if not history else 0
     metrics = run_active_search(
         pool_rows=pool_rows,
         labels=labels,
@@ -296,7 +403,10 @@ def main() -> int:
         rounds=int(args.rounds),
         batch_size=int(args.batch_size),
         seed=int(args.seed),
-        seed_queries=int(args.seed_queries),
+        seed_queries=seed_queries,
+        initial_history=history,
+        initial_already_selected=already_selected,
+        start_round=int(completed_rounds),
     )
 
     output_dir = Path(args.model_dir).expanduser().resolve().parent / "outputs"
@@ -304,7 +414,19 @@ def main() -> int:
     payload = {"metrics": {"test": metrics}}
     metrics_path = output_dir / "metrics.json"
     metrics_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    state_payload = {
+        "completed_rounds": int(metrics.get("rounds", completed_rounds)),
+        "pool_size": int(len(pool_rows)),
+        "top_k": int(labels.sum()),
+        "batch_size": int(args.batch_size),
+        "seed": int(args.seed),
+        "queried_records": metrics.get("queried_records", []),
+        "total_queries": int(metrics.get("total_queries", 0)),
+        "total_hits": int(metrics.get("total_hits", 0)),
+    }
+    _save_state(state_path, state_payload)
     print(f"Metrics saved to {metrics_path}")
+    print(f"State saved to {state_path}")
     return 0
 
 

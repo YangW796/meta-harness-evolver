@@ -70,24 +70,35 @@ def select(candidates, history, batch_size, seed) -> list[int]:
 
 可配置环境变量：
 - `PROJECT3_DATA_ROOT`：数据根目录（默认指向内部路径）
-- `PROJECT3_DATA_CSV`：大 CSV 的路径（默认 `$PROJECT3_DATA_ROOT/merged_results.csv`）
-- `PROJECT3_POOL_SIZE`：候选池大小（默认 5000）
-- `PROJECT3_TOP_K`：好分子数量（默认 1000）
+- `PROJECT3_DATA_CSV`：输入 CSV 路径
+  - 可以是大 CSV（每次按 seed 采样 5000 条）
+  - 也可以是“预生成的候选池文件”（见下面 `compute_x_generate_fix_train_test.py`）
+- `PROJECT3_FIXED_POOL`：=1 时强制把 `PROJECT3_DATA_CSV` 当作“固定候选池”（不再二次采样）
+- `PROJECT3_POOL_SIZE`：候选池大小（默认 5000；仅在输入是大 CSV 且未 fixed_pool 时生效）
+- `PROJECT3_TOP_K`：好分子数量（默认 1000；仅在输入 CSV 不含 label 且未提供 ground_truth 时生效）
 - `PROJECT3_BATCH_SIZE`：每轮查询数（默认 100）
-- `PROJECT3_ROUNDS`：轮数（默认 10，总查询 = rounds * batch_size）
-- `PROJECT3_SEED`：采样与随机的种子（默认 42）
-- `PROJECT3_SEED_QUERIES`：可选的初始随机 seed queries（默认 0）
+- `PROJECT3_ROUNDS`：本次运行执行的轮数（默认 1）
+- `PROJECT3_SEED`：采样与随机种子（默认 42）
+- `PROJECT3_SEED_QUERIES`：可选的初始随机 seed queries（默认 0；仅在第一次运行且历史为空时生效）
+- `PROJECT3_RESUME_STATE`：是否从 state 断点续跑（默认 1）
+- `PROJECT3_STATE_PATH`：自定义 state 文件路径（默认空；空则写到 `harness/outputs/active_search_state.json`）
+- `PROJECT3_GROUND_TRUTH_CSV`：可选的 ground truth CSV（candidate_index,label）；如果输入 CSV 自带 `label` 列则不需要
 
 ### 2) main_fix_train_test_input_output.py：执行 Active Search 并写 metrics.json
 
 文件：[main_fix_train_test_input_output.py](./main_fix_train_test_input_output.py)
 
 它会：
-- 从大 CSV 采样出固定的 5000 条候选池
-- 用 `compute_x` 计算 y 并构造 ground truth top-1000 标签（评测内部使用）
+- 读入候选池：
+  - 输入是大 CSV：按 seed 采样 5000 条
+  - 输入是候选池 CSV：直接使用（可配合 `--fixed_pool` / 文件名前缀自动识别）
+- 读入 ground truth label：
+  - 若输入 CSV 自带 `label` 列：直接使用，并在传给 policy 前剥离 `label`（policy 看不到）
+  - 否则：使用 `compute_x` 计算 y 并构造 top-k 标签（评测内部使用），或从 `--ground_truth_csv` 读取
 - 多轮调用 `harness/model.py` 的 `select(...)` 选择未选过的样本
 - oracle 揭示 label，更新 history，并记录每轮命中与累计命中
 - 写出 `harness/outputs/metrics.json`
+- 断点续跑：默认会读写 `harness/outputs/active_search_state.json`，跨多次运行累积历史并保证不重复选
 
 ### 3) evaluate.py：把 metrics.json 翻译成最终分数
 
@@ -105,7 +116,7 @@ PROJECT3_DATA_CSV=/path/to/merged_results.csv \
 PROJECT3_POOL_SIZE=5000 \
 PROJECT3_TOP_K=1000 \
 PROJECT3_BATCH_SIZE=100 \
-PROJECT3_ROUNDS=10 \
+PROJECT3_ROUNDS=1 \
 PROJECT3_SEED=42 \
 bash project/project-3/harness_run_script.sh project/project-3/hoss-evolution/best/current
 ```
@@ -119,6 +130,36 @@ python project/project-3/main_fix_train_test_input_output.py \
   --pool_size 5000 \
   --top_k 1000 \
   --batch_size 100 \
-  --rounds 10 \
+  --rounds 1 \
   --seed 42
+```
+
+---
+
+## 推荐：先预生成“带 label 的候选池文件”（单文件）
+
+文件：[compute_x_generate_fix_train_test.py](./compute_x_generate_fix_train_test.py)
+
+它会从大 CSV 采样 5000 条，并把 `label`（top-1000）直接写回同一个 CSV 文件：
+
+```bash
+python project/project-3/compute_x_generate_fix_train_test.py \
+  --csv /path/to/merged_results.csv \
+  --pool_size 5000 \
+  --top_k 1000 \
+  --seed 42 \
+  --out /path/to/out_dir
+```
+
+输出文件示例：
+- `candidate_pool_labeled_top1000_n5000_seed42.csv`（包含原始列 + `label` 列）
+
+然后用这个文件跑 active search（不需要 `PROJECT3_GROUND_TRUTH_CSV`）：
+
+```bash
+PROJECT3_DATA_CSV=/path/to/out_dir/candidate_pool_labeled_top1000_n5000_seed42.csv \
+PROJECT3_FIXED_POOL=1 \
+PROJECT3_ROUNDS=1 \
+PROJECT3_RESUME_STATE=1 \
+bash project/project-3/harness_run_script.sh project/project-3/hoss-evolution/best/current
 ```

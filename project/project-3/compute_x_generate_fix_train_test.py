@@ -73,18 +73,19 @@ def main():
 
     out_dir = Path(args.out).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
-    pool_path = out_dir / f"candidate_pool_n{len(pool_rows)}_seed{int(args.seed)}.csv"
-    gt_path = out_dir / f"ground_truth_top{k}_n{len(pool_rows)}_seed{int(args.seed)}.csv"
+    out_path = out_dir / f"candidate_pool_labeled_top{k}_n{len(pool_rows)}_seed{int(args.seed)}.csv"
 
-    _write_rows(pool_path, fieldnames=fieldnames, rows=pool_rows)
-    with gt_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["candidate_index", "label"])
-        writer.writeheader()
-        for i, lab in enumerate(labels.tolist()):
-            writer.writerow({"candidate_index": int(i), "label": int(lab)})
+    labeled_fieldnames = list(fieldnames)
+    if "label" not in labeled_fieldnames:
+        labeled_fieldnames.append("label")
+    labeled_rows: list[dict[str, object]] = []
+    for r, lab in zip(pool_rows, labels.tolist()):
+        rr = dict(r)
+        rr["label"] = int(lab)
+        labeled_rows.append(rr)
+    _write_rows(out_path, fieldnames=labeled_fieldnames, rows=labeled_rows)
 
-    print(f"Saved candidate pool: {pool_path}")
-    print(f"Saved ground truth labels: {gt_path}")
+    print(f"Saved labeled candidate pool: {out_path}")
 
 
 if __name__ == "__main__":
