@@ -31,6 +31,8 @@ PROJECT3_BATCH_SIZE="${PROJECT3_BATCH_SIZE:-100}"
 PROJECT3_ROUNDS="${PROJECT3_ROUNDS:-10}"
 PROJECT3_SEED="${PROJECT3_SEED:-42}"
 PROJECT3_SEED_QUERIES="${PROJECT3_SEED_QUERIES:-0}"
+PROJECT3_FIXED_POOL="${PROJECT3_FIXED_POOL:-0}"
+PROJECT3_GROUND_TRUTH_CSV="${PROJECT3_GROUND_TRUTH_CSV:-}"
 
 if [[ -z "$PROJECT3_DATA_CSV" || ! -f "$PROJECT3_DATA_CSV" ]]; then
   echo "CSV not found: $PROJECT3_DATA_CSV"
@@ -42,13 +44,28 @@ if [[ ! -f "$PROJECT3_MODEL_IMPL_PATH" ]]; then
   echo "Model file not found: $PROJECT3_MODEL_IMPL_PATH"
   exit 2
 fi
-"$PYTHON_BIN" "$PROJECT_MAIN" \
-  --mode active_search \
-  --csv "$PROJECT3_DATA_CSV" \
-  --model_dir "$PROJECT3_MODEL_IMPL_PATH" \
-  --pool_size "$PROJECT3_POOL_SIZE" \
-  --top_k "$PROJECT3_TOP_K" \
-  --batch_size "$PROJECT3_BATCH_SIZE" \
-  --rounds "$PROJECT3_ROUNDS" \
-  --seed "$PROJECT3_SEED" \
+
+if [[ -n "$PROJECT3_GROUND_TRUTH_CSV" && ! -f "$PROJECT3_GROUND_TRUTH_CSV" ]]; then
+  echo "Ground truth CSV not found: $PROJECT3_GROUND_TRUTH_CSV"
+  exit 2
+fi
+
+ARGS=(
+  "$PYTHON_BIN" "$PROJECT_MAIN"
+  --mode active_search
+  --csv "$PROJECT3_DATA_CSV"
+  --model_dir "$PROJECT3_MODEL_IMPL_PATH"
+  --pool_size "$PROJECT3_POOL_SIZE"
+  --top_k "$PROJECT3_TOP_K"
+  --batch_size "$PROJECT3_BATCH_SIZE"
+  --rounds "$PROJECT3_ROUNDS"
+  --seed "$PROJECT3_SEED"
   --seed_queries "$PROJECT3_SEED_QUERIES"
+)
+if [[ "$PROJECT3_FIXED_POOL" == "1" ]]; then
+  ARGS+=(--fixed_pool)
+fi
+if [[ -n "$PROJECT3_GROUND_TRUTH_CSV" ]]; then
+  ARGS+=(--ground_truth_csv "$PROJECT3_GROUND_TRUTH_CSV")
+fi
+"${ARGS[@]}"

@@ -109,6 +109,32 @@ def _make_ground_truth_labels(pool_rows: list[dict[str, object]], top_k: int) ->
     return labels
 
 
+def _load_ground_truth_csv(path: str, n: int) -> np.ndarray:
+    p = Path(path).expanduser().resolve()
+    with p.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            raise ValueError(f"ground_truth CSV missing header: {p}")
+        required = {"candidate_index", "label"}
+        missing = required - set(reader.fieldnames)
+        if missing:
+            raise ValueError(f"ground_truth CSV missing columns {sorted(missing)}: {p}")
+        labels = np.zeros((n,), dtype=np.int8)
+        seen = 0
+        for r in reader:
+            try:
+                i = int(float(str(r.get("candidate_index", "")).strip()))
+                lab = int(float(str(r.get("label", "")).strip()))
+            except Exception:
+                continue
+            if 0 <= i < n:
+                labels[i] = 1 if lab != 0 else 0
+                seen += 1
+        if seen == 0:
+            raise ValueError(f"ground_truth CSV contains no valid rows: {p}")
+    return labels
+
+
 def _sanitize_selected_indices(
     selected: object,
     n: int,
@@ -241,7 +267,7 @@ def run_active_search(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["active_search"], default="active_search")
-    parser.add_argument("--csv", required=True, help="large candidate CSV path")
+    parser.add_argument("--csv", required=True, help="large CSV path or prebuilt candidate_pool CSV path")
     parser.add_argument("--model_dir", default="model.py", help="selection policy implementation file")
     parser.add_argument("--pool_size", type=int, default=int(os.environ.get("PROJECT3_POOL_SIZE", "5000")))
     parser.add_argument("--top_k", type=int, default=int(os.environ.get("PROJECT3_TOP_K", "1000")))
@@ -249,11 +275,18 @@ def main() -> int:
     parser.add_argument("--rounds", type=int, default=int(os.environ.get("PROJECT3_ROUNDS", "10")))
     parser.add_argument("--seed", type=int, default=int(os.environ.get("PROJECT3_SEED", "42")))
     parser.add_argument("--seed_queries", type=int, default=int(os.environ.get("PROJECT3_SEED_QUERIES", "0")))
+    parser.add_argument("--fixed_pool", action="store_true")
+    parser.add_argument("--ground_truth_csv", default=os.environ.get("PROJECT3_GROUND_TRUTH_CSV", ""))
     args = parser.parse_args()
 
     rows = _read_csv_rows(args.csv)
-    pool_rows = _make_candidate_pool(rows, pool_size=int(args.pool_size), seed=int(args.seed))
-    labels = _make_ground_truth_labels(pool_rows, top_k=int(args.top_k))
+    csv_name = Path(args.csv).name
+    use_fixed = bool(args.fixed_pool) or csv_name.startswith("candidate_pool_")
+    pool_rows = list(rows) if use_fixed else _make_candidate_pool(rows, pool_size=int(args.pool_size), seed=int(args.seed))
+    if args.ground_truth_csv:
+        labels = _load_ground_truth_csv(args.ground_truth_csv, n=len(pool_rows))
+    else:
+        labels = _make_ground_truth_labels(pool_rows, top_k=int(args.top_k))
     select_fn = _load_selection_policy(args.model_dir)
 
     metrics = run_active_search(
