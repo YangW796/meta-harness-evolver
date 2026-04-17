@@ -125,10 +125,20 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
     prompt_prefix = cfg.proposer_prompt_prefix
     if prompt_prefix and not prompt_prefix.endswith("\n"):
         prompt_prefix += "\n\n"
+    harness_device = str(os.environ.get("HARNESS_DEVICE", "")).strip().lower()
+    try:
+        num_gpus = int(str(os.environ.get("EVOLVER_NUM_GPUS", "0")).strip() or "0")
+    except Exception:
+        num_gpus = 0
+    if harness_device == "cuda" and num_gpus > 0:
+        hardware_hint = f"## Hardware\n- Available GPUs: {num_gpus}\n- You may use CUDA where appropriate.\n"
+    else:
+        hardware_hint = "## Hardware\n- CPU only. Do NOT use CUDA/GPU-specific code.\n"
     proposer_task = f"""{prompt_prefix}You are the Evolution Proposer for an AI4S (AI for Science) project.
 
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
+{hardware_hint}
 ## Your Workspace
 - Evolution history: {paths.workspace}/candidates/
 - Current best codebase: {paths.workspace}/best/current/

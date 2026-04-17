@@ -27,13 +27,29 @@ export NEXAU_ENABLE_RUN_SHELL_COMMAND="0"
 # Default: test mode off (set to 1 for quick dry run without real proposer edits)
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
+USE_GPU="${USE_GPU:-1}"
+GPU_COUNT="0"
+if command -v nvidia-smi >/dev/null 2>&1; then
+  GPU_COUNT="$(nvidia-smi -L 2>/dev/null | grep -c '^GPU ' || true)"
+fi
+if [[ "$GPU_COUNT" == "0" ]]; then
+  if compgen -G "/dev/nvidia[0-9]*" >/dev/null; then
+    GPU_COUNT="$(ls -1 /dev/nvidia[0-9]* 2>/dev/null | wc -l | tr -d ' ')"
+  fi
+fi
+
 if [[ -z "${HARNESS_DEVICE:-}" ]]; then
-  USE_GPU="${USE_GPU:-1}"
-  if [[ "$USE_GPU" == "1" ]]; then
+  if [[ "$USE_GPU" == "1" && "${GPU_COUNT:-0}" != "0" ]]; then
     export HARNESS_DEVICE="cuda"
   else
     export HARNESS_DEVICE="cpu"
   fi
+fi
+
+if [[ "${HARNESS_DEVICE:-}" == "cuda" && "$USE_GPU" == "1" && "${GPU_COUNT:-0}" != "0" ]]; then
+  export EVOLVER_NUM_GPUS="$GPU_COUNT"
+else
+  export EVOLVER_NUM_GPUS="0"
 fi
 export HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
