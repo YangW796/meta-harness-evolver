@@ -27,6 +27,7 @@ PROJECT2_DATA_CSV="${PROJECT2_DATA_CSV:-$PROJECT2_DATA_ROOT/merged_results.csv}"
 PROJECT2_MODEL_PATH="${PROJECT2_MODEL_PATH:-$HARNESS_DIR/iptm_model.pt}"
 PROJECT2_MODEL_IMPL_PATH="$HARNESS_DIR/model.py"
 PROJECT2_TOP_RATIO="${PROJECT2_TOP_RATIO:-0.1}"
+PROJECT2_SPLIT_FILE="${PROJECT2_SPLIT_FILE:-$(dirname "$PROJECT2_DATA_CSV")/train_test_split.csv}"
 HARNESS_DEVICE="${HARNESS_DEVICE:-cpu}"
 HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
 
@@ -45,7 +46,11 @@ if [[ ! -f "$PROJECT2_MODEL_IMPL_PATH" ]]; then
   echo "Model file not found: $PROJECT2_MODEL_IMPL_PATH"
   exit 2
 fi
-
+if [[ ! -f "$PROJECT2_SPLIT_FILE" ]]; then
+  echo "Split file not found: $PROJECT2_SPLIT_FILE"
+  echo "Set PROJECT2_SPLIT_FILE to your fixed train/test split CSV (with a 'split' column)."
+  exit 2
+fi
 "$PYTHON_BIN" "$PROJECT_MAIN" \
   --mode train \
   --csv "$PROJECT2_DATA_CSV" \
@@ -54,4 +59,5 @@ fi
   --top_ratio "$PROJECT2_TOP_RATIO" \
   --device "$HARNESS_DEVICE" \
   --batch_size "$HARNESS_BATCH_SIZE" \
-  --model_dir "$PROJECT2_MODEL_IMPL_PATH"
+  --model_dir "$PROJECT2_MODEL_IMPL_PATH" \
+  --split_file "$PROJECT2_SPLIT_FILE"
