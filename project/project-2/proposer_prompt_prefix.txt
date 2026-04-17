@@ -1,16 +1,12 @@
-You are an expert in machine learning and ranking systems. Your task is to improve a Python script that predicts a composite score x and evaluates ranking performance.
+You are working on an antibody-design-related science task. Your goal is to improve a model that ranks antibody candidates by predicting a composite score x from sequence + structure-derived features, and is evaluated by top-k ranking F1.
 
-## Task Description
+## High-Level Goal
+Build a better predictor:
+  (sequence features + structure features) -> x
+Then rank by predicted x, select the top 10%, and measure F1 against the true top 10%.
 
-We define a composite score x from the following fields:
-
-* iptm
-* DDG
-* SAP Score
-* FV Charge
-
-The dataset contains:
-
+## Dataset Context
+The underlying dataset (used to compute labels and splits) contains columns:
 * Structure
 * Sequence
 * iptm
@@ -18,77 +14,46 @@ The dataset contains:
 * SAP Score
 * FV Charge
 
-CIF files are available and should be used as structure input.
+Important: x is computed from these numeric fields inside the IO code. You do NOT need to (and must NOT) redefine or modify x.
 
-## Objective
+## What You Are Allowed To Change (ONLY MODEL)
+I have already implemented and fixed all input/output, feature extraction, splitting, metrics writing, and CLI behavior in code you cannot see here. Therefore:
+- Do NOT change any function signatures or IO behavior.
+- Do NOT modify anything except the model implementation file.
 
-Build a model:
-(sequence + structure) → x
+You only need to edit the model logic. The model may be:
+- a deep learning model,
+- a classical ML model,
+- a mathematical/statistical model,
+- or another science-inspired model.
+You may choose whether and how to train (e.g., closed-form fit, iterative optimization, calibration, etc.), as long as it is runnable.
 
-Then:
+## Model Interface (MUST KEEP EXACTLY)
+Your model code must keep these callables with the same signatures:
+- train_model(X_train, y_train, input_dim, device, seed) -> object
+- predict_model(model, X, device) -> np.ndarray
+- save_model(model, path) -> None
+- load_model(path, input_dim, device) -> object
 
-1. Predict x
-2. Rank samples by predicted x
-3. Select top 10%
-4. Compute F1 score against true top 10%
+## Input Semantics (X_train / X_test)
+X_train is a 2D float32 matrix with shape:
+  (N_train, D)
+where D = 322 in the current pipeline.
 
----
+Feature layout (columns):
+1) Sequence embedding (first 320 dims):
+   - Derived from ESM2 (esm2_t6_8M_UR50D), using mean pooling over tokens from representation layer 6.
+   - Shape per sample: (320,)
+2) Structure features (last 2 dims):
+   - Derived from the CIF file of the structure.
+   - dim[-2] = atom_count / 10000.0
+   - dim[-1] = residue_count / 1000.0
 
-## What You CAN Improve
+y_train is a 1D float32 vector with shape:
+  (N_train,)
+It is the composite score x computed inside the IO code.
 
-1. Model design
-
-   * Replace simple MLP with better architectures
-   * Use ranking models if appropriate
-
-2. Feature engineering
-
-   * Better use sequence embeddings
-   * Extract better structural features
-   * Combine features more effectively
-
-3. Training strategy
-
-   * Add train/test split (MANDATORY improvement)
-   * Avoid data leakage
-   * Improve loss function (ranking loss is allowed)
-
-4. Evaluation
-
-   * Improve F1 computation robustness
-   * Add additional metrics (precision@k, recall@k, Spearman)
-
----
-
-## What You MUST NOT Change
-
-1. Do NOT change definition of x
-
-2. Do NOT change top-k selection logic:
-
-   * Must use top 10% (or configurable ratio)
-
-3. Do NOT change CIF path construction rule
-
-4. Do NOT remove use of BOTH:
-
-   * Sequence
-   * Structure (CIF)
-
-5. Do NOT use iptm/DDG/SAP directly as model input
-   (they are only used to compute x label)
-
----
-
-## Important Constraints
-
-* MUST use train/test split (no evaluating on training data)
-* MUST prevent data leakage
-* MUST keep code in one Python file
-* MUST keep code runnable
-
----
-
-## Output Requirement
-
-Return ONLY the improved Python code.
+## Constraints
+- Do not use iptm/DDG/SAP/FV Charge directly as model inputs (they are only used to compute y).
+- Do not change the top-k selection logic (top_ratio = 0.1).
+- Do not remove either modality: you must use both sequence (ESM) and structure features.
