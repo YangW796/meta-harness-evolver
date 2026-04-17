@@ -24,7 +24,7 @@ else:
             sys.path.insert(0, str(p))
             break
 
-from index import compute_x0
+from index import compute_x
 
 try:
     from tqdm import tqdm  # type: ignore
@@ -132,7 +132,7 @@ def train(
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
-    df["x"] = compute_x0(df)
+    df["x"] = compute_x(df)
     sequences = df["Sequence"].tolist()
     structures = df["Structure"].tolist()
     y_all = torch.tensor(df["x"].values, dtype=torch.float32)

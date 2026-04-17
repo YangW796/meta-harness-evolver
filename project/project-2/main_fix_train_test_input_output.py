@@ -24,7 +24,7 @@ else:
             sys.path.insert(0, str(p))
             break
 
-from index import compute_x0
+from index import compute_x
 
 try:
     from tqdm import tqdm  # type: ignore
@@ -161,7 +161,7 @@ def train(
 ) -> dict:
     model_api = _load_model_api(model_dir)
     df = _load_with_split(csv_path, split_file)
-    df["x"] = compute_x0(df)
+    df["x"] = compute_x(df)
 
     split_values = df["split"].astype(str).str.lower()
     train_idx = np.flatnonzero(split_values == "train")

@@ -24,7 +24,7 @@ else:
             sys.path.insert(0, str(p))
             break
 
-from index import compute_x0
+from index import compute_x
 
 try:
     from tqdm import tqdm  # type: ignore
@@ -150,7 +150,7 @@ def train(
             raise ValueError(f"split_file missing 'Structure' column for merge: {split_path}")
         df = df.merge(split_df[["Structure", "split"]], on="Structure", how="inner")
 
-    df["x"] = compute_x0(df)
+    df["x"] = compute_x(df)
     sequences = df["Sequence"].tolist()
     structures = df["Structure"].tolist()
     y_all = torch.tensor(df["x"].values, dtype=torch.float32)
