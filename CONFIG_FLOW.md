@@ -105,6 +105,94 @@ FEISHU_DRY_RUN=1
 - `HARNESS_BATCH_SIZE`：训练脚本里用到的 batch size（例如 ESM embedding 的 batch）。
 - `PROPOSER_MAX_ITERATIONS` / `PROPOSER_TIMEOUT_SECONDS`：控制 proposer 的迭代次数与超时。
 
+### 3.6 环境变量速查表（按功能分类）
+
+下面汇总本仓库会用到的环境变量（含默认值与用途），便于你集中配置与排查问题。
+
+#### 3.6.1 LLM / NexAU（proposer 子 agent）
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `LLM_MODEL` | 无（必填） | proposer 使用的模型名（NexAU 子进程会检查，不存在会报错）。 |
+| `LLM_API_KEY` | 无（必填） | proposer 使用的 API key（NexAU 子进程会检查，不存在会报错）。 |
+| `LLM_BASE_URL` | 空 | 可选：兼容 OpenAI 的自建/代理接口 base url（不需要可不配）。 |
+| `LLM_TEMPERATURE` | `0.7` | proposer 采样温度。 |
+| `LLM_MAX_TOKENS` | `4096` | proposer 单次输出 token 上限。 |
+| `NEXAU_CODE_AGENT_DIR` | `examples/code_agent` | NexAU code agent 资源目录（需包含 `system-workflow.md` 或 `systemprompt.md` 等）。 |
+| `NEXAU_ENABLE_RUN_SHELL_COMMAND` | 项目脚本常设 `0` | 可选：是否允许 NexAU 运行 shell 命令（由 NexAU 侧解释；仓库里通常设为 0 以收敛权限）。 |
+| `PROPOSER_PROMPT_PREFIX` | 空 | 追加到 proposer prompt 开头的“项目背景/约束”。每个 project 的 `run_evolution.sh` 通常会从 `proposer_prompt_prefix.txt` 读入并 export。 |
+
+#### 3.6.2 外循环 / 评测入口（scripts/run_evolution.py）
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `EVOLVER_WORKSPACE` | `~/hoss-evolution` | 外循环 workspace 目录（默认由 [scripts/shared.py](./scripts/shared.py) 提供）。各 project 通常会在自己的 `run_evolution.sh` 里覆盖。 |
+| `EVOLVER_ITERATIONS` | `1` | `scripts/run_evolution.py --iterations` 的默认值（不传 CLI 参数时生效）。 |
+| `EVALUATE_SCRIPT` | 空 | `scripts/run_evolution.py --evaluate-script` 的默认值（不传 CLI 参数时生效）。 |
+| `EVOLVER_TEST_MODE` | `0` | =1 时跳过真实 proposer 改动，改为写入最小变更用于 dry run。 |
+
+#### 3.6.3 Proposer 控制（超时/迭代上限/瓶颈头脑风暴）
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `PROPOSER_MAX_ITERATIONS` | `20` | NexAU proposer 子 agent 最大 tool iteration 数。很多 project 的 `run_evolution.sh` 会设置更大（例如 40）。 |
+| `PROPOSER_TIMEOUT_SECONDS` | 随内部默认（当前约 `300`） | proposer 子进程超时（秒）。如果不设置，则使用 `run_evolution.py` 内部传入的默认超时。 |
+| `EVOLVER_BRAINSTORM_ENABLED` | `1` | 是否启用“瓶颈检测后，给 proposer 更激进 prompt”的模式。 |
+| `EVOLVER_BRAINSTORM_WINDOW` | `10` | 连续多少个 candidate 未提升 best 时触发一次“Brainstorm Mode”。 |
+| `EVOLVER_BRAINSTORM_MIN_DELTA` | `1e-12` | 判定 best 是否“提升”的最小差值阈值（避免浮点误差）。 |
+
+#### 3.6.4 Harness 运行（候选训练/打分脚本）
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `HARNESS_RUN_SCRIPT` | 空 | 每轮 proposer 生成 candidate 后、evaluate 前执行的 bash 脚本路径（调用方式：`bash <script> <candidate_dir>`）。 |
+| `REQUIRE_HARNESS_RUN_SCRIPT` | `0` | =1 时强制必须提供 `HARNESS_RUN_SCRIPT`，否则该轮失败。 |
+| `HARNESS_RUN_TIMEOUT_SECONDS` | `600` | 运行 `HARNESS_RUN_SCRIPT` 的超时（秒）。各 project 通常会设大一些（例如 3600）。 |
+| `HARNESS_RUN_LOG_HEARTBEAT_SECONDS` | `5` | harness 运行日志心跳（秒），用于长时间运行时定期刷新日志。 |
+| `HARNESS_DEVICE` | 空（由项目脚本设置） | 训练脚本使用的设备提示（常见：`cpu`/`cuda`/`auto`）。各 project 的 `run_evolution.sh` 通常会自动探测 GPU 后设置。 |
+| `HARNESS_BATCH_SIZE` | 项目脚本常设 `16` | 训练/特征提取的 batch size（例如 ESM embedding 编码 batch）。 |
+| `EVOLVER_NUM_GPUS` | `0` | 可用 GPU 数（由 project 的 `run_evolution.sh` 探测后设置；proposer prompt 也会用来提示硬件）。 |
+
+外循环会在调用 `HARNESS_RUN_SCRIPT` 时注入（若未提前设置则 `setdefault`）：
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `CANDIDATE_DIR` | 自动注入 | 当前 candidate 目录（同脚本 argv[1]）。 |
+| `CANDIDATE_NUM` | 自动注入 | 当前 candidate 编号。 |
+| `EVOLVER_WORKSPACE` | 自动注入 | 当前 workspace 路径。 |
+
+#### 3.6.5 Feishu/Lark 推送（可选）
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `FEISHU_POST_ENABLED` | `1` | 是否推送（=1 推送；否则跳过）。很多 project 的 `run_evolution.sh` 会显式设为 0。 |
+| `FEISHU_POST_TIMEOUT_SECONDS` | `30` | 推送请求超时（秒）。 |
+| `FEISHU_DRY_RUN` | 空 | =1 时只打印消息不发送。 |
+| `FEISHU_APP_ID` | 空 | Feishu/Lark app id。 |
+| `FEISHU_APP_SECRET` | 空 | Feishu/Lark app secret。 |
+| `FEISHU_RECEIVE_ID` | 空 | 接收方 id（open_id/chat_id 等）。 |
+| `FEISHU_RECEIVE_ID_TYPE` | 空 | 接收方 id 类型（例如 `open_id`）。 |
+
+#### 3.6.6 Project-3（Active Search）相关
+
+以下变量由 [project/project-3/harness_run_script.sh](./project/project-3/harness_run_script.sh) 使用：
+
+| 变量 | 默认值 | 用途/说明 |
+|---|---|---|
+| `PYTHON_BIN` | `python` | 运行 project-3 主脚本的 python 命令。 |
+| `PROJECT3_DATA_ROOT` | 项目脚本内置路径 | 数据根目录（默认是内部路径；通常你会覆盖）。 |
+| `PROJECT3_DATA_CSV` | `$PROJECT3_DATA_ROOT/merged_results.csv` | 输入 CSV 路径；可以是大 CSV 或预生成的候选池 CSV。 |
+| `PROJECT3_FIXED_POOL` | `0` | =1 时把 `PROJECT3_DATA_CSV` 当作固定候选池（不再采样 5000 条）。 |
+| `PROJECT3_POOL_SIZE` | `5000` | 候选池大小（仅当输入是大 CSV 且未 fixed_pool 时生效）。 |
+| `PROJECT3_TOP_RATIO` | `0.2` | 好分子比例（仅当输入 CSV 不含 label 且未提供 ground truth 时生效）。 |
+| `PROJECT3_GROUND_TRUTH_CSV` | 空 | 可选：外部 ground truth（`candidate_index,label`）。若输入 CSV 自带 `label` 列则不需要。 |
+| `PROJECT3_BATCH_SIZE` | `100` | 每轮选择/查询数量。 |
+| `PROJECT3_ROUNDS` | `1` | 本次运行执行轮数（默认 1，便于“改一次 code 跑一次 100-query”）。 |
+| `PROJECT3_SEED` | `42` | 采样与随机种子。 |
+| `PROJECT3_SEED_QUERIES` | `0` | 冷启动随机查询数（仅当历史为空时生效）。 |
+| `PROJECT3_RESUME_STATE` | `1` | 是否从 state 断点续跑。 |
+| `PROJECT3_STATE_PATH` | 空 | 自定义 state 文件路径；空则默认写到 `harness/outputs/active_search_state.json`（注意：默认是“每个 candidate 一份 state”，如需跨 candidate 累加请显式设置统一路径）。 |
+
 ---
 
 ## 4) 如何新建一个 project（需要哪些文件、各自做什么）
@@ -192,4 +280,3 @@ bash project/*/run_evolution.sh > run_all.log 2>&1
 外循环会持续写入 workspace（通常在 `project/<name>/hoss-evolution/`）并生成大量候选与日志。为了保证源码目录长期保持干净可复现，建议：
 - 复制整个 `project/<name>/` 到一个新目录再跑（例如 `project/<name>-run/`）
 - 把数据路径/环境变量配置在新目录对应的 `run_evolution.sh` 里
-
