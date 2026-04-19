@@ -84,6 +84,77 @@ def get_best_candidate(paths: EvolverPaths) -> dict | None:
     return None
 
 
+def _parse_candidate_num(name: str) -> int | None:
+    if not name.startswith("candidate_"):
+        return None
+    try:
+        return int(name.split("_", 1)[1])
+    except Exception:
+        return None
+
+
+def _detect_bottleneck(history: list[dict], best: dict | None) -> dict | None:
+    enabled = os.environ.get("EVOLVER_BRAINSTORM_ENABLED", "1") == "1"
+    if not enabled:
+        return None
+    try:
+        window = int(os.environ.get("EVOLVER_BRAINSTORM_WINDOW", "10"))
+    except Exception:
+        window = 10
+    window = max(1, window)
+    try:
+        min_delta = float(os.environ.get("EVOLVER_BRAINSTORM_MIN_DELTA", "1e-12"))
+    except Exception:
+        min_delta = 1e-12
+
+    if not best or "final_score" not in best:
+        return None
+    try:
+        best_score = float(best.get("final_score", 0.0))
+    except Exception:
+        return None
+
+    scored: list[tuple[int, float]] = []
+    for h in history:
+        cand_name = str(h.get("candidate", ""))
+        cand_num = _parse_candidate_num(cand_name)
+        if cand_num is None:
+            continue
+        scores = h.get("scores", {})
+        if not isinstance(scores, dict):
+            continue
+        try:
+            s = float(scores.get("final_score", -1e18))
+        except Exception:
+            continue
+        scored.append((cand_num, s))
+
+    if not scored:
+        return None
+    scored.sort(key=lambda x: x[0])
+
+    last_best_idx: int | None = None
+    for i, (_, s) in enumerate(scored):
+        if s >= best_score - min_delta:
+            last_best_idx = i
+    if last_best_idx is None:
+        return None
+
+    stagnation_count = (len(scored) - 1) - last_best_idx
+    if stagnation_count < window:
+        return None
+    if stagnation_count % window != 0:
+        return None
+
+    last_best_candidate_num = scored[last_best_idx][0]
+    return {
+        "window": int(window),
+        "stagnation_count": int(stagnation_count),
+        "best_score": float(best_score),
+        "last_best_candidate_num": int(last_best_candidate_num),
+    }
+
+
 def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) -> dict:
     """
     Spawn the proposer sub-agent to propose a candidate modification.
@@ -110,6 +181,7 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
                 })
 
     best = get_best_candidate(paths)
+    bottleneck = _detect_bottleneck(history, best)
 
     # Spawn the sub-agent
     agent_session_id = str(uuid.uuid4())[:8]
@@ -161,6 +233,21 @@ Your job: Propose ONE targeted modification to the project code or configuration
 - Do NOT do wholesale rewrites — one targeted edit max
 - Make sure Python code is syntactically correct and can run.
 - If you see no clear improvement path, write your reasoning and make ONE small edit anyway
+"""
+    if bottleneck:
+        proposer_task += f"""
+## Bottleneck Detected (Brainstorm Mode)
+Best score has not improved for {bottleneck['stagnation_count']} evaluated candidates (last best: candidate_{bottleneck['last_best_candidate_num']}).
+
+You are allowed to do a larger, more creative change, including:
+- A substantial rewrite of the core logic within the allowed harness file(s)
+- A new algorithmic direction based on lessons from the history
+- A more exploratory policy design (e.g., hybrid explore/exploit, diversity, uncertainty, bandits)
+
+Override: ignore the earlier "one targeted edit max" constraint for this candidate.
+Still ensure the result is runnable and follows the project-specific constraints in the prompt prefix.
+"""
+    proposer_task += f"""
 
 ## History Summary
 Total prior candidates: {len(history)}

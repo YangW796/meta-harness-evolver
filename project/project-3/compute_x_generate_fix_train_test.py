@@ -126,3 +126,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''
+python project/project-3/compute_x_generate_fix_train_test.py \
+  --csv /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli/merged_results.csv \
+  --pool_size 5000 \
+  --top_ratio 0.2 \
+  --split_train_test \
+  --test_ratio 0.2 \
+  --seed 42 \
+  --out /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/data
+
+python project/project-3/compute_x_generate_fix_train_test.py \
+  --csv /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli/merged_results.csv \
+  --pool_size 5000 \
+  --top_ratio 0.2 \
+  --out /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/data
+'''

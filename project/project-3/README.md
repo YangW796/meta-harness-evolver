@@ -74,6 +74,7 @@ def select(candidates, history, batch_size, seed) -> list[int]:
   - 可以是大 CSV（每次按 seed 采样 5000 条）
   - 也可以是“预生成的候选池文件”（见下面 `compute_x_generate_fix_train_test.py`）
 - `PROJECT3_FIXED_POOL`：=1 时强制把 `PROJECT3_DATA_CSV` 当作“固定候选池”（不再二次采样）
+  - 典型场景：`PROJECT3_DATA_CSV` 指向 `compute_x_generate_fix_train_test.py` 预生成的 `candidate_pool_*.csv`（例如 `candidate_pool_labeled_*.csv`）
 - `PROJECT3_POOL_SIZE`：候选池大小（默认 5000；仅在输入是大 CSV 且未 fixed_pool 时生效）
 - `PROJECT3_TOP_RATIO`：好分子比例（默认 0.2；仅在输入 CSV 不含 label 且未提供 ground_truth 时生效）
 - `PROJECT3_BATCH_SIZE`：每轮查询数（默认 100）
@@ -83,6 +84,7 @@ def select(candidates, history, batch_size, seed) -> list[int]:
 - `PROJECT3_RESUME_STATE`：是否从 state 断点续跑（默认 1）
 - `PROJECT3_STATE_PATH`：自定义 state 文件路径（默认空；空则写到 `harness/outputs/active_search_state.json`）
 - `PROJECT3_GROUND_TRUTH_CSV`：可选的 ground truth CSV（candidate_index,label）；如果输入 CSV 自带 `label` 列则不需要
+  - 仅当输入 CSV 不含 `label` 且你不想用 `compute_x + top_ratio` 在运行时现场生成标签时才需要
 
 ### 2) main_fix_train_test_input_output.py：执行 Active Search 并写 metrics.json
 
@@ -157,7 +159,7 @@ python project/project-3/compute_x_generate_fix_train_test.py \
 然后用这个文件跑 active search（不需要 `PROJECT3_GROUND_TRUTH_CSV`）：
 
 ```bash
-PROJECT3_DATA_CSV=/path/to/out_dir/candidate_pool_labeled_top1000_n5000_seed42.csv \
+PROJECT3_DATA_CSV=/path/to/out_dir/candidate_pool_labeled_all_top0p2_n5000_seed42.csv \
 PROJECT3_FIXED_POOL=1 \
 PROJECT3_ROUNDS=1 \
 PROJECT3_RESUME_STATE=1 \
