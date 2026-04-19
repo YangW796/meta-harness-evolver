@@ -61,9 +61,9 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
 
     cmd = ["bash", str(script_path), str(candidate_dir)]
     env = os.environ.copy()
-    env.setdefault("EVOLVER_WORKSPACE", str(workspace))
-    env.setdefault("CANDIDATE_NUM", str(candidate_num))
-    env.setdefault("CANDIDATE_DIR", str(candidate_dir))
+    env["EVOLVER_WORKSPACE"] = str(workspace)
+    env["CANDIDATE_NUM"] = str(candidate_num)
+    env["CANDIDATE_DIR"] = str(candidate_dir)
 
     def _stream_pipe(pipe, prefix: str, fh, lock: threading.Lock) -> None:
         try:

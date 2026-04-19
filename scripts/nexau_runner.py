@@ -54,6 +54,8 @@ def run_proposer_with_nexau(
     }
 
     cmd = [sys.executable, str(Path(__file__).resolve()), "--nexau-proposer-child", str(log_path)]
+    env = os.environ.copy()
+    env["EVOLVER_WORKSPACE"] = str(work_dir)
     try:
         result = subprocess.run(
             cmd,
@@ -61,6 +63,8 @@ def run_proposer_with_nexau(
             capture_output=True,
             text=True,
             timeout=proposer_timeout_seconds,
+            cwd=str(work_dir),
+            env=env,
         )
     except subprocess.TimeoutExpired:
         print(f"[PROPOSER] NexAU proposer timed out after {proposer_timeout_seconds}s")
@@ -265,4 +269,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

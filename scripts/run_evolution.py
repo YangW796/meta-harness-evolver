@@ -63,6 +63,7 @@ def main():
 
     workspace = (args.workspace.expanduser().resolve() if args.workspace else get_workspace())
     paths = EvolverPaths.from_workspace(workspace)
+    os.environ["EVOLVER_WORKSPACE"] = str(paths.workspace)
     cfg = load_config()
 
     print(f"\n{'='*60}")
