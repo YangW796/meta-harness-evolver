@@ -219,6 +219,17 @@ def nexau_proposer_child(log_path: Path) -> int:
                 + "\n".join(f"- {p}" for p in denied)
             )
 
+        enable_run_shell = str(os.environ.get("NEXAU_ENABLE_RUN_SHELL_COMMAND", "0")).strip() == "1"
+
+        def guarded_run_shell_command(*args: object, **kwargs: object) -> object:
+            if not enable_run_shell:
+                cmd = kwargs.get("command", "")
+                return (
+                    "[ACCESS_DENIED] run_shell_command is disabled (NEXAU_ENABLE_RUN_SHELL_COMMAND=0).\n"
+                    f"command: {cmd}"
+                )
+            return run_shell_command(*args, **kwargs)
+
         def complete_task(result: str | None = None, **kwargs: object) -> str:
             payload: dict[str, object] = {}
             if result is not None:
@@ -242,7 +253,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=guarded_read_file),
             Tool.from_yaml(base_dir / "tools/write_file.tool.yaml", binding=write_file),
             Tool.from_yaml(base_dir / "tools/replace.tool.yaml", binding=replace),
-            Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=run_shell_command),
+            Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=guarded_run_shell_command),
             Tool.from_yaml(base_dir / "tools/list_directory.tool.yaml", binding=list_directory),
             Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=guarded_read_many_files),
         ]

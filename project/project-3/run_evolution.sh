@@ -22,8 +22,9 @@ export EVOLVER_WORKSPACE="$WORKSPACE_DIR"
 export HARNESS_RUN_SCRIPT="$PROJECT_DIR/harness_run_script.sh"
 export REQUIRE_HARNESS_RUN_SCRIPT="1"
 export HARNESS_RUN_TIMEOUT_SECONDS="3600"
-export 
+export FEISHU_POST_ENABLED=0
 export NEXAU_ENABLE_RUN_SHELL_COMMAND="0"
+export NEXAU_DENY_READ_PY_GLOBS="${NEXAU_DENY_READ_PY_GLOBS:-*/index.py,index.py}"
 # Default: test mode off (set to 1 for quick dry run without real proposer edits)
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
