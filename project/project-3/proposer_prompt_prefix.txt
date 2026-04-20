@@ -42,6 +42,7 @@ seed:
 
 ## Constraints
 - Do not import or call any hidden scoring function or labels.
+- Do NOT attempt to read or infer the hidden scoring function from project files (especially index.py / compute_x). Treat it as a black box. Your policy must be learned purely from (candidates fields, history labels).
 - Do not return duplicates or already-selected indices; if you do, they will be ignored and replaced.
 - The policy should run fast and be robust even when history is small (including empty at the beginning).
 
