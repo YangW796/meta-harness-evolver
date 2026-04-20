@@ -49,7 +49,7 @@ def select(candidates, history, batch_size, seed) -> list[int]:
 `project/project-3/hoss-evolution/` 是进化工作区，结构与 project-2 类似：
 
 - `best/current/harness/model.py`
-  - 当前最好 policy（每轮候选从这里复制一份作为起点）
+  - 当前最好 policy（默认每轮候选从这里复制一份作为起点；EXPLORE/RESTART 且设置 `EVOLVER_INITIAL_HARNESS_DIR` 时，从初始目录复制）
 - `candidates/candidate_<N>/harness/outputs/metrics.json`
   - 本轮 active search 的指标（total_hits、hit_curve 等）
 - `candidates/candidate_<N>/eval_scores.json`

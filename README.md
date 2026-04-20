@@ -45,7 +45,7 @@ scripts 的职责是“通用外循环”，与具体任务无关；任务差异
 - `harness_run_script.sh`：执行本任务的训练/搜索/推理逻辑，写出 `harness/outputs/metrics.json`
 - `evaluate_project*.py` 或 `evaluate.py`：读取 metrics，输出标准 JSON（最后一行）给外循环
 - `proposer_prompt_prefix.txt`：给 proposer 的任务背景与约束（通常限制“只能改 harness 下某些文件”）
-- `hoss-evolution/best/current/harness/*`：baseline harness（外循环每轮从这里复制作为起点）
+- `hoss-evolution/best/current/harness/*`：baseline harness（默认外循环每轮从这里复制作为起点；EXPLORE/RESTART 且设置 `EVOLVER_INITIAL_HARNESS_DIR` 时，从初始目录复制）
 
 ## 3. 项目结构与文件说明（从主入口逐渐深入）
 
@@ -151,6 +151,7 @@ scripts 的职责是“通用外循环”，与具体任务无关；任务差异
 | `EVOLVER_BRAINSTORM_ENABLED` | `1` | 是否启用“停滞触发探索/重启”逻辑。 |
 | `EVOLVER_BRAINSTORM_MIN_DELTA` | `1e-12` | 判定“提升”的最小分数差。 |
 | `EVOLVER_NOVELTY_LOOKBACK` | `10` | 新颖性约束的回看窗口（读取最近 K 个 `change_record.*`）。 |
+| `EVOLVER_INITIAL_HARNESS_DIR` | 空 | EXPLORE/RESTART 模式下的候选起始 harness 目录；支持相对路径（相对 `EVOLVER_WORKSPACE`）。为空则沿用 `best/current/harness`。 |
 | `EVOLVER_EXPLORE_MIN_LINE_DELTA` | `15` | Explore 轮的最小改动幅度门槛（行变更量不足会自动重提）。 |
 | `EVOLVER_BRAINSTORM_MIN_LINE_DELTA` | `30` | Brainstorm/Restart 的最小改动幅度门槛（行变更量不足会自动重提）。 |
 

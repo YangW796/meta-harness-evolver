@@ -75,13 +75,13 @@ def _recent_tags(candidates_dir: Path, k: int) -> set[str]:
     return tags
 
 
-def _diff_text(best_harness_dir: Path, candidate_harness_dir: Path) -> str:
-    best_files = {f.name: f for f in iter_effective_files(best_harness_dir)} if best_harness_dir.exists() else {}
+def _diff_text(base_harness_dir: Path, candidate_harness_dir: Path) -> str:
+    base_files = {f.name: f for f in iter_effective_files(base_harness_dir)} if base_harness_dir.exists() else {}
     cand_files = {f.name: f for f in iter_effective_files(candidate_harness_dir)} if candidate_harness_dir.exists() else {}
-    all_names = sorted(set(best_files) | set(cand_files))
+    all_names = sorted(set(base_files) | set(cand_files))
     chunks: list[str] = []
     for name in all_names:
-        a = best_files.get(name)
+        a = base_files.get(name)
         b = cand_files.get(name)
         a_text = a.read_text(encoding="utf-8", errors="replace") if a and a.exists() else ""
         b_text = b.read_text(encoding="utf-8", errors="replace") if b and b.exists() else ""
@@ -90,7 +90,7 @@ def _diff_text(best_harness_dir: Path, candidate_harness_dir: Path) -> str:
         diff = difflib.unified_diff(
             a_text.splitlines(keepends=True),
             b_text.splitlines(keepends=True),
-            fromfile=f"best/{name}",
+            fromfile=f"base/{name}",
             tofile=f"candidate/{name}",
             n=3,
         )
@@ -121,8 +121,22 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
     agent_session_id = str(uuid.uuid4())[:8]
 
     best_harness_dir = paths.best_dir / "harness"
-    if best_harness_dir.exists():
-        files = [f.name for f in iter_effective_files(best_harness_dir)]
+    base_harness_dir = best_harness_dir
+    if mode is not None and mode.name in {"explore", "restart"}:
+        raw = str(os.environ.get("EVOLVER_INITIAL_HARNESS_DIR", "")).strip()
+        if raw:
+            p = Path(raw)
+            if not p.is_absolute():
+                p = (paths.workspace / p).resolve()
+            else:
+                p = p.resolve()
+            if p.exists() and p.is_dir():
+                base_harness_dir = p
+            else:
+                print(f"[PROPOSER] EVOLVER_INITIAL_HARNESS_DIR is set but not found: {p}; falling back to best/current/harness")
+
+    if base_harness_dir.exists():
+        files = [f.name for f in iter_effective_files(base_harness_dir)]
         target_files_str = "\n".join([f"   - {f}" for f in files])
     else:
         target_files_str = "   - (No files found, please create the necessary Python scripts or configs)"
@@ -149,6 +163,7 @@ Your job: Propose ONE targeted modification to the project code or configuration
 ## Your Workspace
 - Evolution history: {paths.workspace}/candidates/
 - Current best codebase: {paths.workspace}/best/current/
+- Candidate start point (copied into your output dir before editing): {base_harness_dir}
 - Your output: {paths.workspace}/candidates/candidate_{candidate_num}/harness/
 
 ## What You Must Do
@@ -159,7 +174,7 @@ Your job: Propose ONE targeted modification to the project code or configuration
 4. Propose ONE targeted, specific edit to ONE of the files. The current files include:
 {target_files_str}
 
-5. Copy the current best files to your output dir
+5. Copy the candidate start point files to your output dir
 6. Apply your targeted edit to the ONE file you chose
 7. Write a BRIEF reasoning trace to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
    explaining: what you changed, why, what you expect to improve
@@ -224,12 +239,14 @@ Start now. Read the history first, then propose.
     print(f"[PROPOSER] History: {len(history)} prior candidates")
     if mode is not None:
         print(f"[PROPOSER] Mode: {mode.name}")
+    if base_harness_dir != best_harness_dir:
+        print(f"[PROPOSER] Base harness (EXPLORE/RESTART): {base_harness_dir}")
 
     try:
-        if best_harness_dir.exists():
+        if base_harness_dir.exists():
             import shutil
 
-            for f in iter_effective_files(best_harness_dir):
+            for f in iter_effective_files(base_harness_dir):
                 shutil.copy2(f, candidate_dir / "harness" / f.name)
 
         if os.environ.get("EVOLVER_TEST_MODE") == "1":
@@ -270,7 +287,7 @@ Start now. Read the history first, then propose.
                 max_iterations_override=retry_max_iter,
             )
 
-        if mode is not None and best_harness_dir.exists():
+        if mode is not None and base_harness_dir.exists():
             try:
                 if mode.name in {"brainstorm", "restart"}:
                     threshold = int(os.environ.get("EVOLVER_BRAINSTORM_MIN_LINE_DELTA", "30"))
@@ -303,17 +320,17 @@ Start now. Read the history first, then propose.
                         added += (j2 - j1)
                 return int(added + deleted)
 
-            best_files = {f.name: f for f in iter_effective_files(best_harness_dir)}
+            base_files = {f.name: f for f in iter_effective_files(base_harness_dir)}
             cand_files = {f.name: f for f in iter_effective_files(candidate_dir / "harness")}
             total_delta = 0
-            for name in sorted(set(best_files) | set(cand_files)):
-                total_delta += _line_delta(_file_text(best_files.get(name, Path("/dev/null"))), _file_text(cand_files.get(name, Path("/dev/null"))))
+            for name in sorted(set(base_files) | set(cand_files)):
+                total_delta += _line_delta(_file_text(base_files.get(name, Path("/dev/null"))), _file_text(cand_files.get(name, Path("/dev/null"))))
 
             if threshold > 0 and total_delta < threshold:
                 print(f"[PROPOSER] {mode.name} change too small (line_delta={total_delta} < {threshold}); retrying with stronger instruction")
                 import shutil
 
-                for f in iter_effective_files(best_harness_dir):
+                for f in iter_effective_files(base_harness_dir):
                     shutil.copy2(f, candidate_dir / "harness" / f.name)
 
                 force_task = (
@@ -330,8 +347,8 @@ Start now. Read the history first, then propose.
                     max_iterations_override=force_max_iter,
                 )
 
-        if mode is not None and mode.name in {"explore", "brainstorm", "restart"} and best_harness_dir.exists():
-            diff_txt = _diff_text(best_harness_dir, candidate_dir / "harness")
+        if mode is not None and mode.name in {"explore", "brainstorm", "restart"} and base_harness_dir.exists():
+            diff_txt = _diff_text(base_harness_dir, candidate_dir / "harness")
             new_tags = _extract_tags(diff_txt)
             if not new_tags:
                 new_tags = _extract_tags((candidate_dir / "proposer_reasoning.md").read_text(encoding="utf-8", errors="replace") if (candidate_dir / "proposer_reasoning.md").exists() else "")
@@ -339,7 +356,7 @@ Start now. Read the history first, then propose.
                 print(f"[PROPOSER] novelty too low (tags={sorted(new_tags)} subset of recent tags); retrying with enforced novelty")
                 import shutil
 
-                for f in iter_effective_files(best_harness_dir):
+                for f in iter_effective_files(base_harness_dir):
                     shutil.copy2(f, candidate_dir / "harness" / f.name)
 
                 force_task = (
