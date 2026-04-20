@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import traceback
+import fnmatch
 from pathlib import Path
 
 
@@ -149,6 +150,75 @@ def nexau_proposer_child(log_path: Path) -> int:
         if not base_dir.exists():
             raise RuntimeError(f"NEXAU_CODE_AGENT_DIR does not exist: {base_dir}")
 
+        deny_py_globs = [s.strip() for s in str(os.environ.get("NEXAU_DENY_READ_PY_GLOBS", "")).split(",") if s.strip()]
+        repo_root = Path(__file__).resolve().parents[1]
+
+        def _deny_read_message(path_text: str) -> str:
+            return (
+                "[ACCESS_DENIED] Reading this Python file is blocked by NEXAU_DENY_READ_PY_GLOBS.\n"
+                f"path: {path_text}\n"
+                f"patterns: {deny_py_globs}"
+            )
+
+        def _is_denied_py_path(path_value: object) -> bool:
+            if not deny_py_globs:
+                return False
+            if not isinstance(path_value, str):
+                return False
+            path_text = path_value.strip()
+            if not path_text:
+                return False
+            norm = path_text.replace("\\", "/")
+            if not norm.lower().endswith(".py"):
+                return False
+
+            cands = {norm, Path(norm).name}
+            p = Path(path_text)
+            if p.is_absolute():
+                cands.add(p.resolve().as_posix())
+            else:
+                cands.add((work_dir / p).resolve().as_posix())
+                cands.add((repo_root / p).resolve().as_posix())
+            for cand in cands:
+                for pat in deny_py_globs:
+                    if fnmatch.fnmatch(cand, pat):
+                        return True
+            return False
+
+        def guarded_read_file(*args: object, **kwargs: object) -> object:
+            path_text = kwargs.get("file_path") or kwargs.get("path") or kwargs.get("filepath")
+            if _is_denied_py_path(path_text):
+                return _deny_read_message(str(path_text))
+            return read_file(*args, **kwargs)
+
+        def guarded_read_many_files(*args: object, **kwargs: object) -> object:
+            key = None
+            for k in ("file_paths", "paths", "files"):
+                if isinstance(kwargs.get(k), list):
+                    key = k
+                    break
+            if key is None:
+                return read_many_files(*args, **kwargs)
+            files = kwargs.get(key)
+            if not isinstance(files, list):
+                return read_many_files(*args, **kwargs)
+            denied = [str(p) for p in files if _is_denied_py_path(p)]
+            if not denied:
+                return read_many_files(*args, **kwargs)
+            allowed = [p for p in files if not _is_denied_py_path(p)]
+            if not allowed:
+                return (
+                    "[ACCESS_DENIED] All requested files are blocked by NEXAU_DENY_READ_PY_GLOBS.\n"
+                    + "\n".join(f"- {p}" for p in denied)
+                )
+            new_kwargs = dict(kwargs)
+            new_kwargs[key] = allowed
+            result = read_many_files(*args, **new_kwargs)
+            return (
+                f"{result}\n\n[ACCESS_DENIED] Skipped blocked Python files:\n"
+                + "\n".join(f"- {p}" for p in denied)
+            )
+
         def complete_task(result: str | None = None, **kwargs: object) -> str:
             payload: dict[str, object] = {}
             if result is not None:
@@ -169,12 +239,12 @@ def nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/WebFetch.tool.yaml", binding=web_fetch),
             Tool.from_yaml(base_dir / "tools/write_todos.tool.yaml", binding=write_todos),
             Tool.from_yaml(base_dir / "tools/search_file_content.tool.yaml", binding=search_file_content),
-            Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=read_file),
+            Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=guarded_read_file),
             Tool.from_yaml(base_dir / "tools/write_file.tool.yaml", binding=write_file),
             Tool.from_yaml(base_dir / "tools/replace.tool.yaml", binding=replace),
             Tool.from_yaml(base_dir / "tools/run_shell_command.tool.yaml", binding=run_shell_command),
             Tool.from_yaml(base_dir / "tools/list_directory.tool.yaml", binding=list_directory),
-            Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=read_many_files),
+            Tool.from_yaml(base_dir / "tools/read_many_files.tool.yaml", binding=guarded_read_many_files),
         ]
         complete_task_yaml = base_dir / "tools/complete_task.tool.yaml"
         if complete_task_yaml.exists():
