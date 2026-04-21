@@ -28,19 +28,52 @@ def main() -> int:
         return 1
 
     total_hits = int(test_metrics.get("total_hits", 0))
+    total_queries = int(test_metrics.get("total_queries", 0))
     top_k = int(test_metrics.get("top_k", 0))
-    hit_ratio = float(total_hits / max(1, top_k))
-    score_100 = clamp(hit_ratio, 0.0, 1.0) * 100.0
+
+    delta_hits = test_metrics.get("delta_hits", None)
+    delta_queries = test_metrics.get("delta_queries", None)
+    try:
+        delta_hits = int(delta_hits) if delta_hits is not None else None
+    except Exception:
+        delta_hits = None
+    try:
+        delta_queries = int(delta_queries) if delta_queries is not None else None
+    except Exception:
+        delta_queries = None
+
+    if delta_hits is None or delta_queries is None:
+        round_details = test_metrics.get("round_details", [])
+        if isinstance(round_details, list) and round_details:
+            try:
+                dh = sum(int(it.get("hits", 0)) for it in round_details if isinstance(it, dict))
+                dq = sum(int(it.get("queried", 0)) for it in round_details if isinstance(it, dict))
+                delta_hits = dh
+                delta_queries = dq
+            except Exception:
+                delta_hits = None
+                delta_queries = None
+
+    if delta_hits is None:
+        delta_hits = int(total_hits)
+    if delta_queries is None:
+        delta_queries = int(total_queries)
+
+    delta_precision = float(delta_hits / max(1, delta_queries))
+    score_100 = clamp(delta_precision, 0.0, 1.0) * 100.0
 
     results = {
         "final_score": round(score_100, 1),
         "category_scores": {
-            "total_hits_ratio": round(score_100, 1),
+            "delta_precision": round(score_100, 1),
         },
         "scenario_scores": {
+            "delta_hits": int(delta_hits),
+            "delta_queries": int(delta_queries),
+            "delta_precision": float(delta_precision),
             "total_hits": int(total_hits),
             "top_k": int(top_k),
-            "total_queries": int(test_metrics.get("total_queries", 0)),
+            "total_queries": int(total_queries),
             "pool_size": int(test_metrics.get("pool_size", 0)),
             "batch_size": int(test_metrics.get("batch_size", 0)),
             "rounds": int(test_metrics.get("rounds", 0)),

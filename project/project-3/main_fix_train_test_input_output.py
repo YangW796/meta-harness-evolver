@@ -221,6 +221,8 @@ def run_active_search(
     already_selected: set[int] = set(initial_already_selected or set())
     # history：已查询过的样本记录（行内容 + candidate_index + label），会作为 policy 输入
     history: list[dict[str, object]] = [dict(r) for r in (initial_history or [])]
+    baseline_total_queries = int(len(history))
+    baseline_total_hits = int(sum(int(r.get("label", 0)) for r in history))
 
     # seed_queries：可选的“冷启动”随机查询（仅在历史为空时生效）
     rng = np.random.default_rng(int(seed) + int(start_round))
@@ -297,6 +299,8 @@ def run_active_search(
     top_k = int(labels.sum())
     # recall：累计找到的好分子 / 全部好分子
     recall = float(cumulative_hits / max(1, top_k))
+    delta_queries = int(total_queries - baseline_total_queries)
+    delta_hits = int(cumulative_hits - baseline_total_hits)
 
     # AUC：对 hit curve 做梯形积分（越大表示越早找到更多好分子）
     area = 0.0
@@ -323,6 +327,10 @@ def run_active_search(
         "batch_size": int(batch_size),
         "seed": int(seed),
         "seed_queries": int(seed_queries),
+        "baseline_total_queries": int(baseline_total_queries),
+        "baseline_total_hits": int(baseline_total_hits),
+        "delta_queries": int(delta_queries),
+        "delta_hits": int(delta_hits),
         "total_queries": int(total_queries),
         "total_hits": int(cumulative_hits),
         "recall": recall,
