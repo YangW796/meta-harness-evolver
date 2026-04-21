@@ -53,6 +53,13 @@ y_train is a 1D float32 vector with shape:
   (N_train,)
 It is the composite score x computed inside the IO code.
 
+## Recommended First Step (Data Analysis)
+Before choosing or changing the model, you may first analyze the data distribution and typical feature statistics from X_train/y_train. For example:
+- For y_train: mean/std, min/max, percentiles, skewness (heavy tail / outliers), and whether normalization helps.
+- For X_train: per-dimension mean/std, sparsity (if any), correlation between structure dims and y, and whether standardization is beneficial.
+- Try simple baselines to calibrate expectations: linear regression/ridge, monotonic transforms of y (e.g., log1p if skewed), and a small MLP.
+Then decide a robust modeling strategy for top-k ranking performance.
+
 ## Constraints
 - Do not use iptm/DDG/SAP/FV Charge directly as model inputs (they are only used to compute y).
 - Do not change the top-k selection logic (top_ratio = 0.1).
