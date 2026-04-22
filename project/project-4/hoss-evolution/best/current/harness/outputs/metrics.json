@@ -1,0 +1,123 @@
+{
+  "metrics": {
+    "test": {
+      "pool_size": 200,
+      "top_k": 10,
+      "rounds": 2,
+      "executed_rounds": 1,
+      "batch_size": 10,
+      "seed": 7,
+      "seed_queries": 0,
+      "baseline_total_queries": 10,
+      "baseline_total_hits": 0,
+      "delta_queries": 10,
+      "delta_hits": 0,
+      "total_queries": 20,
+      "total_hits": 0,
+      "recall": 0.0,
+      "auc": 0.0,
+      "auc_normalized": 0.0,
+      "hit_curve": {
+        "queries": [
+          10,
+          20
+        ],
+        "hits": [
+          0,
+          0
+        ]
+      },
+      "round_details": [
+        {
+          "round": 2,
+          "queried": 10,
+          "hits": 0,
+          "cumulative_hits": 0,
+          "precision_at_batch": 0.0
+        }
+      ],
+      "queried_records": [
+        {
+          "candidate_index": 119,
+          "label": 0
+        },
+        {
+          "candidate_index": 157,
+          "label": 0
+        },
+        {
+          "candidate_index": 61,
+          "label": 0
+        },
+        {
+          "candidate_index": 10,
+          "label": 0
+        },
+        {
+          "candidate_index": 28,
+          "label": 0
+        },
+        {
+          "candidate_index": 75,
+          "label": 0
+        },
+        {
+          "candidate_index": 158,
+          "label": 0
+        },
+        {
+          "candidate_index": 106,
+          "label": 0
+        },
+        {
+          "candidate_index": 58,
+          "label": 0
+        },
+        {
+          "candidate_index": 85,
+          "label": 0
+        },
+        {
+          "candidate_index": 166,
+          "label": 0
+        },
+        {
+          "candidate_index": 89,
+          "label": 0
+        },
+        {
+          "candidate_index": 126,
+          "label": 0
+        },
+        {
+          "candidate_index": 15,
+          "label": 0
+        },
+        {
+          "candidate_index": 171,
+          "label": 0
+        },
+        {
+          "candidate_index": 88,
+          "label": 0
+        },
+        {
+          "candidate_index": 111,
+          "label": 0
+        },
+        {
+          "candidate_index": 187,
+          "label": 0
+        },
+        {
+          "candidate_index": 153,
+          "label": 0
+        },
+        {
+          "candidate_index": 29,
+          "label": 0
+        }
+      ]
+    }
+  }
+}
