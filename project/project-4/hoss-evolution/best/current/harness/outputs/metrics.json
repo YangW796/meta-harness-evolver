@@ -1,26 +1,26 @@
 {
   "metrics": {
     "test": {
-      "pool_size": 200,
-      "top_k": 10,
-      "rounds": 2,
+      "pool_size": 5000,
+      "top_k": 169,
+      "rounds": 1,
       "executed_rounds": 1,
       "batch_size": 10,
-      "seed": 7,
+      "seed": 1,
       "seed_queries": 0,
-      "baseline_total_queries": 10,
+      "baseline_total_queries": 0,
       "baseline_total_hits": 0,
       "delta_queries": 10,
       "delta_hits": 0,
-      "total_queries": 20,
+      "total_queries": 10,
       "total_hits": 0,
       "recall": 0.0,
       "auc": 0.0,
       "auc_normalized": 0.0,
       "hit_curve": {
         "queries": [
-          10,
-          20
+          0,
+          10
         ],
         "hits": [
           0,
@@ -29,7 +29,7 @@
       },
       "round_details": [
         {
-          "round": 2,
+          "round": 1,
           "queried": 10,
           "hits": 0,
           "cumulative_hits": 0,
@@ -38,83 +38,43 @@
       ],
       "queried_records": [
         {
-          "candidate_index": 119,
+          "candidate_index": 3143,
           "label": 0
         },
         {
-          "candidate_index": 157,
+          "candidate_index": 1817,
           "label": 0
         },
         {
-          "candidate_index": 61,
+          "candidate_index": 3568,
           "label": 0
         },
         {
-          "candidate_index": 10,
+          "candidate_index": 1156,
           "label": 0
         },
         {
-          "candidate_index": 28,
+          "candidate_index": 4991,
           "label": 0
         },
         {
-          "candidate_index": 75,
+          "candidate_index": 1691,
           "label": 0
         },
         {
-          "candidate_index": 158,
+          "candidate_index": 2242,
           "label": 0
         },
         {
-          "candidate_index": 106,
+          "candidate_index": 1515,
           "label": 0
         },
         {
-          "candidate_index": 58,
+          "candidate_index": 313,
           "label": 0
         },
         {
-          "candidate_index": 85,
-          "label": 0
-        },
-        {
-          "candidate_index": 166,
-          "label": 0
-        },
-        {
-          "candidate_index": 89,
-          "label": 0
-        },
-        {
-          "candidate_index": 126,
-          "label": 0
-        },
-        {
-          "candidate_index": 15,
-          "label": 0
-        },
-        {
-          "candidate_index": 171,
-          "label": 0
-        },
-        {
-          "candidate_index": 88,
-          "label": 0
-        },
-        {
-          "candidate_index": 111,
-          "label": 0
-        },
-        {
-          "candidate_index": 187,
-          "label": 0
-        },
-        {
-          "candidate_index": 153,
-          "label": 0
-        },
-        {
-          "candidate_index": 29,
+          "candidate_index": 791,
           "label": 0
         }
       ]

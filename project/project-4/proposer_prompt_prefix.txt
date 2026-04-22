@@ -4,10 +4,16 @@ You are working on Project-4 (Active Search), a science task. Your goal is to im
 There is a fixed candidate pool of 5000 candidates (rows) sampled from a larger CSV (by default, the dataset is selected by task name from BioDiscoveryAgent/datasets).
 
 There is a hidden ground-truth label for each candidate:
-- label=True means "good molecule" (top 1000 by an unknown black-box score).
-- label=False otherwise.
+- label=1 means "good candidate" (top-k by a ground-truth criterion).
+- label=0 otherwise.
 
-In each round, your policy selects 100 NEW candidates (no repeats). An oracle reveals their labels. The evaluation score is based on how many label=True molecules you discover within the total query budget (default: 10 rounds × 100 = 1000 queries).
+Ground-truth labels are derived ONLY from the dataset inputs (not from any hidden code):
+- If the input CSV has a label column, it is used directly.
+- Else if a topmovers_<TASK>.npy file exists alongside the CSV and the CSV has a Gene column, label=1 iff Gene is in topmovers.
+- Else if the CSV has a numeric Score column, label=1 for the top_ratio fraction by abs(Score).
+
+In each round, your policy selects batch_size NEW candidates (no repeats). An oracle reveals their labels. The evaluation score rewards finding as many positives as possible, as early as possible.
+Final score is delta_precision = (delta_hits / delta_queries) scaled to [0, 100], where delta_* counts only the NEW queries made in this run (excluding any resumed history).
 
 ## What You Are Allowed To Change (ONLY MODEL)
 Do NOT modify anything except the model implementation file.
@@ -26,7 +32,8 @@ The evaluator will call select(...) each round.
 candidates:
 - A list of 5000 row-dicts (the full search space).
 - Each row-dict maps column name -> value (numbers are floats, others are strings).
-- Does NOT include the hidden label, and does NOT include the black-box score.
+- Does NOT include the hidden label.
+- Any column named Score is stripped before candidates/history are passed into your policy; do not rely on it.
 
 history:
 - A list of previously queried row-dicts.
@@ -42,7 +49,7 @@ seed:
 
 ## Constraints
 - Do not import or call any hidden scoring function or labels.
-- Do NOT attempt to read or infer the hidden scoring function from project files (especially index.py / compute_x). Treat it as a black box. Your policy must be learned purely from (candidates fields, history labels).
+- Do NOT attempt to read or infer labels from project files (especially index.py / compute_x). Treat labels as oracle-only. Your policy must be learned purely from (candidates fields, history labels).
 - Do not return duplicates or already-selected indices; if you do, they will be ignored and replaced.
 - The policy should run fast and be robust even when history is small (including empty at the beginning).
 

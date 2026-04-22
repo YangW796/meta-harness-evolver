@@ -8,30 +8,6 @@ from pathlib import Path
 
 import numpy as np
 
-_INDEX_IMPORT_PATH: str | None = None
-try:
-    _INDEX_IMPORT_PATH = str(Path(__file__).resolve().parents[4])
-except IndexError:
-    _INDEX_IMPORT_PATH = None
-
-if _INDEX_IMPORT_PATH is not None:
-    sys.path.insert(0, _INDEX_IMPORT_PATH)
-else:
-    for p in Path(__file__).resolve().parents:
-        if (p / "index.py").exists():
-            _INDEX_IMPORT_PATH = str(p)
-            sys.path.insert(0, _INDEX_IMPORT_PATH)
-            break
-
-from index import compute_x
-
-_SCRIPT_DIR = str(Path(__file__).resolve().parent)
-for _p in [_INDEX_IMPORT_PATH, _SCRIPT_DIR, ""]:
-    if _p and _p in sys.path:
-        while _p in sys.path:
-            sys.path.remove(_p)
-sys.modules.pop("index", None)
-
 
 def _load_selection_policy(model_file: str):
     model_path = Path(model_file).expanduser().resolve()
@@ -95,22 +71,6 @@ def _make_candidate_pool(rows: list[dict[str, object]], pool_size: int, seed: in
     rng = np.random.default_rng(int(seed))
     keep_idx = rng.choice(len(rows), size=int(pool_size), replace=False).tolist()
     return [rows[i] for i in keep_idx]
-
-
-def _make_ground_truth_labels(pool_rows: list[dict[str, object]], top_ratio: float) -> np.ndarray:
-    if not pool_rows:
-        return np.zeros((0,), dtype=np.int8)
-    r = float(top_ratio)
-    if not (0.0 < r < 1.0):
-        raise ValueError(f"top_ratio must be in (0, 1), got: {r}")
-    k = int(max(1, int(round(len(pool_rows) * r))))
-    k = int(min(k, len(pool_rows)))
-    y = np.asarray(compute_x(pool_rows), dtype=np.float64).reshape(-1)
-    order = np.argsort(-y, kind="mergesort")
-    labels = np.zeros((len(pool_rows),), dtype=np.int8)
-    if k > 0:
-        labels[order[:k]] = 1
-    return labels
 
 
 def _load_ground_truth_csv(path: str, n: int) -> np.ndarray:
@@ -513,7 +473,12 @@ def main() -> int:
         if labels is None:
             labels = _labels_from_numeric_column(pool_rows, column_name="Score", top_ratio=float(args.top_ratio), use_abs=True)
         if labels is None:
-            labels = _make_ground_truth_labels(pool_rows, top_ratio=float(args.top_ratio))
+            raise ValueError(
+                "Unable to build ground-truth labels. Provide one of: "
+                "(1) CSV with 'label' column, (2) --ground_truth_csv with candidate_index,label, "
+                "(3) topmovers_<TASK>.npy alongside the CSV (and a 'Gene' column), "
+                "or (4) a numeric 'Score' column to derive top_ratio labels."
+            )
     pool_rows = _strip_columns_case_insensitive(pool_rows, deny={"score"})
     select_fn = _load_selection_policy(args.model_dir)
 

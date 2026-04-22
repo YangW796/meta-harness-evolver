@@ -12,7 +12,8 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 CONDA_ENV="meta-harness-evolver0"
-WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
+DEFAULT_WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
+WORKSPACE_DIR="${EVOLVER_WORKSPACE:-$DEFAULT_WORKSPACE_DIR}"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate.py"
 CANDIDATE_NUM=""
 ITERATIONS="${ITERATIONS:-20}"
@@ -24,7 +25,6 @@ export REQUIRE_HARNESS_RUN_SCRIPT="1"
 export HARNESS_RUN_TIMEOUT_SECONDS="3600"
 export FEISHU_POST_ENABLED=0
 export NEXAU_ENABLE_RUN_SHELL_COMMAND="0"
-export NEXAU_DENY_READ_PY_GLOBS="${NEXAU_DENY_READ_PY_GLOBS:-*/index.py,index.py}"
 # Default: test mode off (set to 1 for quick dry run without real proposer edits)
 export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 

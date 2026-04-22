@@ -3,8 +3,6 @@ import csv
 import numpy as np
 from pathlib import Path
 
-from index import compute_x
-
 
 def _parse_cell(v: str) -> object:
     s = (v or "").strip()
@@ -66,7 +64,23 @@ def main():
     else:
         pool_rows = list(rows)
 
-    y = np.asarray(compute_x(pool_rows), dtype=np.float64).reshape(-1)
+    score_key = None
+    for k in fieldnames:
+        if str(k).strip().lower() == "score":
+            score_key = k
+            break
+    if score_key is None:
+        raise ValueError("CSV missing required numeric column 'Score' (cannot label without index.py/compute_x).")
+    y = np.zeros((len(pool_rows),), dtype=np.float64)
+    for i, r in enumerate(pool_rows):
+        v = r.get(score_key, 0.0)
+        try:
+            x = float(v)
+        except Exception:
+            x = 0.0
+        if not np.isfinite(x):
+            x = 0.0
+        y[i] = abs(x)
     labels = np.zeros((len(pool_rows),), dtype=np.int8)
     split_values: list[str] | None = None
     top_ratio = float(args.top_ratio)
