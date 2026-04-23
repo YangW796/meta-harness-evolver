@@ -11,7 +11,7 @@ def clamp(v: float, lo: float, hi: float) -> float:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Project-3 evaluator (Active Search)")
+    parser = argparse.ArgumentParser(description="Active Search evaluator")
     parser.add_argument("candidate_dir", type=Path)
     args = parser.parse_args()
 
@@ -30,6 +30,12 @@ def main() -> int:
     total_hits = int(test_metrics.get("total_hits", 0))
     total_queries = int(test_metrics.get("total_queries", 0))
     top_k = int(test_metrics.get("top_k", 0))
+
+    ncg = test_metrics.get("ncg", None)
+    try:
+        ncg = float(ncg) if ncg is not None else None
+    except Exception:
+        ncg = None
 
     delta_hits = test_metrics.get("delta_hits", None)
     delta_queries = test_metrics.get("delta_queries", None)
@@ -74,6 +80,10 @@ def main() -> int:
             "total_hits": int(total_hits),
             "top_k": int(top_k),
             "total_queries": int(total_queries),
+            "ncg": ncg,
+            "ncg_k": int(test_metrics.get("ncg_k", 0)),
+            "ncg_selected_sum": float(test_metrics.get("ncg_selected_sum", 0.0)),
+            "ncg_topk_sum": float(test_metrics.get("ncg_topk_sum", 0.0)),
             "pool_size": int(test_metrics.get("pool_size", 0)),
             "batch_size": int(test_metrics.get("batch_size", 0)),
             "rounds": int(test_metrics.get("rounds", 0)),
@@ -90,3 +100,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

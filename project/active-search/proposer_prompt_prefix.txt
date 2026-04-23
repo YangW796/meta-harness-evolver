@@ -1,16 +1,18 @@
-You are working on Project-4 (Active Search), a science task. Your goal is to implement a better Active Search selection policy to discover as many "good candidates" as possible under a limited query budget.
+You are working on Active Search, a science task. Your goal is to implement a better Active Search selection policy to discover as many "good candidates" as possible under a limited query budget.
 
 ## High-Level Goal (Active Search)
-There is a fixed candidate pool of 5000 candidates (rows) sampled from a larger CSV (by default, the dataset is selected by task name from BioDiscoveryAgent/datasets).
+There is a fixed candidate pool (typically 5000 candidates/rows) sampled from a CSV.
 
 There is a hidden ground-truth label for each candidate:
 - label=1 means "good candidate" (top-k by a ground-truth criterion).
 - label=0 otherwise.
 
-Ground-truth labels are derived ONLY from the dataset inputs (not from any hidden code):
-- If the input CSV has a label column, it is used directly.
-- Else if a topmovers_<TASK>.npy file exists alongside the CSV and the CSV has a Gene column, label=1 iff Gene is in topmovers.
-- Else if the CSV has a numeric Score column, label=1 for the top_ratio fraction by abs(Score).
+Ground-truth labels are derived ONLY from the dataset inputs (not from any hidden code). The runner may use one of:
+- An explicit label column in the input CSV (label is stripped before policy sees data).
+- A separate ground-truth CSV with (candidate_index,label).
+- A topmovers_<TASK>.npy file alongside the CSV (requires a Gene column).
+- A numeric score column (default name: Score), where label=1 for top_ratio fraction by abs(Score).
+- A compute_x(pool_rows)->scores function provided by the project to derive labels (policy must not call it).
 
 In each round, your policy selects batch_size NEW candidates (no repeats). An oracle reveals their labels. The evaluation score rewards finding as many positives as possible, as early as possible.
 Final score is delta_precision = (delta_hits / delta_queries) scaled to [0, 100], where delta_* counts only the NEW queries made in this run (excluding any resumed history).
@@ -30,10 +32,10 @@ The evaluator will call select(...) each round.
 
 ## Input Semantics
 candidates:
-- A list of 5000 row-dicts (the full search space).
+- A list of row-dicts (the full search space).
 - Each row-dict maps column name -> value (numbers are floats, others are strings).
 - Does NOT include the hidden label.
-- Any column named Score is stripped before candidates/history are passed into your policy; do not rely on it.
+- Any score-like column (e.g., Score) may be stripped before candidates/history are passed into your policy; do not rely on it.
 
 history:
 - A list of previously queried row-dicts.
@@ -42,18 +44,16 @@ history:
   - label: int (0 or 1)
 
 batch_size:
-- The number of NEW candidates to select each round (default: 100).
+- The number of NEW candidates to select each round.
 
 seed:
 - An integer seed that may change each round.
 
 ## Constraints
 - Do not import or call any hidden scoring function or labels.
-- Do NOT attempt to read or infer labels from project files (especially index.py / compute_x). Treat labels as oracle-only. Your policy must be learned purely from (candidates fields, history labels).
+- Do not attempt to read or infer labels from project files. Treat labels as oracle-only. Your policy must be learned purely from (candidates fields, history labels).
 - Do not return duplicates or already-selected indices; if you do, they will be ignored and replaced.
 - The policy should run fast and be robust even when history is small (including empty at the beginning).
 
-## Ideas You Can Explore
-- Exploitation: fit a classifier/regressor from history_df and rank candidates by predicted probability of label=1.
-- Exploration: uncertainty sampling (e.g., near 0.5 probability), diversity, clustering, bandits.
-- Hybrid: mix exploitation and exploration with an annealing schedule.
+## Practical Tip
+Before selecting new indices, summarize the history: which feature patterns appear in label=1 vs label=0, and what regions of the feature space have been under-explored. Use that to guide exploitation and diversity.

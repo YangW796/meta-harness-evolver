@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CANDIDATE_DIR="${1:-${CANDIDATE_DIR:-}}"
+if [[ -z "$CANDIDATE_DIR" ]]; then
+  echo "Usage: bash harness_run_script.sh <candidate_dir>"
+  exit 2
+fi
+
+ACTIVE_SEARCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$ACTIVE_SEARCH_DIR/../.." && pwd)"
+
+CANDIDATE_DIR="$(cd "$CANDIDATE_DIR" && pwd)"
+HARNESS_DIR="$CANDIDATE_DIR/harness"
+if [[ ! -d "$HARNESS_DIR" ]]; then
+  echo "Missing harness dir: $HARNESS_DIR"
+  exit 2
+fi
+
+PYTHON_BIN="${PYTHON_BIN:-python}"
+ACTIVE_SEARCH_ENV_PREFIX="${ACTIVE_SEARCH_ENV_PREFIX:-ACTIVE_SEARCH}"
+
+ACTIVE_SEARCH_TASK="${ACTIVE_SEARCH_TASK:-}"
+ACTIVE_SEARCH_DATA_CSV="${ACTIVE_SEARCH_DATA_CSV:-}"
+ACTIVE_SEARCH_DATASETS_DIR="${ACTIVE_SEARCH_DATASETS_DIR:-$REPO_ROOT/BioDiscoveryAgent/datasets}"
+if [[ -z "$ACTIVE_SEARCH_DATA_CSV" && -n "$ACTIVE_SEARCH_TASK" ]]; then
+  ACTIVE_SEARCH_DATA_CSV="$ACTIVE_SEARCH_DATASETS_DIR/ground_truth_${ACTIVE_SEARCH_TASK}.csv"
+fi
+
+ACTIVE_SEARCH_POOL_SIZE="${ACTIVE_SEARCH_POOL_SIZE:-5000}"
+ACTIVE_SEARCH_TOP_RATIO="${ACTIVE_SEARCH_TOP_RATIO:-0.2}"
+ACTIVE_SEARCH_BATCH_SIZE="${ACTIVE_SEARCH_BATCH_SIZE:-100}"
+ACTIVE_SEARCH_ROUNDS="${ACTIVE_SEARCH_ROUNDS:-1}"
+ACTIVE_SEARCH_SEED="${ACTIVE_SEARCH_SEED:-42}"
+ACTIVE_SEARCH_SEED_QUERIES="${ACTIVE_SEARCH_SEED_QUERIES:-0}"
+ACTIVE_SEARCH_FIXED_POOL="${ACTIVE_SEARCH_FIXED_POOL:-0}"
+ACTIVE_SEARCH_GROUND_TRUTH_CSV="${ACTIVE_SEARCH_GROUND_TRUTH_CSV:-}"
+ACTIVE_SEARCH_RESUME_STATE="${ACTIVE_SEARCH_RESUME_STATE:-1}"
+ACTIVE_SEARCH_STATE_PATH="${ACTIVE_SEARCH_STATE_PATH:-}"
+ACTIVE_SEARCH_SCORE_COLUMN="${ACTIVE_SEARCH_SCORE_COLUMN:-Score}"
+ACTIVE_SEARCH_COMPUTE_X_PY="${ACTIVE_SEARCH_COMPUTE_X_PY:-}"
+
+WORKSPACE_DIR="${EVOLVER_WORKSPACE:-}"
+if [[ -z "$WORKSPACE_DIR" ]]; then
+  WORKSPACE_DIR="$(cd "$CANDIDATE_DIR/../.." && pwd)"
+fi
+if [[ -z "$ACTIVE_SEARCH_STATE_PATH" ]]; then
+  tag="${ACTIVE_SEARCH_TASK:-default}"
+  ACTIVE_SEARCH_STATE_PATH="$WORKSPACE_DIR/active_search_state_${tag}.json"
+fi
+
+if [[ -z "$ACTIVE_SEARCH_DATA_CSV" || ! -f "$ACTIVE_SEARCH_DATA_CSV" ]]; then
+  echo "CSV not found: $ACTIVE_SEARCH_DATA_CSV"
+  echo "Set ACTIVE_SEARCH_DATA_CSV to your dataset CSV path."
+  exit 2
+fi
+
+MODEL_IMPL_PATH="$HARNESS_DIR/model.py"
+if [[ ! -f "$MODEL_IMPL_PATH" ]]; then
+  echo "Model file not found: $MODEL_IMPL_PATH"
+  exit 2
+fi
+
+if [[ -n "$ACTIVE_SEARCH_GROUND_TRUTH_CSV" && ! -f "$ACTIVE_SEARCH_GROUND_TRUTH_CSV" ]]; then
+  echo "Ground truth CSV not found: $ACTIVE_SEARCH_GROUND_TRUTH_CSV"
+  exit 2
+fi
+
+PROJECT_MAIN="$ACTIVE_SEARCH_DIR/active_search.py"
+if [[ ! -f "$PROJECT_MAIN" ]]; then
+  echo "Missing main file: $PROJECT_MAIN"
+  exit 2
+fi
+
+ARGS=(
+  "$PYTHON_BIN" "$PROJECT_MAIN"
+  --mode active_search
+  --csv "$ACTIVE_SEARCH_DATA_CSV"
+  --model_dir "$MODEL_IMPL_PATH"
+  --pool_size "$ACTIVE_SEARCH_POOL_SIZE"
+  --top_ratio "$ACTIVE_SEARCH_TOP_RATIO"
+  --batch_size "$ACTIVE_SEARCH_BATCH_SIZE"
+  --rounds "$ACTIVE_SEARCH_ROUNDS"
+  --seed "$ACTIVE_SEARCH_SEED"
+  --seed_queries "$ACTIVE_SEARCH_SEED_QUERIES"
+  --task "$ACTIVE_SEARCH_TASK"
+  --score_column "$ACTIVE_SEARCH_SCORE_COLUMN"
+)
+if [[ "$ACTIVE_SEARCH_FIXED_POOL" == "1" ]]; then
+  ARGS+=(--fixed_pool)
+fi
+if [[ -n "$ACTIVE_SEARCH_GROUND_TRUTH_CSV" ]]; then
+  ARGS+=(--ground_truth_csv "$ACTIVE_SEARCH_GROUND_TRUTH_CSV")
+fi
+if [[ -n "$ACTIVE_SEARCH_STATE_PATH" ]]; then
+  ARGS+=(--state_path "$ACTIVE_SEARCH_STATE_PATH")
+fi
+if [[ -n "$ACTIVE_SEARCH_COMPUTE_X_PY" ]]; then
+  ARGS+=(--compute_x_py "$ACTIVE_SEARCH_COMPUTE_X_PY")
+fi
+ARGS+=(--resume_state "$ACTIVE_SEARCH_RESUME_STATE")
+
+ACTIVE_SEARCH_ENV_PREFIX="$ACTIVE_SEARCH_ENV_PREFIX" "${ARGS[@]}"
