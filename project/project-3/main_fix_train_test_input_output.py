@@ -199,6 +199,36 @@ def _sanitize_selected_indices(
     return out
 
 
+def _jsonify_value(v: object, max_str_len: int) -> object:
+    if v is None:
+        return None
+    if isinstance(v, (bool, int, float)):
+        if isinstance(v, float) and not np.isfinite(v):
+            return 0.0
+        return v
+    if isinstance(v, str):
+        if len(v) <= max_str_len:
+            return v
+        return v[:max_str_len]
+    try:
+        x = float(v)
+        if not np.isfinite(x):
+            return 0.0
+        return x
+    except Exception:
+        s = str(v)
+        if len(s) <= max_str_len:
+            return s
+        return s[:max_str_len]
+
+
+def _jsonify_row(row: dict[str, object], max_str_len: int) -> dict[str, object]:
+    out: dict[str, object] = {}
+    for k, v in row.items():
+        out[str(k)] = _jsonify_value(v, max_str_len=max_str_len)
+    return out
+
+
 def run_active_search(
     pool_rows: list[dict[str, object]],
     labels: np.ndarray,
@@ -318,6 +348,7 @@ def run_active_search(
             queried_records.append({"candidate_index": int(r["candidate_index"]), "label": int(r["label"])})
         except Exception:
             continue
+    queried_history = [_jsonify_row(dict(r), max_str_len=500) for r in history]
 
     return {
         "pool_size": int(n),
@@ -339,6 +370,7 @@ def run_active_search(
         "hit_curve": {"queries": hit_curve_queries, "hits": hit_curve_hits},
         "round_details": per_round,
         "queried_records": queried_records,
+        "queried_history": queried_history,
     }
 
 

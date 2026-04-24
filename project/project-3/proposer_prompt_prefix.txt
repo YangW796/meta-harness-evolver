@@ -50,3 +50,9 @@ seed:
 - Exploitation: fit a classifier/regressor from history_df and rank candidates by predicted probability of label=1.
 - Exploration: uncertainty sampling (e.g., near 0.5 probability), diversity, clustering, bandits.
 - Hybrid: mix exploitation and exploration with an annealing schedule.
+
+## Practical Tip
+Use the `history` input. Before selecting new indices, summarize what you already queried: which feature patterns appear in label=1 vs label=0, and what regions of the feature space have been under-explored. Use that to guide exploitation and diversity.
+
+If available, inspect the previous run's `harness/outputs/metrics.json`:
+- `metrics.test.queried_history` contains (candidate fields + candidate_index + label) so you can review what was selected and what worked/failed.
