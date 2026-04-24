@@ -58,15 +58,15 @@ if [[ ! -f "$TASK_MODEL" ]]; then
   cp -f "$BASELINE_MODEL" "$TASK_MODEL"
 fi
 
-SUMMARY_PATH="${SUMMARY_PATH:-$ACTIVE_SEARCH_DIR/evolution_summary_${RUN_TAG}.tsv}"
+SUMMARY_PATH="${SUMMARY_PATH:-$ACTIVE_SEARCH_DIR/evolution_summary_${RUN_TAG}.csv}"
 if [[ ! -f "$SUMMARY_PATH" ]]; then
   {
-    echo -e "task\trun_tag\titerations\tllm_model\tworkspace\tstatus\tbest_final_score\twinner\tevaluated_at"
+    echo -e "task,run_tag,iterations,llm_model,workspace,status,best_final_score,winner,evaluated_at"
   } >"$SUMMARY_PATH"
 fi
 
 if [[ "$FORCE_RERUN" != "1" ]]; then
-  if awk -F $'\t' -v t="$TASK" -v tag="$RUN_TAG" -v it="$ITERATIONS" -v lm="$LLM_MODEL_NAME" '
+  if awk -F ',' -v t="$TASK" -v tag="$RUN_TAG" -v it="$ITERATIONS" -v lm="$LLM_MODEL_NAME" '
     NR>1 && $1==t && $2==tag && $3==it && $4==lm && $6=="ok" {found=1}
     END {exit (found?0:1)}
   ' "$SUMMARY_PATH"; then
@@ -165,18 +165,18 @@ try:
 except Exception:
     winner = ""
 
-print(f"{score}\\t{winner}")
+print(f"{score},{winner}")
 PY
 )"
-  best_score="${result%%$'\t'*}"
-  winner="${result#*$'\t'}"
+  best_score="${result%%,*}"
+  winner="${result#*,}"
 else
   if [[ "$run_status" == "ok" ]]; then
     run_status="no_best"
   fi
 fi
 
-echo -e "${TASK}\t${RUN_TAG}\t${ITERATIONS}\t${LLM_MODEL_NAME}\t${WORKSPACE}\t${run_status}\t${best_score}\t${winner}\t${evaluated_at}" >>"$SUMMARY_PATH"
+echo -e "${TASK},${RUN_TAG},${ITERATIONS},${LLM_MODEL_NAME},${WORKSPACE},${run_status},${best_score},${winner},${evaluated_at}" >>"$SUMMARY_PATH"
 
 echo
 echo -e "task\tworkspace\tdataset_csv"
