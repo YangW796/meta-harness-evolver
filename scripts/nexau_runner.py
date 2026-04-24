@@ -220,6 +220,11 @@ def nexau_proposer_child(log_path: Path) -> int:
             )
 
         enable_run_shell = str(os.environ.get("NEXAU_ENABLE_RUN_SHELL_COMMAND", "0")).strip() == "1"
+        deny_run_shell_substrings = [
+            s.strip().lower()
+            for s in str(os.environ.get("NEXAU_DENY_RUN_SHELL_SUBSTRINGS", "")).split(",")
+            if s.strip()
+        ]
 
         def guarded_run_shell_command(*args: object, **kwargs: object) -> object:
             if not enable_run_shell:
@@ -227,6 +232,16 @@ def nexau_proposer_child(log_path: Path) -> int:
                 return (
                     "[ACCESS_DENIED] run_shell_command is disabled (NEXAU_ENABLE_RUN_SHELL_COMMAND=0).\n"
                     f"command: {cmd}"
+                )
+            cmd = kwargs.get("command", "")
+            cmd_text = str(cmd)
+            cmd_lower = cmd_text.lower()
+            denied = [s for s in deny_run_shell_substrings if s and s in cmd_lower]
+            if denied:
+                return (
+                    "[ACCESS_DENIED] run_shell_command contains forbidden substrings (NEXAU_DENY_RUN_SHELL_SUBSTRINGS).\n"
+                    f"forbidden_matches: {denied}\n"
+                    f"command: {cmd_text}"
                 )
             return run_shell_command(*args, **kwargs)
 

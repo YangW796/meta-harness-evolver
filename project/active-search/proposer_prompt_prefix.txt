@@ -12,7 +12,6 @@ Ground-truth labels are derived ONLY from the dataset inputs (not from any hidde
 - A separate ground-truth CSV with (candidate_index,label).
 - A topmovers_<TASK>.npy file alongside the CSV (requires a Gene column).
 - A numeric score column (default name: Score), where label=1 for top_ratio fraction by abs(Score).
-- A compute_x(pool_rows)->scores function provided by the project to derive labels (policy must not call it).
 
 In each round, your policy selects batch_size NEW candidates (no repeats). An oracle reveals their labels. The evaluation score rewards finding as many positives as possible, as early as possible.
 Final score is delta_precision = (delta_hits / delta_queries) scaled to [0, 100], where delta_* counts only the NEW queries made in this run (excluding any resumed history).

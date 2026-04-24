@@ -220,37 +220,6 @@ def _labels_from_numeric_column(
     return labels
 
 
-def _load_compute_x(compute_x_py: str):
-    p = Path(compute_x_py).expanduser().resolve()
-    if not p.exists():
-        raise FileNotFoundError(str(p))
-    spec = importlib.util.spec_from_file_location("active_search_compute_x_module", str(p))
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Failed to load compute_x module: {p}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    fn = getattr(module, "compute_x", None)
-    if not callable(fn):
-        raise ValueError(f"compute_x not found in {p}")
-    return fn
-
-
-def _labels_from_compute_x(pool_rows: list[dict[str, object]], top_ratio: float, compute_x_py: str) -> np.ndarray:
-    compute_x = _load_compute_x(compute_x_py)
-    r = float(top_ratio)
-    if not (0.0 < r < 1.0):
-        raise ValueError(f"top_ratio must be in (0, 1), got: {r}")
-    k = int(max(1, int(round(len(pool_rows) * r))))
-    k = int(min(k, len(pool_rows)))
-    y = np.asarray(compute_x(pool_rows), dtype=np.float64).reshape(-1)
-    order = np.argsort(-y, kind="mergesort")
-    labels = np.zeros((len(pool_rows),), dtype=np.int8)
-    if k > 0:
-        labels[order[:k]] = 1
-    return labels
-
-
 def _strip_columns_case_insensitive(rows: list[dict[str, object]], deny: set[str]) -> list[dict[str, object]]:
     if not rows:
         return rows
@@ -572,7 +541,6 @@ def cli_main(env_prefix: str) -> int:
     parser.add_argument("--state_path", default=_env(env_prefix, "STATE_PATH", ""))
     parser.add_argument("--resume_state", type=int, default=_env_int(env_prefix, "RESUME_STATE", 1))
     parser.add_argument("--score_column", default=_env(env_prefix, "SCORE_COLUMN", "Score"))
-    parser.add_argument("--compute_x_py", default=_env(env_prefix, "COMPUTE_X_PY", ""))
     args = parser.parse_args()
 
     rows = _read_csv_rows(args.csv)
@@ -596,14 +564,12 @@ def cli_main(env_prefix: str) -> int:
                 top_ratio=float(args.top_ratio),
                 use_abs=True,
             )
-        if labels is None and str(args.compute_x_py).strip():
-            labels = _labels_from_compute_x(pool_rows, top_ratio=float(args.top_ratio), compute_x_py=str(args.compute_x_py))
         if labels is None:
             raise ValueError(
                 "Unable to build ground-truth labels. Provide one of: "
                 "(1) CSV with 'label' column, (2) --ground_truth_csv with candidate_index,label, "
                 "(3) topmovers_<TASK>.npy alongside the CSV (and a 'Gene' column), "
-                "(4) a numeric score column, or (5) --compute_x_py with compute_x(pool_rows)->scores."
+                "(4) a numeric score column."
             )
 
     scores_for_ncg = _extract_numeric_scores(pool_rows, column_name=str(args.score_column), use_abs=True)

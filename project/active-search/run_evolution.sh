@@ -120,12 +120,6 @@ export ACTIVE_SEARCH_DATA_CSV="$DATA_CSV"
 export ACTIVE_SEARCH_DATASETS_DIR="$DATASETS_DIR"
 export ACTIVE_SEARCH_STATE_PATH="$WORKSPACE/active_search_state_${TASK}.json"
 
-if [[ -z "${ACTIVE_SEARCH_COMPUTE_X_PY:-}" ]]; then
-  if [[ -f "$EVOLVER_ROOT/project/project-3/index.py" ]]; then
-    export ACTIVE_SEARCH_COMPUTE_X_PY="$EVOLVER_ROOT/project/project-3/index.py"
-  fi
-fi
-
 EVALUATE_SCRIPT_PATH="$ACTIVE_SEARCH_DIR/evaluate.py"
 evaluated_at="$(date -Is)"
 

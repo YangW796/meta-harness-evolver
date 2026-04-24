@@ -47,7 +47,6 @@
 2) `--ground_truth_csv`：提供 `candidate_index,label`
 3) 与 CSV 同目录的 `topmovers_<TASK>.npy` + CSV 含 `Gene` 列：`Gene` 在 topmovers 中则 label=1
 4) 数值列（默认列名 `Score`，可用 `--score_column` 改名）：按 `top_ratio` 取 `abs(Score)` Top-k 为 label=1
-5) `--compute_x_py /path/to/compute_x.py`：该文件需提供 `compute_x(pool_rows)->scores`，内部据 `top_ratio` 取 Top-k 为 label=1（policy 不可调用它）
 
 ---
 
@@ -84,16 +83,6 @@ python project/active-search/active_search.py \
   --seed 42
 ```
 
-如果需要 `compute_x` 来生成标签：
-
-```bash
-python project/active-search/active_search.py \
-  --csv /path/to/data.csv \
-  --model_dir /path/to/candidate_dir/harness/model.py \
-  --top_ratio 0.2 \
-  --compute_x_py /path/to/compute_x_impl.py
-```
-
 ### 2) 跑 evolver（单任务）
 
 `run_evolution.sh` 会自动：
@@ -127,7 +116,7 @@ bash project/active-search/run_evolution_all_tasks.sh
 
 ## 生成可控难度的 Score+label 数据（可选）
 
-当你的 CSV 没有 `label/Score/topmovers`，又不想依赖项目内的 `compute_x`，可以用：
+当你的 CSV 没有 `label/Score/topmovers`，可以用：
 
 ```bash
 python project/active-search/manual_score_data_generation.py \
@@ -149,4 +138,3 @@ python project/active-search/manual_score_data_generation.py \
 - `Score`（或 `--score_column` 指定列名）
 - `label`
 - 可选 `split`（若开启 `--split_train_test`）
-
