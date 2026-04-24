@@ -185,25 +185,33 @@ def nexau_proposer_child(log_path: Path) -> int:
                         return True
             return False
 
-        def guarded_read_file(*args: object, **kwargs: object) -> object:
+        def guarded_read_file(*args: object, agent_state: object | None = None, **kwargs: object) -> object:
             path_text = kwargs.get("file_path") or kwargs.get("path") or kwargs.get("filepath")
             if _is_denied_py_path(path_text):
                 return _deny_read_message(str(path_text))
+            if agent_state is not None and "agent_state" not in kwargs:
+                kwargs["agent_state"] = agent_state
             return read_file(*args, **kwargs)
 
-        def guarded_read_many_files(*args: object, **kwargs: object) -> object:
+        def guarded_read_many_files(*args: object, agent_state: object | None = None, **kwargs: object) -> object:
             key = None
             for k in ("file_paths", "paths", "files"):
                 if isinstance(kwargs.get(k), list):
                     key = k
                     break
             if key is None:
+                if agent_state is not None and "agent_state" not in kwargs:
+                    kwargs["agent_state"] = agent_state
                 return read_many_files(*args, **kwargs)
             files = kwargs.get(key)
             if not isinstance(files, list):
+                if agent_state is not None and "agent_state" not in kwargs:
+                    kwargs["agent_state"] = agent_state
                 return read_many_files(*args, **kwargs)
             denied = [str(p) for p in files if _is_denied_py_path(p)]
             if not denied:
+                if agent_state is not None and "agent_state" not in kwargs:
+                    kwargs["agent_state"] = agent_state
                 return read_many_files(*args, **kwargs)
             allowed = [p for p in files if not _is_denied_py_path(p)]
             if not allowed:
@@ -213,6 +221,8 @@ def nexau_proposer_child(log_path: Path) -> int:
                 )
             new_kwargs = dict(kwargs)
             new_kwargs[key] = allowed
+            if agent_state is not None and "agent_state" not in new_kwargs:
+                new_kwargs["agent_state"] = agent_state
             result = read_many_files(*args, **new_kwargs)
             return (
                 f"{result}\n\n[ACCESS_DENIED] Skipped blocked Python files:\n"
@@ -226,7 +236,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             if s.strip()
         ]
 
-        def guarded_run_shell_command(*args: object, **kwargs: object) -> object:
+        def guarded_run_shell_command(*args: object, agent_state: object | None = None, **kwargs: object) -> object:
             if not enable_run_shell:
                 cmd = kwargs.get("command", "")
                 return (
@@ -243,6 +253,8 @@ def nexau_proposer_child(log_path: Path) -> int:
                     f"forbidden_matches: {denied}\n"
                     f"command: {cmd_text}"
                 )
+            if agent_state is not None and "agent_state" not in kwargs:
+                kwargs["agent_state"] = agent_state
             return run_shell_command(*args, **kwargs)
 
         def complete_task(result: str | None = None, **kwargs: object) -> str:
@@ -337,7 +349,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             sandbox_config={
                 "type": "local",
                 "_work_dir": str(work_dir),
-                "persist_sandbox": False,
+                "persist_sandbox": True,
             },
         )
 
