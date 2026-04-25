@@ -229,6 +229,57 @@ def nexau_proposer_child(log_path: Path) -> int:
                 + "\n".join(f"- {p}" for p in denied)
             )
 
+        def guarded_search_file_content(*args: object, agent_state: object | None = None, **kwargs: object) -> object:
+            direct_keys = ("path", "file_path", "filepath", "dir_path", "root_dir")
+            denied_direct: list[str] = []
+            for key in direct_keys:
+                value = kwargs.get(key)
+                if _is_denied_py_path(value):
+                    denied_direct.append(str(value))
+
+            list_keys = ("paths", "file_paths", "target_directories")
+            for key in list_keys:
+                value = kwargs.get(key)
+                if isinstance(value, list):
+                    for p in value:
+                        if _is_denied_py_path(p):
+                            denied_direct.append(str(p))
+
+            if denied_direct:
+                return (
+                    "[ACCESS_DENIED] search_file_content path includes blocked Python files "
+                    "(NEXAU_DENY_READ_PY_GLOBS).\n"
+                    + "\n".join(f"- {p}" for p in denied_direct)
+                )
+
+            if agent_state is not None and "agent_state" not in kwargs:
+                kwargs["agent_state"] = agent_state
+            result = search_file_content(*args, **kwargs)
+
+            # Best-effort output redaction in case backend search still scans denied files.
+            blocked_markers = ("index.py", "/index.py", "\\index.py")
+            if isinstance(result, dict):
+                content = result.get("content")
+                if isinstance(content, str):
+                    lines = content.splitlines()
+                    kept = [ln for ln in lines if not any(m in ln for m in blocked_markers)]
+                    if len(kept) != len(lines):
+                        out = dict(result)
+                        out["content"] = "\n".join(kept)
+                        out["content"] += (
+                            "\n\n[ACCESS_DENIED] Some matches from blocked Python files were removed."
+                        )
+                        return out
+            if isinstance(result, str):
+                lines = result.splitlines()
+                kept = [ln for ln in lines if not any(m in ln for m in blocked_markers)]
+                if len(kept) != len(lines):
+                    return (
+                        "\n".join(kept)
+                        + "\n\n[ACCESS_DENIED] Some matches from blocked Python files were removed."
+                    )
+            return result
+
         enable_run_shell = str(os.environ.get("NEXAU_ENABLE_RUN_SHELL_COMMAND", "0")).strip() == "1"
         deny_run_shell_substrings = [
             s.strip().lower()
@@ -276,7 +327,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             Tool.from_yaml(base_dir / "tools/WebSearch.tool.yaml", binding=google_web_search),
             Tool.from_yaml(base_dir / "tools/WebFetch.tool.yaml", binding=web_fetch),
             Tool.from_yaml(base_dir / "tools/write_todos.tool.yaml", binding=write_todos),
-            Tool.from_yaml(base_dir / "tools/search_file_content.tool.yaml", binding=search_file_content),
+            Tool.from_yaml(base_dir / "tools/search_file_content.tool.yaml", binding=guarded_search_file_content),
             Tool.from_yaml(base_dir / "tools/read_file.tool.yaml", binding=guarded_read_file),
             Tool.from_yaml(base_dir / "tools/write_file.tool.yaml", binding=write_file),
             Tool.from_yaml(base_dir / "tools/replace.tool.yaml", binding=replace),
