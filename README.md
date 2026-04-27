@@ -120,6 +120,7 @@ scripts 的职责是“通用外循环”，与具体任务无关；任务差异
 | `PROPOSER_PROMPT_PREFIX` | 空 | project 注入的任务背景/约束前缀（通常由 `proposer_prompt_prefix.txt` 读入）。 |
 | `PROPOSER_MAX_ITERATIONS` | `20` | NexAU agent 最大 tool iterations（project 往往设更大）。 |
 | `PROPOSER_TIMEOUT_SECONDS` | `300` | proposer 子进程超时（秒）。 |
+| `PROPOSER_LLM_TIMEOUT_SECONDS` | 空 | 单次 LLM 请求超时（秒），透传给 NexAU 的 OpenAI client `timeout`。 |
 
 ### 4.3 Harness 执行（训练/搜索脚本）
 

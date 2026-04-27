@@ -372,6 +372,16 @@ def nexau_proposer_child(log_path: Path) -> int:
                 f"Neither system-workflow.md nor systemprompt.md found under {base_dir}"
             )
 
+        llm_timeout_raw = (
+            os.environ.get("PROPOSER_LLM_TIMEOUT_SECONDS") or os.environ.get("LLM_TIMEOUT_SECONDS")
+        )
+        llm_timeout: float | None = None
+        if llm_timeout_raw:
+            try:
+                llm_timeout = float(llm_timeout_raw)
+            except Exception as e:
+                raise RuntimeError(f"Invalid LLM timeout value: {llm_timeout_raw}") from e
+
         agent_config = AgentConfig(
             name="nexau_code_agent",
             max_context_tokens=100000,
@@ -383,6 +393,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             llm_config=LLMConfig(
                 temperature=float(os.environ.get("LLM_TEMPERATURE", "0.7")),
                 max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "4096")),
+                timeout=llm_timeout,
                 model=llm_model,
                 base_url=os.getenv("LLM_BASE_URL"),
                 api_key=llm_api_key,
@@ -399,7 +410,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             ],
             sandbox_config={
                 "type": "local",
-                "_work_dir": str(work_dir),
+                "work_dir": str(work_dir),
                 "persist_sandbox": True,
             },
         )
