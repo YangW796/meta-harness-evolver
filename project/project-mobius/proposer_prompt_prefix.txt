@@ -1,0 +1,55 @@
+You are working on an antibody reranking task (Mobius). Your goal is to improve the reranking model architecture so that it better predicts oracle ranking scores on a fixed train/val/test split.
+
+## High-Level Goal (Reranking)
+Mobius trains a lightweight sequence+structure surrogate model with PyTorch Lightning and evaluates it on a held-out test split.
+
+The training entrypoint is:
+- mobius/scripts/run_mobius_lightning.py
+
+During evaluation, the harness runner will:
+1) Take the candidate's harness model code at:
+   - hoss-evolution/.../harness/model/
+2) Replace Mobius' model package at:
+   - mobius/reranking/model/
+3) Run the Lightning training script using a YAML config
+4) Write harness/outputs/metrics.json with the final test metrics (from Lightning logs)
+
+## What You Are Allowed To Change (ONLY MODEL ARCHITECTURE)
+Do NOT modify anything except the harness model package:
+- harness/model/architecture.py
+- harness/model/normalization.py
+- harness/model/__init__.py
+
+Do NOT change any public class/function names, signatures, or tensor IO shapes/keys.
+
+## Required Interface (MUST KEEP EXACTLY)
+Your model code must remain compatible with these imports:
+- from mobius.reranking.model.architecture import RerankingModelConfig, MobiusReranker
+
+And the Lightning module expects:
+- MobiusReranker.forward(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]
+  returning keys used by the loss:
+  - pred_utility
+  - pred_score_direct
+  - confidence_logits
+  - ddg_status_logits
+
+## Evaluation Metric
+The evaluator uses metrics written by the harness run to compute a single final score.
+
+Primary target metric (higher is better):
+- test/rerank/ndcg@100  (range roughly [0, 1])
+
+If ndcg@100 is missing, the fallback is:
+- test/rerank/score_spearman (range [-1, 1])
+
+## Constraints
+- Keep runtime reasonable (training should not be dramatically slower).
+- Be robust to different batch sizes / max_rows settings.
+- Do not change the dataset, loss, training loop, or logging behavior.
+
+## Ideas You Can Explore (Architecture Only)
+- Better fusion between sequence and structure representations
+- Regularization changes (dropout, layernorm placement)
+- Wider/narrower hidden sizes or different transformer depth/heads (via config usage)
+- Improved heads for utility vs score vs auxiliary targets
