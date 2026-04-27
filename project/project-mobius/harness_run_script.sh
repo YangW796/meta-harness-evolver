@@ -1,34 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: bash harness_run_script.sh <candidate_dir>
+# 用法: bash harness_run_script.sh <candidate_dir>
+# 外循环会以如下形式调用本脚本: bash <this_script> <candidate_dir>
+# 本脚本需要完成:
+# 1) 针对给定 candidate 的 harness 运行 Mobius 训练/测试
+# 2) 写出 candidate_dir/harness/outputs/metrics.json 供 evaluate 脚本读取
 CANDIDATE_DIR="${1:-${CANDIDATE_DIR:-}}"
 if [[ -z "$CANDIDATE_DIR" ]]; then
   echo "Usage: bash harness_run_script.sh <candidate_dir>"
   exit 2
 fi
 
+# 规范化路径，并定位 candidate 的 harness 目录。
 CANDIDATE_DIR="$(cd "$CANDIDATE_DIR" && pwd)"
 HARNESS_DIR="$CANDIDATE_DIR/harness"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 解析 evolver workspace（主要用于与其它项目保持一致/便于调试）。
 WORKSPACE_DIR="${EVOLVER_WORKSPACE:-}"
 if [[ -z "$WORKSPACE_DIR" ]]; then
   WORKSPACE_DIR="$(cd "$CANDIDATE_DIR/../.." && pwd)"
 fi
+
+# 校验 candidate 的 harness 目录必须存在。
 if [[ ! -d "$HARNESS_DIR" ]]; then
   echo "Missing harness dir: $HARNESS_DIR"
   exit 2
 fi
 
+# 选择 Python 解释器，并推导仓库根目录。
 PYTHON_BIN="${PYTHON_BIN:-python}"
 REPO_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
 
+# 定位 Mobius 代码目录（允许通过环境变量指向外部 Mobius checkout）。
 MOBIUS_HOME="${MOBIUS_HOME:-$REPO_ROOT/mobius}"
 if [[ ! -d "$MOBIUS_HOME" ]]; then
   echo "Mobius dir not found: $MOBIUS_HOME" >&2
   echo "Set MOBIUS_HOME=/path/to/mobius" >&2
   exit 2
 fi
+
+# 校验 Mobius 入口脚本与模型包目录是否存在。
 if [[ ! -f "$MOBIUS_HOME/scripts/run_mobius_lightning.py" ]]; then
   echo "Missing mobius entrypoint: $MOBIUS_HOME/scripts/run_mobius_lightning.py" >&2
   exit 2
@@ -38,14 +51,18 @@ if [[ ! -d "$MOBIUS_HOME/reranking/model" ]]; then
   exit 2
 fi
 
+# candidate 可控的模型实现（外循环允许改动的范围）。
 HARNESS_MODEL_DIR="$HARNESS_DIR/model"
 if [[ ! -d "$HARNESS_MODEL_DIR" ]]; then
   echo "Missing harness model dir: $HARNESS_MODEL_DIR" >&2
   exit 2
 fi
 
+# 决定本次 candidate 的 Mobius 运行产物输出到哪里。
 RUN_OUTPUT_DIR="${MOBIUS_OUTPUT_DIR:-$HARNESS_DIR/outputs/mobius_run}"
 mkdir -p "$RUN_OUTPUT_DIR"
+
+# 生成派生 YAML 配置，确保每个 candidate 的运行输出落到各自的 output_dir。
 DERIVED_CONFIG_PATH="$RUN_OUTPUT_DIR/config.yaml"
 BASE_CONFIG_PATH="${MOBIUS_CONFIG:-$MOBIUS_HOME/configs/reranker_demo.yaml}"
 if [[ ! -f "$BASE_CONFIG_PATH" ]]; then
@@ -53,12 +70,14 @@ if [[ ! -f "$BASE_CONFIG_PATH" ]]; then
   exit 2
 fi
 
+# 透传给 mobius/scripts/run_mobius_lightning.py 的命令行参数覆盖（可选）。
 MOBIUS_DEVICES="${MOBIUS_DEVICES:-}"
 MOBIUS_ACCELERATOR="${MOBIUS_ACCELERATOR:-}"
 MOBIUS_STRATEGY="${MOBIUS_STRATEGY:-}"
 MOBIUS_MAX_ROWS="${MOBIUS_MAX_ROWS:-}"
 MOBIUS_RESUME_FROM="${MOBIUS_RESUME_FROM:-}"
 
+# 可选：通过环境变量覆盖 YAML 中 `data.*` 字段。
 MOBIUS_DATA_ROOT="${MOBIUS_DATA_ROOT:-}"
 MOBIUS_ORACLE_CSV="${MOBIUS_ORACLE_CSV:-}"
 MOBIUS_NORMALIZATION_JSON="${MOBIUS_NORMALIZATION_JSON:-}"
@@ -68,6 +87,10 @@ MOBIUS_BATCH_SIZE="${MOBIUS_BATCH_SIZE:-}"
 MOBIUS_NUM_WORKERS="${MOBIUS_NUM_WORKERS:-}"
 MOBIUS_SEED="${MOBIUS_SEED:-}"
 
+# 生成派生 config.yaml：
+# - trainer.output_dir -> RUN_OUTPUT_DIR（确保输出写到 harness/outputs 下）
+# - 禁用 swanlab（避免额外外部依赖）
+# - 若提供了环境变量，则覆盖 data.* 配置项
 BASE_CONFIG_PATH="$BASE_CONFIG_PATH" \
 DERIVED_CONFIG_PATH="$DERIVED_CONFIG_PATH" \
 RUN_OUTPUT_DIR="$RUN_OUTPUT_DIR" \
@@ -126,27 +149,12 @@ out_path.parent.mkdir(parents=True, exist_ok=True)
 out_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
 PY
 
-MODEL_DIR="$MOBIUS_HOME/reranking/model"
-BACKUP_DIR="$RUN_OUTPUT_DIR/mobius_model_backup"
-RESTORED="0"
-cleanup() {
-  if [[ "$RESTORED" == "1" ]]; then
-    return
-  fi
-  if [[ -d "$BACKUP_DIR" ]]; then
-    rm -rf "$MODEL_DIR"
-    cp -a "$BACKUP_DIR" "$MODEL_DIR"
-  fi
-  RESTORED="1"
-}
-trap cleanup EXIT
-
-rm -rf "$BACKUP_DIR"
-cp -a "$MODEL_DIR" "$BACKUP_DIR"
-rm -rf "$MODEL_DIR"
-cp -a "$HARNESS_MODEL_DIR" "$MODEL_DIR"
-
-ARGS=("$PYTHON_BIN" "$MOBIUS_HOME/scripts/run_mobius_lightning.py" --config "$DERIVED_CONFIG_PATH")
+# 组装 Mobius 训练/测试命令。
+ARGS=(
+  "$PYTHON_BIN" "$MOBIUS_HOME/scripts/run_mobius_lightning.py"
+  --config "$DERIVED_CONFIG_PATH"
+  --model-override-dir "$HARNESS_MODEL_DIR"
+)
 if [[ -n "$MOBIUS_DEVICES" ]]; then
   ARGS+=(--devices "$MOBIUS_DEVICES")
 fi
@@ -163,9 +171,13 @@ if [[ -n "$MOBIUS_RESUME_FROM" ]]; then
   ARGS+=(--resume-from "$MOBIUS_RESUME_FROM")
 fi
 
+# 在 Mobius 工程根目录下运行，确保 Mobius 内部相对路径解析正确。
 cd "$MOBIUS_HOME"
 "${ARGS[@]}"
 
+# 将 Mobius Lightning 的日志转成 evolver 统一的 metrics.json 输出。
+# 从 CSVLogger 的 metrics.csv 中取最后一条可用的 test 指标行，并写到：
+# - harness/outputs/metrics.json
 METRICS_CSV="$RUN_OUTPUT_DIR/csv_logs/version_0/metrics.csv"
 METRICS_JSON="$HARNESS_DIR/outputs/metrics.json"
 METRICS_CSV="$METRICS_CSV" METRICS_JSON="$METRICS_JSON" "$PYTHON_BIN" - <<'PY'

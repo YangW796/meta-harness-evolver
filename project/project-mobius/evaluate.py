@@ -75,6 +75,9 @@ def _maybe_analyze_from_checkpoint(candidate_dir: Path, metrics_path: Path) -> t
         "--num-workers",
         "0",
     ]
+    harness_model_dir = harness_dir / "model"
+    if harness_model_dir.exists():
+        cmd.extend(["--model-override-dir", str(harness_model_dir)])
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0 or not summary_json.exists():
         return None, None, None
