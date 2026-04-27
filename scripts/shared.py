@@ -67,3 +67,16 @@ def iter_effective_files(directory: Path) -> Iterable[Path]:
             continue
         if p.is_file():
             yield p
+
+
+def iter_effective_files_recursive(directory: Path) -> Iterable[Path]:
+    stack = [directory]
+    while stack:
+        cur = stack.pop()
+        for p in cur.iterdir():
+            if should_ignore_path(p):
+                continue
+            if p.is_dir():
+                stack.append(p)
+            elif p.is_file():
+                yield p

@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from evolver_config import EvolverConfig
-from shared import iter_effective_files
+from shared import iter_effective_files, iter_effective_files_recursive
 
 
 def validate_candidate(candidate_dir: Path) -> bool:
@@ -19,7 +19,7 @@ def validate_candidate(candidate_dir: Path) -> bool:
         print("[VALIDATE] Missing harness directory")
         return False
 
-    files = list(iter_effective_files(harness_dir))
+    files = list(iter_effective_files_recursive(harness_dir))
     if not files:
         print("[VALIDATE] No files found in harness directory")
         return False

@@ -9,7 +9,7 @@ from evolver_config import EvolverConfig
 from evolution_paths import EvolverPaths, get_best_candidate
 from evolution_prompting import choose_prompt_mode
 from nexau_runner import run_proposer_with_nexau
-from shared import iter_effective_files
+from shared import iter_effective_files, iter_effective_files_recursive
 
 
 def _extract_tags(text: str) -> set[str]:
@@ -76,8 +76,16 @@ def _recent_tags(candidates_dir: Path, k: int) -> set[str]:
 
 
 def _diff_text(base_harness_dir: Path, candidate_harness_dir: Path) -> str:
-    base_files = {f.name: f for f in iter_effective_files(base_harness_dir)} if base_harness_dir.exists() else {}
-    cand_files = {f.name: f for f in iter_effective_files(candidate_harness_dir)} if candidate_harness_dir.exists() else {}
+    base_files = (
+        {f.relative_to(base_harness_dir).as_posix(): f for f in iter_effective_files_recursive(base_harness_dir)}
+        if base_harness_dir.exists()
+        else {}
+    )
+    cand_files = (
+        {f.relative_to(candidate_harness_dir).as_posix(): f for f in iter_effective_files_recursive(candidate_harness_dir)}
+        if candidate_harness_dir.exists()
+        else {}
+    )
     all_names = sorted(set(base_files) | set(cand_files))
     chunks: list[str] = []
     for name in all_names:
@@ -136,8 +144,8 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
                 print(f"[PROPOSER] EVOLVER_INITIAL_HARNESS_DIR is set but not found: {p}; falling back to best/current/harness")
 
     if base_harness_dir.exists():
-        files = [f.name for f in iter_effective_files(base_harness_dir)]
-        target_files_str = "\n".join([f"   - {f}" for f in files])
+        files = [f.relative_to(base_harness_dir).as_posix() for f in iter_effective_files_recursive(base_harness_dir)]
+        target_files_str = "\n".join([f"   - {f}" for f in sorted(files)])
     else:
         target_files_str = "   - (No files found, please create the necessary Python scripts or configs)"
 
@@ -246,8 +254,11 @@ Start now. Read the history first, then propose.
         if base_harness_dir.exists():
             import shutil
 
-            for f in iter_effective_files(base_harness_dir):
-                shutil.copy2(f, candidate_dir / "harness" / f.name)
+            for f in iter_effective_files_recursive(base_harness_dir):
+                rel = f.relative_to(base_harness_dir)
+                out_path = candidate_dir / "harness" / rel
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, out_path)
 
         if os.environ.get("EVOLVER_TEST_MODE") == "1":
             harness_out = candidate_dir / "harness"
@@ -320,8 +331,11 @@ Start now. Read the history first, then propose.
                         added += (j2 - j1)
                 return int(added + deleted)
 
-            base_files = {f.name: f for f in iter_effective_files(base_harness_dir)}
-            cand_files = {f.name: f for f in iter_effective_files(candidate_dir / "harness")}
+            base_files = {f.relative_to(base_harness_dir).as_posix(): f for f in iter_effective_files_recursive(base_harness_dir)}
+            cand_files = {
+                f.relative_to(candidate_dir / "harness").as_posix(): f
+                for f in iter_effective_files_recursive(candidate_dir / "harness")
+            }
             total_delta = 0
             for name in sorted(set(base_files) | set(cand_files)):
                 total_delta += _line_delta(_file_text(base_files.get(name, Path("/dev/null"))), _file_text(cand_files.get(name, Path("/dev/null"))))
@@ -330,8 +344,11 @@ Start now. Read the history first, then propose.
                 print(f"[PROPOSER] {mode.name} change too small (line_delta={total_delta} < {threshold}); retrying with stronger instruction")
                 import shutil
 
-                for f in iter_effective_files(base_harness_dir):
-                    shutil.copy2(f, candidate_dir / "harness" / f.name)
+                for f in iter_effective_files_recursive(base_harness_dir):
+                    rel = f.relative_to(base_harness_dir)
+                    out_path = candidate_dir / "harness" / rel
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, out_path)
 
                 force_task = (
                     proposer_task
@@ -356,8 +373,11 @@ Start now. Read the history first, then propose.
                 print(f"[PROPOSER] novelty too low (tags={sorted(new_tags)} subset of recent tags); retrying with enforced novelty")
                 import shutil
 
-                for f in iter_effective_files(base_harness_dir):
-                    shutil.copy2(f, candidate_dir / "harness" / f.name)
+                for f in iter_effective_files_recursive(base_harness_dir):
+                    rel = f.relative_to(base_harness_dir)
+                    out_path = candidate_dir / "harness" / rel
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, out_path)
 
                 force_task = (
                     proposer_task
