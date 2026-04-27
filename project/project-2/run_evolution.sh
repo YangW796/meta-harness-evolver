@@ -10,7 +10,7 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
   set +a
 fi
-
+source ~/miniconda3/etc/profile.d/conda.sh
 CONDA_ENV="meta-harness-evolver0"
 WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate_project2.py"

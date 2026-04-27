@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import threading
 import time
@@ -65,12 +66,46 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
     env["CANDIDATE_NUM"] = str(candidate_num)
     env["CANDIDATE_DIR"] = str(candidate_dir)
 
+    progress_sample_seconds = float(os.environ.get("HARNESS_RUN_LOG_PROGRESS_SAMPLE_SECONDS", "5") or "5")
+    progress_last_write: dict[str, float] = {}
+    progress_last_percent: dict[str, int] = {}
+    progress_last_epoch: dict[str, int] = {}
+
+    progress_re = re.compile(r"^Epoch\s+(\d+):\s+(\d+)%\|")
+
+    def _maybe_write_line(prefix: str, line: str, fh, lock: threading.Lock) -> None:
+        text = line.rstrip("\n").replace("\r", "")
+        m = progress_re.match(text)
+        if m is not None and progress_sample_seconds > 0:
+            now = time.time()
+            try:
+                epoch = int(m.group(1))
+                pct = int(m.group(2))
+            except Exception:
+                epoch = -1
+                pct = -1
+
+            allowed_pct = pct in {25, 50, 75, 100}
+            allowed_epoch = (epoch >= 0 and epoch % 10 == 0) or pct == 100
+            if not (allowed_pct and allowed_epoch):
+                return
+            last_pct = progress_last_percent.get(prefix, -999)
+            last_epoch = progress_last_epoch.get(prefix, -999)
+            last_ts = progress_last_write.get(prefix, 0.0)
+            if pct == last_pct and epoch == last_epoch and (now - last_ts) < progress_sample_seconds:
+                return
+            progress_last_percent[prefix] = pct
+            progress_last_epoch[prefix] = epoch
+            progress_last_write[prefix] = now
+
+        with lock:
+            fh.write(f"[{prefix}] {text}\n")
+            fh.flush()
+
     def _stream_pipe(pipe, prefix: str, fh, lock: threading.Lock) -> None:
         try:
             for line in iter(pipe.readline, ""):
-                with lock:
-                    fh.write(f"[{prefix}] {line}")
-                    fh.flush()
+                _maybe_write_line(prefix, line, fh, lock)
         finally:
             pipe.close()
 
