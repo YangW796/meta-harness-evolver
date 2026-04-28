@@ -39,7 +39,7 @@ def _resolve_mobius_home(script_dir: Path) -> Path:
 
 def _maybe_analyze_from_checkpoint(candidate_dir: Path, metrics_path: Path) -> tuple[str | None, float | None, dict | None]:
     harness_dir = candidate_dir / "harness"
-    run_output_dir = harness_dir / "outputs" / "mobius_run"
+    run_output_dir = candidate_dir / "outputs" / "mobius_run"
     config_path = run_output_dir / "config.yaml"
     checkpoint_dir = run_output_dir / "checkpoints"
     if not config_path.exists() or not checkpoint_dir.exists():
@@ -49,7 +49,7 @@ def _maybe_analyze_from_checkpoint(candidate_dir: Path, metrics_path: Path) -> t
     if checkpoint is None:
         return None, None, None
 
-    mobius_home = _resolve_mobius_home(metrics_path.parent)
+    mobius_home = _resolve_mobius_home(Path(__file__).resolve().parent)
     analyze_script = mobius_home / "scripts" / "analyze_test_predictions.py"
     if not analyze_script.exists():
         return None, None, None
@@ -100,7 +100,7 @@ def main() -> int:
     args = parser.parse_args()
 
     candidate_dir = args.candidate_dir.expanduser().resolve()
-    metrics_path = candidate_dir / "harness" / "outputs" / "metrics.json"
+    metrics_path = candidate_dir / "outputs" / "metrics.json"
     if not metrics_path.exists():
         print(f"Error: missing metrics file: {metrics_path}")
         return 1

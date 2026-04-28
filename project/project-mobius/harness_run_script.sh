@@ -59,7 +59,7 @@ if [[ ! -d "$HARNESS_MODEL_DIR" ]]; then
 fi
 
 # 决定本次 candidate 的 Mobius 运行产物输出到哪里。
-RUN_OUTPUT_DIR="${MOBIUS_OUTPUT_DIR:-$HARNESS_DIR/outputs/mobius_run}"
+RUN_OUTPUT_DIR="${MOBIUS_OUTPUT_DIR:-$CANDIDATE_DIR/outputs/mobius_run}"
 mkdir -p "$RUN_OUTPUT_DIR"
 
 # 生成派生 YAML 配置，确保每个 candidate 的运行输出落到各自的 output_dir。
@@ -179,7 +179,7 @@ cd "$MOBIUS_HOME"
 # 从 CSVLogger 的 metrics.csv 中取最后一条可用的 test 指标行，并写到：
 # - harness/outputs/metrics.json
 METRICS_CSV="$RUN_OUTPUT_DIR/csv_logs/version_0/metrics.csv"
-METRICS_JSON="$HARNESS_DIR/outputs/metrics.json"
+METRICS_JSON="$CANDIDATE_DIR/outputs/metrics.json"
 METRICS_CSV="$METRICS_CSV" METRICS_JSON="$METRICS_JSON" "$PYTHON_BIN" - <<'PY'
 import csv
 import json
