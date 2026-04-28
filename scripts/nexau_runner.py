@@ -287,7 +287,12 @@ def nexau_proposer_child(log_path: Path) -> int:
             if s.strip()
         ]
 
-        def guarded_run_shell_command(*args: object, agent_state: object | None = None, **kwargs: object) -> object:
+        def guarded_run_shell_command(
+            *args: object,
+            ctx: object | None = None,
+            agent_state: object | None = None,
+            **kwargs: object,
+        ) -> object:
             if not enable_run_shell:
                 cmd = kwargs.get("command", "")
                 return (
@@ -304,6 +309,8 @@ def nexau_proposer_child(log_path: Path) -> int:
                     f"forbidden_matches: {denied}\n"
                     f"command: {cmd_text}"
                 )
+            if ctx is not None and "ctx" not in kwargs:
+                kwargs["ctx"] = ctx
             if agent_state is not None and "agent_state" not in kwargs:
                 kwargs["agent_state"] = agent_state
             return run_shell_command(*args, **kwargs)
