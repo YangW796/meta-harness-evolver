@@ -47,6 +47,8 @@ _IGNORED_SUFFIXES = {
 
 
 def should_ignore_path(path: Path) -> bool:
+    if "__pycache__" in path.parts:
+        return True
     name = path.name
     if name in _IGNORED_FILE_NAMES:
         return True
