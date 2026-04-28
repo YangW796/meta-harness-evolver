@@ -289,7 +289,7 @@ def nexau_proposer_child(log_path: Path) -> int:
 
         def guarded_run_shell_command(
             *args: object,
-            ctx: object | None = None,
+            ctx=None,
             agent_state: object | None = None,
             **kwargs: object,
         ) -> object:
@@ -314,6 +314,14 @@ def nexau_proposer_child(log_path: Path) -> int:
             if agent_state is not None and "agent_state" not in kwargs:
                 kwargs["agent_state"] = agent_state
             return run_shell_command(*args, **kwargs)
+
+        try:
+            builtin_annotations = getattr(run_shell_command, "__annotations__", {}) or {}
+            builtin_ctx = builtin_annotations.get("ctx")
+            if builtin_ctx is not None:
+                guarded_run_shell_command.__annotations__["ctx"] = builtin_ctx
+        except Exception:
+            pass
 
         def complete_task(result: str | None = None, **kwargs: object) -> str:
             payload: dict[str, object] = {}
