@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-from shared import get_workspace, iter_effective_files
+from shared import get_workspace, iter_effective_files_recursive
 
 
 SCENARIOS = [
@@ -325,11 +325,15 @@ def apply_harness(candidate_dir: Path, runtime_workspace: Path) -> bool:
     backup_dir.mkdir(exist_ok=True)
     
     # Apply candidate harness, backup if exists
-    for f in iter_effective_files(harness_dir):
-        src = runtime_workspace / f.name
+    for f in iter_effective_files_recursive(harness_dir):
+        rel = f.relative_to(harness_dir)
+        src = runtime_workspace / rel
         if src.exists():
-            shutil.copy2(src, backup_dir / f.name)
-        shutil.copy2(f, runtime_workspace / f.name)
+            dst_backup = backup_dir / rel
+            dst_backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst_backup)
+        src.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, src)
 
     return True
 
@@ -340,8 +344,11 @@ def restore_harness(candidate_dir: Path, runtime_workspace: Path):
     if not backup_dir.exists():
         return
 
-    for f in backup_dir.iterdir():
-        shutil.copy2(f, runtime_workspace / f.name)
+    for f in iter_effective_files_recursive(backup_dir):
+        rel = f.relative_to(backup_dir)
+        dst = runtime_workspace / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, dst)
 
 
 def run_scenario(scenario: dict, harness_dir: Path, runtime_workspace: Path) -> int:

@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from evolution_paths import EvolverPaths
-from shared import iter_effective_files
+from shared import iter_effective_files, iter_effective_files_recursive
 
 
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
@@ -61,13 +61,20 @@ def update_best(paths: EvolverPaths, candidate_dir: Path, scores: dict) -> float
     if current_best is None or new_score > current_best:
         print(f"[BEST] New best! {new_score} > {current_best}")
         paths.best_dir.mkdir(parents=True, exist_ok=True)
+        if best_harness_dir.exists():
+            import shutil
+
+            shutil.rmtree(best_harness_dir)
         best_harness_dir.mkdir(parents=True, exist_ok=True)
 
         import shutil
 
         candidate_harness = candidate_dir / "harness"
-        for f in iter_effective_files(candidate_harness):
-            shutil.copy2(f, best_harness_dir / f.name)
+        for f in iter_effective_files_recursive(candidate_harness):
+            rel = f.relative_to(candidate_harness)
+            dst = best_harness_dir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, dst)
 
         with open(best_scores_file, "w") as sf:
             json.dump(scores, sf, indent=2)
@@ -109,13 +116,13 @@ def collect_change_record(paths: EvolverPaths, candidate_num: int, candidate_dir
 
     best_files: dict[str, Path] = {}
     if best_harness_dir.exists():
-        for f in iter_effective_files(best_harness_dir):
-            best_files[f.name] = f
+        for f in iter_effective_files_recursive(best_harness_dir):
+            best_files[f.relative_to(best_harness_dir).as_posix()] = f
 
     candidate_files: dict[str, Path] = {}
     if candidate_harness_dir.exists():
-        for f in iter_effective_files(candidate_harness_dir):
-            candidate_files[f.name] = f
+        for f in iter_effective_files_recursive(candidate_harness_dir):
+            candidate_files[f.relative_to(candidate_harness_dir).as_posix()] = f
 
     all_names = sorted(set(best_files) | set(candidate_files))
     changed_files: list[dict] = []
@@ -266,4 +273,3 @@ def post_to_feishu(paths: EvolverPaths, candidate_num: int, candidate_dir: Path,
     except Exception:
         timeout_seconds = 30
     subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds)
-

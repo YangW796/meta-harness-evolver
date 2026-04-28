@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 
-from shared import get_workspace, iter_effective_files, load_env_file
+from shared import get_workspace, iter_effective_files_recursive, load_env_file
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPTS_DIR.parent
@@ -80,21 +80,36 @@ def get_change_summary(workspace: Path, candidate_dir: Path) -> str:
     if not candidate_harness.exists():
         return "  (no harness dir)"
 
+    best_files = (
+        {f.relative_to(best_dir).as_posix(): f for f in iter_effective_files_recursive(best_dir)}
+        if best_dir.exists()
+        else {}
+    )
+    cand_files = {f.relative_to(candidate_harness).as_posix(): f for f in iter_effective_files_recursive(candidate_harness)}
+    all_names = sorted(set(best_files) | set(cand_files))
+
     changes = []
-    for f in iter_effective_files(candidate_harness):
-        best_file = best_dir / f.name
-        if not best_file.exists():
-            changes.append(f"  + {f.name} (new)")
-        else:
-            best_content = best_file.read_text()
-            cand_content = f.read_text()
-            if best_content != cand_content:
-                # Simple diff summary
-                best_lines = len(best_content.split("\n"))
-                cand_lines = len(cand_content.split("\n"))
-                diff = cand_lines - best_lines
-                sign = "+" if diff > 0 else ""
-                changes.append(f"  ~ {f.name} ({sign}{diff} lines)")
+    for name in all_names:
+        best_file = best_files.get(name)
+        cand_file = cand_files.get(name)
+
+        if best_file is None and cand_file is not None:
+            changes.append(f"  + {name} (new)")
+            continue
+        if best_file is not None and cand_file is None:
+            changes.append(f"  - {name} (deleted)")
+            continue
+        if best_file is None or cand_file is None:
+            continue
+
+        best_content = best_file.read_text(encoding="utf-8", errors="replace")
+        cand_content = cand_file.read_text(encoding="utf-8", errors="replace")
+        if best_content != cand_content:
+            best_lines = len(best_content.split("\n"))
+            cand_lines = len(cand_content.split("\n"))
+            diff = cand_lines - best_lines
+            sign = "+" if diff > 0 else ""
+            changes.append(f"  ~ {name} ({sign}{diff} lines)")
 
     if not changes:
         return "  (no diff — identical to current best)"
