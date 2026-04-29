@@ -25,8 +25,7 @@ fi
 # 数据/运行时配置（需要时可通过环境变量覆盖）。
 # 迁移到其它机器时需要检查：
 # - PYTHON_BIN 是否指向目标机器上的正确 Python/conda 环境。
-# - BDA_DATASETS_DIR 是可选项；如果默认查找路径不可用，需要设置为
-#   新机器上的本地 BDA 数据集目录。
+# - BDA_DATASETS_DIR 必须指向本地 BDA 数据集目录。
 # - BDA_STATE_PATH 是可选项；如果运行需要跨机器恢复，需要设置为
 #   可写且可恢复的状态文件路径。
 PYTHON_BIN="${PYTHON_BIN:-python}"
@@ -44,6 +43,23 @@ BDA_SEED="${BDA_SEED:-42}"
 BDA_RESUME_STATE="${BDA_RESUME_STATE:-1}"
 BDA_INCLUDE_HIT_IN_HISTORY="${BDA_INCLUDE_HIT_IN_HISTORY:-1}"
 
+BDA_WORKSPACE_DIR="${EVOLVER_WORKSPACE:-}"
+if [[ -z "$BDA_WORKSPACE_DIR" ]]; then
+  BDA_WORKSPACE_DIR="$(cd "$CANDIDATE_DIR/../.." && pwd)"
+fi
+if [[ -z "${BDA_STATE_PATH:-}" ]]; then
+  export BDA_STATE_PATH="$BDA_WORKSPACE_DIR/bda_state.json"
+fi
+
+if [[ -z "${BDA_DATASETS_DIR:-}" ]]; then
+  echo "BDA_DATASETS_DIR is required; set it to the BioDiscoveryAgent datasets directory." >&2
+  exit 2
+fi
+if [[ ! -d "$BDA_DATASETS_DIR" ]]; then
+  echo "BDA_DATASETS_DIR does not exist or is not a directory: $BDA_DATASETS_DIR" >&2
+  exit 2
+fi
+
 ARGS=(
   "$PYTHON_BIN" "$PROJECT_MAIN"
   --mode bda_active_search
@@ -55,10 +71,8 @@ ARGS=(
   --model_dir "$MODEL_IMPL_PATH"
   --resume_state "$BDA_RESUME_STATE"
   --include_hit_in_history "$BDA_INCLUDE_HIT_IN_HISTORY"
+  --datasets_dir "$BDA_DATASETS_DIR"
 )
-if [[ -n "${BDA_DATASETS_DIR:-}" ]]; then
-  ARGS+=(--datasets_dir "$BDA_DATASETS_DIR")
-fi
 if [[ -n "${BDA_STATE_PATH:-}" ]]; then
   ARGS+=(--state_path "$BDA_STATE_PATH")
 fi

@@ -11,6 +11,16 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
+if [[ -z "${BDA_DATASETS_DIR:-}" ]]; then
+  echo "BDA_DATASETS_DIR is required; set it to the BioDiscoveryAgent datasets directory." >&2
+  exit 2
+fi
+if [[ ! -d "$BDA_DATASETS_DIR" ]]; then
+  echo "BDA_DATASETS_DIR does not exist or is not a directory: $BDA_DATASETS_DIR" >&2
+  exit 2
+fi
+export BDA_DATASETS_DIR
+
 # 迁移到其他机器时通常需要调整：Conda 安装路径
 source ~/miniconda3/etc/profile.d/conda.sh
 CONDA_ENV="${CONDA_ENV:-meta-harness-evolver0}"
@@ -80,16 +90,6 @@ _run_one_dataset() {
 }
 
 if [[ "$DATA_NAME" == "all" ]]; then
-  # 迁移到其他机器时通常需要调整：BioDiscoveryAgent 数据集目录的相对位置
-  BDA_DATASETS_DIR="$EVOLVER_ROOT/../BioDiscoveryAgent/datasets"
-  if [[ ! -d "$BDA_DATASETS_DIR" ]]; then
-    BDA_DATASETS_DIR="$EVOLVER_ROOT/../../BioDiscoveryAgent/datasets"
-  fi
-  if [[ ! -d "$BDA_DATASETS_DIR" ]]; then
-    echo "Cannot locate BioDiscoveryAgent/datasets near: $EVOLVER_ROOT" >&2
-    exit 2
-  fi
-
   mapfile -t GT_LIST < <(ls -1 "$BDA_DATASETS_DIR"/ground_truth_*.csv 2>/dev/null | sed -E 's/.*ground_truth_([^/]+)\.csv/\1/' | sort -u)
   for d in "${GT_LIST[@]}"; do
     if [[ -f "$BDA_DATASETS_DIR/task_prompts/$d.json" ]]; then
