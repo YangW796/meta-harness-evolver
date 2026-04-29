@@ -10,9 +10,13 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
   set +a
 fi
+
+# 迁移到其他机器时通常需要调整：Conda 安装路径 / 环境名
 source ~/miniconda3/etc/profile.d/conda.sh
 CONDA_ENV="meta-harness-evolver0"
 WORKSPACE_INDEX="${WORKSPACE_INDEX:-}"
+
+# 迁移到其他机器时通常需要调整：工作区目录 / 初始 best 种子目录（可用 PROJECT3_WORKSPACE_DIR / PROJECT3_SEED_BEST_DIR 覆盖）
 PROJECT3_WORKSPACE_DIR="${PROJECT3_WORKSPACE_DIR:-${WORKSPACE_DIR:-$PROJECT_DIR/hoss-evolution${WORKSPACE_INDEX:+-$WORKSPACE_INDEX}}}"
 PROJECT3_SEED_BEST_DIR="${PROJECT3_SEED_BEST_DIR:-$PROJECT_DIR/hoss-evolution/best}"
 

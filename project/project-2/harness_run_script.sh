@@ -21,6 +21,13 @@ if [[ ! -f "$PROJECT_MAIN" ]]; then
   exit 2
 fi
 
+# 数据/运行时配置（需要时可通过环境变量覆盖）。
+# 迁移到其它机器时需要检查：
+# - PYTHON_BIN 是否指向目标机器上的正确 Python/conda 环境。
+# - PROJECT2_DATA_ROOT、PROJECT2_DATA_CSV 和 PROJECT2_SPLIT_FILE 默认使用
+#   当前集群的数据目录结构；迁移后需要显式设置为新机器上的路径。
+# - PROJECT2_MODEL_PATH 默认写到 candidate 的 harness 目录下；
+#   除非需要使用共享 checkpoint 路径，一般不用修改。
 PYTHON_BIN="${PYTHON_BIN:-python}"
 PROJECT2_DATA_ROOT="${PROJECT2_DATA_ROOT:-/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli}"
 PROJECT2_DATA_CSV="${PROJECT2_DATA_CSV:-$PROJECT2_DATA_ROOT/merged_results.csv}"

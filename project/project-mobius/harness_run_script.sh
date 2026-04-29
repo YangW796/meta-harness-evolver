@@ -30,6 +30,14 @@ if [[ ! -d "$HARNESS_DIR" ]]; then
 fi
 
 # 选择 Python 解释器，并推导仓库根目录。
+# 迁移到其它机器时需要检查：
+# - PYTHON_BIN 是否指向目标机器上的正确 Python/conda 环境。
+# - MOBIUS_HOME 默认指向本仓库根目录下的 mobius；如果 Mobius 单独 checkout，
+#   需要设置 MOBIUS_HOME=/path/to/mobius。
+# - MOBIUS_CONFIG 默认使用 Mobius 内部 demo config；新机器上数据路径不同的话，
+#   需要设置 MOBIUS_CONFIG 或下方 MOBIUS_DATA_* 环境变量。
+# - MOBIUS_OUTPUT_DIR 默认为 candidate_dir/outputs/mobius_run，通常不用改；
+#   如果写到共享盘/高速盘，需要确保目录可写。
 PYTHON_BIN="${PYTHON_BIN:-python}"
 REPO_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
 

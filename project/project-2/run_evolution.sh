@@ -10,8 +10,12 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
   set +a
 fi
+
+# 迁移到其他机器时通常需要调整：Conda 安装路径 / 环境名
 source ~/miniconda3/etc/profile.d/conda.sh
 CONDA_ENV="meta-harness-evolver0"
+
+# 迁移到其他机器时通常需要调整：工作区目录
 WORKSPACE_DIR="$PROJECT_DIR/hoss-evolution"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate_project2.py"
 CANDIDATE_NUM=""

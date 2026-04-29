@@ -10,9 +10,13 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
   set +a
 fi
+
+# 迁移到其他机器时通常需要调整：Conda 安装路径 / 环境名（Mobius 默认使用 opd）
 source ~/miniconda3/etc/profile.d/conda.sh
 CONDA_ENV="${CONDA_ENV:-opd}"
 WORKSPACE_INDEX="${WORKSPACE_INDEX:-}"
+
+# 迁移到其他机器时通常需要调整：工作区目录（可用 MOBIUS_WORKSPACE_DIR 覆盖）
 MOBIUS_WORKSPACE_DIR="${MOBIUS_WORKSPACE_DIR:-$PROJECT_DIR/hoss-evolution${WORKSPACE_INDEX:+-$WORKSPACE_INDEX}}"
 EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate.py"
 CANDIDATE_NUM=""

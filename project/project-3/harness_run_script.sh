@@ -25,6 +25,13 @@ if [[ ! -f "$PROJECT_MAIN" ]]; then
   exit 2
 fi
 
+# 数据/运行时配置（需要时可通过环境变量覆盖）。
+# 迁移到其它机器时需要检查：
+# - PYTHON_BIN 是否指向目标机器上的正确 Python/conda 环境。
+# - PROJECT3_DATA_ROOT 和 PROJECT3_DATA_CSV 默认使用当前集群的数据目录结构；
+#   迁移后需要显式设置为新机器上的路径。
+# - PROJECT3_GROUND_TRUTH_CSV 和 PROJECT3_STATE_PATH 是可选项；
+#   如果使用，也需要指向目标机器上的有效路径。
 PYTHON_BIN="${PYTHON_BIN:-python}"
 PROJECT3_DATA_ROOT="${PROJECT3_DATA_ROOT:-/inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/Ruiqi_Lin/project/A07/Odesign/5vli}"
 PROJECT3_DATA_CSV="${PROJECT3_DATA_CSV:-$PROJECT3_DATA_ROOT/merged_results.csv}"
@@ -37,6 +44,7 @@ PROJECT3_SEED="${PROJECT3_SEED:-42}"
 PROJECT3_SEED_QUERIES="${PROJECT3_SEED_QUERIES:-0}"
 PROJECT3_FIXED_POOL="${PROJECT3_FIXED_POOL:-0}"
 PROJECT3_GROUND_TRUTH_CSV="${PROJECT3_GROUND_TRUTH_CSV:-}"
+PROJECT3_STATE_PATH="${PROJECT3_STATE_PATH:-}"
 PROJECT3_RESUME_STATE="${PROJECT3_RESUME_STATE:-1}"
 
 

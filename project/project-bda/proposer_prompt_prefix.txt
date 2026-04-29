@@ -1,0 +1,59 @@
+You are working on a biology experiment-design task (BioDiscoveryAgent-style perturbation search). Your goal is to implement a better selection policy to identify genes (or gene pairs) whose perturbation yields extreme outcomes on a dataset-specific score.
+
+## High-Level Goal (Perturbation Search)
+There is a fixed library of perturbations (genes for most datasets; gene pairs for some datasets).
+In each round, the policy must select a batch of NEW perturbations (no repeats). An oracle reveals the measured score and whether the perturbation is a "hit" under a dataset-specific hit definition.
+
+The evaluation score is based on selecting strong perturbations under a limited query budget (default: 5 rounds × 128 per round = 640 queries), using metrics like:
+- cumulative_hits
+- normalized cumulative gain (ncg)
+
+## What You Are Allowed To Change (ONLY MODEL)
+Do NOT modify anything except the model implementation file.
+Do NOT change any function signatures or IO behavior.
+
+## Policy Interface (MUST KEEP EXACTLY)
+Your model code must provide one of the following:
+1) A module-level function:
+   select(candidates, history, batch_size, seed) -> list[int]
+or
+2) A class with a select(...) method (class name can be SelectionPolicy / Policy / Model).
+
+The evaluator will call select(...) each round.
+
+## Input Semantics
+candidates:
+- A list of perturbations (full search space).
+- Each entry is a dict. For single-gene datasets it includes: {gene: <HGNC>}.
+- For pair datasets it includes: {gene_a: <HGNC>, gene_b: <HGNC>}.
+
+history:
+- A list of previously queried entries, each including:
+  - candidate_index: int (index into candidates)
+  - gene / gene_a+gene_b identifiers
+  - score: float (oracle measured score)
+  - hit: int (0/1) if enabled
+
+## Optional Tool: Gene Search (Achilles)
+When enabled by the runner (`BDA_GENE_SEARCH=1` and `BDA_CSV_PATH` points to a directory containing `achilles.csv`),
+you may import and call:
+
+- `import bda_tools`
+- `bda_tools.gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int]`
+
+This returns candidate indices for similar (or diverse) genes using Achilles features.
+
+batch_size:
+- The number of NEW perturbations to select each round (default: 128).
+
+seed:
+- An integer seed that may change each round.
+
+## Constraints
+- Do not attempt to read the ground-truth CSV files directly.
+- Do not return duplicates or already-selected indices; if you do, they will be ignored and replaced.
+- The policy should run fast and be robust even when history is small (including empty).
+
+## Practical Tip
+If available, inspect the previous run's `harness/outputs/metrics.json`:
+- `metrics.test.queried_history` contains what was selected and the observed outcomes.
