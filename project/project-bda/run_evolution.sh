@@ -11,15 +11,7 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-if [[ -z "${BDA_DATASETS_DIR:-}" ]]; then
-  echo "BDA_DATASETS_DIR is required; set it to the BioDiscoveryAgent datasets directory." >&2
-  exit 2
-fi
-if [[ ! -d "$BDA_DATASETS_DIR" ]]; then
-  echo "BDA_DATASETS_DIR does not exist or is not a directory: $BDA_DATASETS_DIR" >&2
-  exit 2
-fi
-export BDA_DATASETS_DIR
+export BDA_DATASETS_DIR="${BDA_DATASETS_DIR:-}"
 
 # 迁移到其他机器时通常需要调整：Conda 安装路径
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -27,6 +19,11 @@ CONDA_ENV="${CONDA_ENV:-meta-harness-evolver0}"
 
 DATA_NAME="${DATA_NAME:-IFNG}"
 ITERATIONS="${ITERATIONS:-20}"
+RUNS="${RUNS:-1}"
+if ! [[ "$RUNS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "RUNS must be a positive integer: $RUNS" >&2
+  exit 2
+fi
 
 # 迁移到其他机器时通常需要调整：工作区根目录（可通过 PROJECT_BDA_WORKSPACE_BASE_DIR 覆盖）
 WORKSPACE_BASE_DIR="${PROJECT_BDA_WORKSPACE_BASE_DIR:-$PROJECT_DIR/hoss-evolution-workspaces}"
@@ -52,6 +49,7 @@ export BDA_INCLUDE_HIT_IN_HISTORY="${BDA_INCLUDE_HIT_IN_HISTORY:-1}"
 export BDA_GENE_SEARCH="${BDA_GENE_SEARCH:-0}"
 export BDA_GENE_SEARCH_DIVERSE="${BDA_GENE_SEARCH_DIVERSE:-0}"
 export BDA_GENE_SEARCH_K="${BDA_GENE_SEARCH_K:-10}"
+# 迁移到其他机器时通常需要调整
 export BDA_CSV_PATH="${BDA_CSV_PATH:-}"
 
 PROPOSER_PROMPT_PREFIX_PATH="$PROJECT_DIR/proposer_prompt_prefix.txt"
@@ -79,7 +77,8 @@ _ensure_seed_best() {
 
 _run_one_dataset() {
   local data="$1"
-  local workspace_dir="$WORKSPACE_BASE_DIR/$data"
+  local run="$2"
+  local workspace_dir="$WORKSPACE_BASE_DIR/$data/run-$run"
   _ensure_seed_best "$workspace_dir"
 
   export EVOLVER_WORKSPACE="$workspace_dir"
@@ -91,11 +90,15 @@ _run_one_dataset() {
 
 if [[ "$DATA_NAME" == "all" ]]; then
   mapfile -t GT_LIST < <(ls -1 "$BDA_DATASETS_DIR"/ground_truth_*.csv 2>/dev/null | sed -E 's/.*ground_truth_([^/]+)\.csv/\1/' | sort -u)
-  for d in "${GT_LIST[@]}"; do
-    if [[ -f "$BDA_DATASETS_DIR/task_prompts/$d.json" ]]; then
-      _run_one_dataset "$d"
-    fi
+  for ((run = 1; run <= RUNS; run++)); do
+    for d in "${GT_LIST[@]}"; do
+      if [[ -f "$BDA_DATASETS_DIR/task_prompts/$d.json" ]]; then
+        _run_one_dataset "$d" "$run"
+      fi
+    done
   done
 else
-  _run_one_dataset "$DATA_NAME"
+  for ((run = 1; run <= RUNS; run++)); do
+    _run_one_dataset "$DATA_NAME" "$run"
+  done
 fi
