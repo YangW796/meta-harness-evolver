@@ -1,0 +1,10 @@
+{
+  "final_score": 26.90165741423913,
+  "total_hits": 29,
+  "top_k": 924,
+  "ncg": 0.2690165741423913,
+  "auc_normalized": 0.006358225108225108,
+  "total_queries": 512,
+  "data_name": "Sanchez21",
+  "task": "perturb-genes-brief"
+}

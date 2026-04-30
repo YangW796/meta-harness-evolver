@@ -1,0 +1,4025 @@
+{
+  "task": "perturb-genes-brief",
+  "data_name": "IFNG",
+  "measurement": "the log fold change in Interferon-gamma (IFNG) normalized read counts",
+  "task_prompt": {
+    "Task": "identify genes that regulate the production of Interferon-gamma (IFNG)",
+    "Measurement": "the log fold change in Interferon-gamma (IFNG) normalized read counts"
+  },
+  "metrics": {
+    "test": {
+      "pool_size": 18418,
+      "rounds": 2,
+      "executed_rounds": 1,
+      "batch_size": 128,
+      "seed": 42,
+      "baseline_total_queries": 128,
+      "baseline_total_hits": 2,
+      "delta_queries": 128,
+      "delta_hits": 1,
+      "total_queries": 256,
+      "total_hits": 3,
+      "top_k": 920,
+      "hit_curve": {
+        "queries": [
+          128,
+          256
+        ],
+        "hits": [
+          2,
+          3
+        ]
+      },
+      "auc": 320.0,
+      "auc_normalized": 0.001358695652173913,
+      "ncg": 0.14329897550565224,
+      "round_details": [
+        {
+          "round": 1,
+          "selected_count": 128,
+          "hits": 1,
+          "cumulative_hits": 3,
+          "precision_at_batch": 0.0078125,
+          "selected": [
+            "ZNG1F",
+            "ZNRF4",
+            "ZNF852",
+            "ZNF846",
+            "ZPR1",
+            "ZNF784",
+            "ZNF823",
+            "ZNF845",
+            "ZNHIT1",
+            "ZNF814",
+            "ZSCAN1",
+            "ZNRF3",
+            "ZSCAN26",
+            "ZSCAN21",
+            "ZNF91",
+            "ZNF839",
+            "ZSWIM7",
+            "ZNF98",
+            "ZNF830",
+            "ZNRD2",
+            "ZSCAN4",
+            "ZNF84",
+            "ZSCAN22",
+            "ZNF821",
+            "ZRSR2",
+            "ZSCAN32",
+            "ZNHIT2",
+            "ZZZ3",
+            "ZP2",
+            "ZZEF1",
+            "ZNF787",
+            "ZSCAN29",
+            "ZRANB1",
+            "ZNF860",
+            "ZNF81",
+            "ZNF862",
+            "ZSCAN10",
+            "ZNF853",
+            "ZNF793",
+            "ZXDC",
+            "ZP1",
+            "ZSCAN31",
+            "ZSCAN25",
+            "ZNF804B",
+            "ZSCAN30",
+            "ZNF79",
+            "ZSCAN23",
+            "ZNF816",
+            "ZNF92",
+            "ZNFX1",
+            "ZNF883",
+            "ZYG11A",
+            "ZSCAN12",
+            "ZRANB2",
+            "ZUP1",
+            "ZPLD1",
+            "ZNF813",
+            "ZSWIM4",
+            "ZNF792",
+            "ZNF85",
+            "ZYG11B",
+            "ZNF837",
+            "ZNF843",
+            "ZW10",
+            "ZNF841",
+            "ZNF804A",
+            "ZNRF1",
+            "ZNF99",
+            "ZRANB3",
+            "ZNF8",
+            "ZNF836",
+            "ZNF878",
+            "ZNF83",
+            "ZNG1A",
+            "ZNF783",
+            "ZSCAN2",
+            "ZSCAN16",
+            "ZSCAN9",
+            "ZNF865",
+            "ZNF791",
+            "ZNF829",
+            "ZNF891",
+            "ZXDB",
+            "ZWINT",
+            "ZNF786",
+            "ZSCAN5A",
+            "ZNF808",
+            "ZSCAN20",
+            "ZNG1C",
+            "ZNF80",
+            "ZP4",
+            "ZSWIM5",
+            "ZNF800",
+            "ZNF805",
+            "ZSWIM1",
+            "ZNF799",
+            "ZSWIM2",
+            "ZPBP",
+            "ZSWIM6",
+            "ZSWIM8",
+            "ZXDA",
+            "ZSCAN5B",
+            "ZP3",
+            "ZNF806",
+            "ZNF835",
+            "ZNF93",
+            "ZNF875",
+            "ZNF790",
+            "ZNF90",
+            "ZNRF2",
+            "ZNG1B",
+            "ZYX",
+            "ZNF879",
+            "ZNG1E",
+            "ZNF880",
+            "ZNHIT6",
+            "ZSWIM9",
+            "ZNF827",
+            "ZNF785",
+            "ZNF850",
+            "ZPBP2",
+            "ZNHIT3",
+            "ZNF789",
+            "ZSWIM3",
+            "ZNF831",
+            "ZNF844",
+            "ZSCAN18",
+            "ZWILCH"
+          ],
+          "selected_scores": [
+            0.02004,
+            -0.1326135,
+            0.082401,
+            0.241646,
+            0.060205,
+            0.1521965,
+            -0.0882665,
+            0.174269,
+            0.285865,
+            -0.002941,
+            0.0236465,
+            0.109025,
+            0.1452,
+            -0.06876,
+            0.072198,
+            0.058726,
+            0.04798,
+            0.1414345,
+            -0.385385,
+            0.022,
+            0.100399,
+            -0.1180885,
+            -0.0139586,
+            0.152965,
+            -0.105073,
+            -0.28131,
+            -0.104951,
+            0.16858,
+            -0.09089255,
+            0.2619375,
+            -0.025515,
+            0.320085,
+            0.32594,
+            -0.165498,
+            0.0681635,
+            0.0335655,
+            0.0282885,
+            0.0603453,
+            -0.21759,
+            0.10866015,
+            -0.1891195,
+            0.0142375,
+            0.04001,
+            0.0680285,
+            -0.0656345,
+            0.052601,
+            -0.179549,
+            0.155999,
+            -0.01364915,
+            -0.118895,
+            -0.19204,
+            0.14097,
+            0.31877,
+            0.17481,
+            -0.0774975,
+            0.26673,
+            0.1106155,
+            -0.2097455,
+            -0.290714,
+            -0.1081275,
+            -0.1208665,
+            -0.24985,
+            -0.21766,
+            -0.159709,
+            -0.245215,
+            0.1808675,
+            -0.1483935,
+            0.355344,
+            -0.1117185,
+            0.1183505,
+            -0.160919,
+            0.117919,
+            -0.2179175,
+            0.0520335,
+            0.0189365,
+            0.174456,
+            0.02777,
+            -0.176105,
+            0.19303416,
+            0.0412261,
+            -0.09893,
+            0.0954565,
+            -0.02779,
+            -0.123792,
+            0.1072135,
+            0.34555,
+            -0.113385,
+            -0.3234765,
+            -0.1444645,
+            0.06814,
+            0.06677535,
+            -0.090245,
+            -0.21139,
+            0.003305,
+            0.1066745,
+            -0.077053,
+            0.08891,
+            -0.208236,
+            -0.132565,
+            -0.034683,
+            -0.044888,
+            -0.043905,
+            0.179865,
+            0.2282205,
+            0.1356605,
+            -0.0982335,
+            -0.214485,
+            -0.144395,
+            4.8e-05,
+            0.058075,
+            -0.2631505,
+            0.222654,
+            0.2543,
+            -0.091448,
+            0.0219,
+            0.341157,
+            -0.25744,
+            0.2394125,
+            -0.2707485,
+            0.135435,
+            -0.0285285,
+            -0.1181735,
+            -0.105075,
+            -0.242955,
+            0.0346266,
+            -0.114665,
+            -0.49931,
+            -0.146465
+          ],
+          "selected_hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "queried_records": [
+        {
+          "candidate_index": 9,
+          "gene": "AADAC",
+          "score": 0.09700375,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 92,
+          "gene": "ABHD5",
+          "score": -0.123051,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 102,
+          "gene": "ABLIM1",
+          "score": -0.095673,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 76,
+          "gene": "ABHD10",
+          "score": -0.083665,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 49,
+          "gene": "ABCB8",
+          "score": -0.009105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16,
+          "gene": "AAMDC",
+          "score": 0.01205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 62,
+          "gene": "ABCD1",
+          "score": -0.0909125,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 103,
+          "gene": "ABLIM2",
+          "score": -0.220065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 104,
+          "gene": "ABLIM3",
+          "score": 0.131625,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 82,
+          "gene": "ABHD14B",
+          "score": 0.025335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 47,
+          "gene": "ABCB6",
+          "score": -0.042354,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 21,
+          "gene": "AARS1",
+          "score": -0.40020835,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 30,
+          "gene": "ABCA1",
+          "score": 0.1342295,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 118,
+          "gene": "ACACB",
+          "score": 0.018345,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 32,
+          "gene": "ABCA12",
+          "score": -0.108835,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 50,
+          "gene": "ABCB9",
+          "score": 0.21014065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 63,
+          "gene": "ABCD2",
+          "score": 0.00524,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 123,
+          "gene": "ACADL",
+          "score": 0.147555,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 96,
+          "gene": "ABI2",
+          "score": -0.22205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18,
+          "gene": "AANAT",
+          "score": 0.14409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 74,
+          "gene": "ABCG8",
+          "score": -0.038225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2,
+          "gene": "A2M",
+          "score": -0.18934,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 66,
+          "gene": "ABCE1",
+          "score": 0.359895,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 80,
+          "gene": "ABHD13",
+          "score": 0.022985,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 36,
+          "gene": "ABCA4",
+          "score": -0.159105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 85,
+          "gene": "ABHD16B",
+          "score": -0.002058,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7,
+          "gene": "AAAS",
+          "score": 0.130627,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1,
+          "gene": "A1CF",
+          "score": 0.129081,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 87,
+          "gene": "ABHD17B",
+          "score": 0.23368,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 79,
+          "gene": "ABHD12B",
+          "score": -0.01068,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 26,
+          "gene": "AASS",
+          "score": -0.085326,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 101,
+          "gene": "ABL2",
+          "score": 0.11353,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 60,
+          "gene": "ABCC8",
+          "score": 0.051595,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 73,
+          "gene": "ABCG5",
+          "score": 0.103443,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 95,
+          "gene": "ABI1",
+          "score": 0.0107805,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 59,
+          "gene": "ABCC6",
+          "score": 0.307105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 39,
+          "gene": "ABCA7",
+          "score": -0.01946,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 72,
+          "gene": "ABCG4",
+          "score": 0.25585085,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 34,
+          "gene": "ABCA2",
+          "score": -0.2907179,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 51,
+          "gene": "ABCC1",
+          "score": -0.165605,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 61,
+          "gene": "ABCC9",
+          "score": 0.19773,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 38,
+          "gene": "ABCA6",
+          "score": -0.1365005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 111,
+          "gene": "ABT1",
+          "score": 0.0858425,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 41,
+          "gene": "ABCA9",
+          "score": 0.27268896,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 84,
+          "gene": "ABHD16A",
+          "score": -0.1640935,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 78,
+          "gene": "ABHD12",
+          "score": 0.1263665,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 56,
+          "gene": "ABCC3",
+          "score": -0.0762865,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 42,
+          "gene": "ABCB1",
+          "score": -0.266345,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 100,
+          "gene": "ABL1",
+          "score": 0.0765485,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 22,
+          "gene": "AARS2",
+          "score": 0.03688,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 52,
+          "gene": "ABCC10",
+          "score": -0.1349245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 70,
+          "gene": "ABCG1",
+          "score": 0.04291255,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 23,
+          "gene": "AARSD1",
+          "score": -0.007871,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 97,
+          "gene": "ABI3",
+          "score": -0.1086473,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 40,
+          "gene": "ABCA8",
+          "score": 0.0039675,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 106,
+          "gene": "ABR",
+          "score": 0.339915,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 121,
+          "gene": "ACAD8",
+          "score": 0.02707,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 67,
+          "gene": "ABCF1",
+          "score": -0.105515,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6,
+          "gene": "A4GNT",
+          "score": 0.029995,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 55,
+          "gene": "ABCC2",
+          "score": -0.1535965,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14,
+          "gene": "AAGAB",
+          "score": -0.31044,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 90,
+          "gene": "ABHD3",
+          "score": 0.071691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 65,
+          "gene": "ABCD4",
+          "score": -0.04102,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 98,
+          "gene": "ABI3BP",
+          "score": -0.12602566,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 107,
+          "gene": "ABRA",
+          "score": 0.031534,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 117,
+          "gene": "ACACA",
+          "score": 0.035085,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8,
+          "gene": "AACS",
+          "score": 0.19899,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 24,
+          "gene": "AASDH",
+          "score": 0.140285,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 46,
+          "gene": "ABCB5",
+          "score": 0.0766415,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 37,
+          "gene": "ABCA5",
+          "score": 0.09411,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10,
+          "gene": "AADACL2",
+          "score": 0.180098,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 81,
+          "gene": "ABHD14A",
+          "score": -0.0982965,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15,
+          "gene": "AAK1",
+          "score": -0.144225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 68,
+          "gene": "ABCF2",
+          "score": -0.1052725,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 58,
+          "gene": "ABCC5",
+          "score": 0.16644,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5,
+          "gene": "A4GALT",
+          "score": 0.15113,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 33,
+          "gene": "ABCA13",
+          "score": -0.01498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 105,
+          "gene": "ABO",
+          "score": 0.016455,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 44,
+          "gene": "ABCB11",
+          "score": 0.09610045,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 45,
+          "gene": "ABCB4",
+          "score": 0.2502,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12,
+          "gene": "AADACL4",
+          "score": -0.165411,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 48,
+          "gene": "ABCB7",
+          "score": -0.505255,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 109,
+          "gene": "ABRAXAS1",
+          "score": 0.02837,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 119,
+          "gene": "ACAD10",
+          "score": 0.037576,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 88,
+          "gene": "ABHD17C",
+          "score": -0.0872855,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 108,
+          "gene": "ABRACL",
+          "score": -0.0995285,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 19,
+          "gene": "AAR2",
+          "score": 0.17943,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 93,
+          "gene": "ABHD6",
+          "score": -0.01869,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 43,
+          "gene": "ABCB10",
+          "score": -0.091724,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 112,
+          "gene": "ABTB1",
+          "score": 0.0953785,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 99,
+          "gene": "ABITRAM",
+          "score": 0.18748,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 20,
+          "gene": "AARD",
+          "score": 0.0074185,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 0,
+          "gene": "A1BG",
+          "score": -0.161214,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 124,
+          "gene": "ACADM",
+          "score": -0.17399,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 113,
+          "gene": "ABTB2",
+          "score": -0.15948,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 57,
+          "gene": "ABCC4",
+          "score": 0.07494,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 122,
+          "gene": "ACAD9",
+          "score": 0.0464,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 53,
+          "gene": "ABCC11",
+          "score": -0.1653245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 115,
+          "gene": "ACAA1",
+          "score": 0.27926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 89,
+          "gene": "ABHD2",
+          "score": -0.033632,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 83,
+          "gene": "ABHD15",
+          "score": 0.054218,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 91,
+          "gene": "ABHD4",
+          "score": -0.015138,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 25,
+          "gene": "AASDHPPT",
+          "score": 0.0825805,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 71,
+          "gene": "ABCG2",
+          "score": -0.000475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 110,
+          "gene": "ABRAXAS2",
+          "score": -0.240335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 77,
+          "gene": "ABHD11",
+          "score": 0.178475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 64,
+          "gene": "ABCD3",
+          "score": -0.367169,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 29,
+          "gene": "ABAT",
+          "score": -0.01351,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 27,
+          "gene": "AATF",
+          "score": 0.3854245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 116,
+          "gene": "ACAA2",
+          "score": -0.0323105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 126,
+          "gene": "ACADSB",
+          "score": 0.0369245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4,
+          "gene": "A3GALT2",
+          "score": 0.183225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 54,
+          "gene": "ABCC12",
+          "score": -0.09262565,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 75,
+          "gene": "ABHD1",
+          "score": 0.09580065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11,
+          "gene": "AADACL3",
+          "score": -0.217905,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 69,
+          "gene": "ABCF3",
+          "score": 0.0637145,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 114,
+          "gene": "ABTB3",
+          "score": 0.33209,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 120,
+          "gene": "ACAD11",
+          "score": 0.184825,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 86,
+          "gene": "ABHD17A",
+          "score": -0.35325,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13,
+          "gene": "AADAT",
+          "score": 0.23516,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 125,
+          "gene": "ACADS",
+          "score": 0.243119,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17,
+          "gene": "AAMP",
+          "score": 0.1659475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 127,
+          "gene": "ACADVL",
+          "score": 0.0484775,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 31,
+          "gene": "ABCA10",
+          "score": -0.00779,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 35,
+          "gene": "ABCA3",
+          "score": 0.20382,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 94,
+          "gene": "ABHD8",
+          "score": -0.239638,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3,
+          "gene": "A2ML1",
+          "score": 0.005275,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 28,
+          "gene": "AATK",
+          "score": -0.027445,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18355,
+          "gene": "ZNG1F",
+          "score": 0.02004,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18364,
+          "gene": "ZNRF4",
+          "score": -0.1326135,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18333,
+          "gene": "ZNF852",
+          "score": 0.082401,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18330,
+          "gene": "ZNF846",
+          "score": 0.241646,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18372,
+          "gene": "ZPR1",
+          "score": 0.060205,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18291,
+          "gene": "ZNF784",
+          "score": 0.1521965,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18315,
+          "gene": "ZNF823",
+          "score": -0.0882665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18329,
+          "gene": "ZNF845",
+          "score": 0.174269,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18356,
+          "gene": "ZNHIT1",
+          "score": 0.285865,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18312,
+          "gene": "ZNF814",
+          "score": -0.002941,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18377,
+          "gene": "ZSCAN1",
+          "score": 0.0236465,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18363,
+          "gene": "ZNRF3",
+          "score": 0.109025,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18388,
+          "gene": "ZSCAN26",
+          "score": 0.1452,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18384,
+          "gene": "ZSCAN21",
+          "score": -0.06876,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18345,
+          "gene": "ZNF91",
+          "score": 0.072198,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18324,
+          "gene": "ZNF839",
+          "score": 0.058726,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18403,
+          "gene": "ZSWIM7",
+          "score": 0.04798,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18348,
+          "gene": "ZNF98",
+          "score": 0.1414345,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18319,
+          "gene": "ZNF830",
+          "score": -0.385385,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18360,
+          "gene": "ZNRD2",
+          "score": 0.022,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18393,
+          "gene": "ZSCAN4",
+          "score": 0.100399,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18325,
+          "gene": "ZNF84",
+          "score": -0.1180885,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18385,
+          "gene": "ZSCAN22",
+          "score": -0.0139586,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18314,
+          "gene": "ZNF821",
+          "score": 0.152965,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18376,
+          "gene": "ZRSR2",
+          "score": -0.105073,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18392,
+          "gene": "ZSCAN32",
+          "score": -0.28131,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18357,
+          "gene": "ZNHIT2",
+          "score": -0.104951,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18417,
+          "gene": "ZZZ3",
+          "score": 0.16858,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18366,
+          "gene": "ZP2",
+          "score": -0.09089255,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18416,
+          "gene": "ZZEF1",
+          "score": 0.2619375,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18294,
+          "gene": "ZNF787",
+          "score": -0.025515,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18389,
+          "gene": "ZSCAN29",
+          "score": 0.320085,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18373,
+          "gene": "ZRANB1",
+          "score": 0.32594,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18335,
+          "gene": "ZNF860",
+          "score": -0.165498,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18310,
+          "gene": "ZNF81",
+          "score": 0.0681635,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18336,
+          "gene": "ZNF862",
+          "score": 0.0335655,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18378,
+          "gene": "ZSCAN10",
+          "score": 0.0282885,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18334,
+          "gene": "ZNF853",
+          "score": 0.0603453,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18300,
+          "gene": "ZNF793",
+          "score": -0.21759,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18412,
+          "gene": "ZXDC",
+          "score": 0.10866015,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18365,
+          "gene": "ZP1",
+          "score": -0.1891195,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18391,
+          "gene": "ZSCAN31",
+          "score": 0.0142375,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18387,
+          "gene": "ZSCAN25",
+          "score": 0.04001,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18306,
+          "gene": "ZNF804B",
+          "score": 0.0680285,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18390,
+          "gene": "ZSCAN30",
+          "score": -0.0656345,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18296,
+          "gene": "ZNF79",
+          "score": 0.052601,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18386,
+          "gene": "ZSCAN23",
+          "score": -0.179549,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18313,
+          "gene": "ZNF816",
+          "score": 0.155999,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18346,
+          "gene": "ZNF92",
+          "score": -0.01364915,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18350,
+          "gene": "ZNFX1",
+          "score": -0.118895,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18342,
+          "gene": "ZNF883",
+          "score": -0.19204,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18413,
+          "gene": "ZYG11A",
+          "score": 0.14097,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18379,
+          "gene": "ZSCAN12",
+          "score": 0.31877,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18374,
+          "gene": "ZRANB2",
+          "score": 0.17481,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18406,
+          "gene": "ZUP1",
+          "score": -0.0774975,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18371,
+          "gene": "ZPLD1",
+          "score": 0.26673,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18311,
+          "gene": "ZNF813",
+          "score": 0.1106155,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18400,
+          "gene": "ZSWIM4",
+          "score": -0.2097455,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18299,
+          "gene": "ZNF792",
+          "score": -0.290714,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18331,
+          "gene": "ZNF85",
+          "score": -0.1081275,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18414,
+          "gene": "ZYG11B",
+          "score": -0.1208665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18323,
+          "gene": "ZNF837",
+          "score": -0.24985,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18327,
+          "gene": "ZNF843",
+          "score": -0.21766,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18407,
+          "gene": "ZW10",
+          "score": -0.159709,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18326,
+          "gene": "ZNF841",
+          "score": -0.245215,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18305,
+          "gene": "ZNF804A",
+          "score": 0.1808675,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18361,
+          "gene": "ZNRF1",
+          "score": -0.1483935,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18349,
+          "gene": "ZNF99",
+          "score": 0.355344,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18375,
+          "gene": "ZRANB3",
+          "score": -0.1117185,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18302,
+          "gene": "ZNF8",
+          "score": 0.1183505,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18322,
+          "gene": "ZNF836",
+          "score": -0.160919,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18339,
+          "gene": "ZNF878",
+          "score": 0.117919,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18318,
+          "gene": "ZNF83",
+          "score": -0.2179175,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18351,
+          "gene": "ZNG1A",
+          "score": 0.0520335,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18290,
+          "gene": "ZNF783",
+          "score": 0.0189365,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18382,
+          "gene": "ZSCAN2",
+          "score": 0.174456,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18380,
+          "gene": "ZSCAN16",
+          "score": 0.02777,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18396,
+          "gene": "ZSCAN9",
+          "score": -0.176105,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18337,
+          "gene": "ZNF865",
+          "score": 0.19303416,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18298,
+          "gene": "ZNF791",
+          "score": 0.0412261,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18317,
+          "gene": "ZNF829",
+          "score": -0.09893,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18343,
+          "gene": "ZNF891",
+          "score": 0.0954565,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18411,
+          "gene": "ZXDB",
+          "score": -0.02779,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18409,
+          "gene": "ZWINT",
+          "score": -0.123792,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18293,
+          "gene": "ZNF786",
+          "score": 0.1072135,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18394,
+          "gene": "ZSCAN5A",
+          "score": 0.34555,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18309,
+          "gene": "ZNF808",
+          "score": -0.113385,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18383,
+          "gene": "ZSCAN20",
+          "score": -0.3234765,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18353,
+          "gene": "ZNG1C",
+          "score": -0.1444645,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18303,
+          "gene": "ZNF80",
+          "score": 0.06814,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18368,
+          "gene": "ZP4",
+          "score": 0.06677535,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18401,
+          "gene": "ZSWIM5",
+          "score": -0.090245,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18304,
+          "gene": "ZNF800",
+          "score": -0.21139,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18307,
+          "gene": "ZNF805",
+          "score": 0.003305,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18397,
+          "gene": "ZSWIM1",
+          "score": 0.1066745,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18301,
+          "gene": "ZNF799",
+          "score": -0.077053,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18398,
+          "gene": "ZSWIM2",
+          "score": 0.08891,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18369,
+          "gene": "ZPBP",
+          "score": -0.208236,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18402,
+          "gene": "ZSWIM6",
+          "score": -0.132565,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18404,
+          "gene": "ZSWIM8",
+          "score": -0.034683,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18410,
+          "gene": "ZXDA",
+          "score": -0.044888,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18395,
+          "gene": "ZSCAN5B",
+          "score": -0.043905,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18367,
+          "gene": "ZP3",
+          "score": 0.179865,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18308,
+          "gene": "ZNF806",
+          "score": 0.2282205,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18321,
+          "gene": "ZNF835",
+          "score": 0.1356605,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18347,
+          "gene": "ZNF93",
+          "score": -0.0982335,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18338,
+          "gene": "ZNF875",
+          "score": -0.214485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18297,
+          "gene": "ZNF790",
+          "score": -0.144395,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18344,
+          "gene": "ZNF90",
+          "score": 4.8e-05,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18362,
+          "gene": "ZNRF2",
+          "score": 0.058075,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18352,
+          "gene": "ZNG1B",
+          "score": -0.2631505,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18415,
+          "gene": "ZYX",
+          "score": 0.222654,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18340,
+          "gene": "ZNF879",
+          "score": 0.2543,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18354,
+          "gene": "ZNG1E",
+          "score": -0.091448,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18341,
+          "gene": "ZNF880",
+          "score": 0.0219,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18359,
+          "gene": "ZNHIT6",
+          "score": 0.341157,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18405,
+          "gene": "ZSWIM9",
+          "score": -0.25744,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18316,
+          "gene": "ZNF827",
+          "score": 0.2394125,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18292,
+          "gene": "ZNF785",
+          "score": -0.2707485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18332,
+          "gene": "ZNF850",
+          "score": 0.135435,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18370,
+          "gene": "ZPBP2",
+          "score": -0.0285285,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18358,
+          "gene": "ZNHIT3",
+          "score": -0.1181735,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18295,
+          "gene": "ZNF789",
+          "score": -0.105075,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18399,
+          "gene": "ZSWIM3",
+          "score": -0.242955,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18320,
+          "gene": "ZNF831",
+          "score": 0.0346266,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18328,
+          "gene": "ZNF844",
+          "score": -0.114665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18381,
+          "gene": "ZSCAN18",
+          "score": -0.49931,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 18408,
+          "gene": "ZWILCH",
+          "score": -0.146465,
+          "hit": 0,
+          "round": 1
+        }
+      ],
+      "queried_history": [
+        {
+          "candidate_index": 9,
+          "gene": "AADAC",
+          "score": 0.09700375,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 92,
+          "gene": "ABHD5",
+          "score": -0.123051,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 102,
+          "gene": "ABLIM1",
+          "score": -0.095673,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 76,
+          "gene": "ABHD10",
+          "score": -0.083665,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 49,
+          "gene": "ABCB8",
+          "score": -0.009105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16,
+          "gene": "AAMDC",
+          "score": 0.01205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 62,
+          "gene": "ABCD1",
+          "score": -0.0909125,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 103,
+          "gene": "ABLIM2",
+          "score": -0.220065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 104,
+          "gene": "ABLIM3",
+          "score": 0.131625,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 82,
+          "gene": "ABHD14B",
+          "score": 0.025335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 47,
+          "gene": "ABCB6",
+          "score": -0.042354,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 21,
+          "gene": "AARS1",
+          "score": -0.40020835,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 30,
+          "gene": "ABCA1",
+          "score": 0.1342295,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 118,
+          "gene": "ACACB",
+          "score": 0.018345,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 32,
+          "gene": "ABCA12",
+          "score": -0.108835,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 50,
+          "gene": "ABCB9",
+          "score": 0.21014065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 63,
+          "gene": "ABCD2",
+          "score": 0.00524,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 123,
+          "gene": "ACADL",
+          "score": 0.147555,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 96,
+          "gene": "ABI2",
+          "score": -0.22205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18,
+          "gene": "AANAT",
+          "score": 0.14409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 74,
+          "gene": "ABCG8",
+          "score": -0.038225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2,
+          "gene": "A2M",
+          "score": -0.18934,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 66,
+          "gene": "ABCE1",
+          "score": 0.359895,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 80,
+          "gene": "ABHD13",
+          "score": 0.022985,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 36,
+          "gene": "ABCA4",
+          "score": -0.159105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 85,
+          "gene": "ABHD16B",
+          "score": -0.002058,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7,
+          "gene": "AAAS",
+          "score": 0.130627,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1,
+          "gene": "A1CF",
+          "score": 0.129081,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 87,
+          "gene": "ABHD17B",
+          "score": 0.23368,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 79,
+          "gene": "ABHD12B",
+          "score": -0.01068,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 26,
+          "gene": "AASS",
+          "score": -0.085326,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 101,
+          "gene": "ABL2",
+          "score": 0.11353,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 60,
+          "gene": "ABCC8",
+          "score": 0.051595,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 73,
+          "gene": "ABCG5",
+          "score": 0.103443,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 95,
+          "gene": "ABI1",
+          "score": 0.0107805,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 59,
+          "gene": "ABCC6",
+          "score": 0.307105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 39,
+          "gene": "ABCA7",
+          "score": -0.01946,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 72,
+          "gene": "ABCG4",
+          "score": 0.25585085,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 34,
+          "gene": "ABCA2",
+          "score": -0.2907179,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 51,
+          "gene": "ABCC1",
+          "score": -0.165605,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 61,
+          "gene": "ABCC9",
+          "score": 0.19773,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 38,
+          "gene": "ABCA6",
+          "score": -0.1365005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 111,
+          "gene": "ABT1",
+          "score": 0.0858425,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 41,
+          "gene": "ABCA9",
+          "score": 0.27268896,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 84,
+          "gene": "ABHD16A",
+          "score": -0.1640935,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 78,
+          "gene": "ABHD12",
+          "score": 0.1263665,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 56,
+          "gene": "ABCC3",
+          "score": -0.0762865,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 42,
+          "gene": "ABCB1",
+          "score": -0.266345,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 100,
+          "gene": "ABL1",
+          "score": 0.0765485,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 22,
+          "gene": "AARS2",
+          "score": 0.03688,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 52,
+          "gene": "ABCC10",
+          "score": -0.1349245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 70,
+          "gene": "ABCG1",
+          "score": 0.04291255,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 23,
+          "gene": "AARSD1",
+          "score": -0.007871,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 97,
+          "gene": "ABI3",
+          "score": -0.1086473,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 40,
+          "gene": "ABCA8",
+          "score": 0.0039675,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 106,
+          "gene": "ABR",
+          "score": 0.339915,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 121,
+          "gene": "ACAD8",
+          "score": 0.02707,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 67,
+          "gene": "ABCF1",
+          "score": -0.105515,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6,
+          "gene": "A4GNT",
+          "score": 0.029995,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 55,
+          "gene": "ABCC2",
+          "score": -0.1535965,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14,
+          "gene": "AAGAB",
+          "score": -0.31044,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 90,
+          "gene": "ABHD3",
+          "score": 0.071691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 65,
+          "gene": "ABCD4",
+          "score": -0.04102,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 98,
+          "gene": "ABI3BP",
+          "score": -0.12602566,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 107,
+          "gene": "ABRA",
+          "score": 0.031534,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 117,
+          "gene": "ACACA",
+          "score": 0.035085,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8,
+          "gene": "AACS",
+          "score": 0.19899,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 24,
+          "gene": "AASDH",
+          "score": 0.140285,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 46,
+          "gene": "ABCB5",
+          "score": 0.0766415,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 37,
+          "gene": "ABCA5",
+          "score": 0.09411,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10,
+          "gene": "AADACL2",
+          "score": 0.180098,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 81,
+          "gene": "ABHD14A",
+          "score": -0.0982965,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15,
+          "gene": "AAK1",
+          "score": -0.144225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 68,
+          "gene": "ABCF2",
+          "score": -0.1052725,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 58,
+          "gene": "ABCC5",
+          "score": 0.16644,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5,
+          "gene": "A4GALT",
+          "score": 0.15113,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 33,
+          "gene": "ABCA13",
+          "score": -0.01498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 105,
+          "gene": "ABO",
+          "score": 0.016455,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 44,
+          "gene": "ABCB11",
+          "score": 0.09610045,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 45,
+          "gene": "ABCB4",
+          "score": 0.2502,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12,
+          "gene": "AADACL4",
+          "score": -0.165411,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 48,
+          "gene": "ABCB7",
+          "score": -0.505255,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 109,
+          "gene": "ABRAXAS1",
+          "score": 0.02837,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 119,
+          "gene": "ACAD10",
+          "score": 0.037576,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 88,
+          "gene": "ABHD17C",
+          "score": -0.0872855,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 108,
+          "gene": "ABRACL",
+          "score": -0.0995285,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 19,
+          "gene": "AAR2",
+          "score": 0.17943,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 93,
+          "gene": "ABHD6",
+          "score": -0.01869,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 43,
+          "gene": "ABCB10",
+          "score": -0.091724,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 112,
+          "gene": "ABTB1",
+          "score": 0.0953785,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 99,
+          "gene": "ABITRAM",
+          "score": 0.18748,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 20,
+          "gene": "AARD",
+          "score": 0.0074185,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 0,
+          "gene": "A1BG",
+          "score": -0.161214,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 124,
+          "gene": "ACADM",
+          "score": -0.17399,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 113,
+          "gene": "ABTB2",
+          "score": -0.15948,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 57,
+          "gene": "ABCC4",
+          "score": 0.07494,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 122,
+          "gene": "ACAD9",
+          "score": 0.0464,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 53,
+          "gene": "ABCC11",
+          "score": -0.1653245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 115,
+          "gene": "ACAA1",
+          "score": 0.27926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 89,
+          "gene": "ABHD2",
+          "score": -0.033632,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 83,
+          "gene": "ABHD15",
+          "score": 0.054218,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 91,
+          "gene": "ABHD4",
+          "score": -0.015138,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 25,
+          "gene": "AASDHPPT",
+          "score": 0.0825805,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 71,
+          "gene": "ABCG2",
+          "score": -0.000475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 110,
+          "gene": "ABRAXAS2",
+          "score": -0.240335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 77,
+          "gene": "ABHD11",
+          "score": 0.178475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 64,
+          "gene": "ABCD3",
+          "score": -0.367169,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 29,
+          "gene": "ABAT",
+          "score": -0.01351,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 27,
+          "gene": "AATF",
+          "score": 0.3854245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 116,
+          "gene": "ACAA2",
+          "score": -0.0323105,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 126,
+          "gene": "ACADSB",
+          "score": 0.0369245,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4,
+          "gene": "A3GALT2",
+          "score": 0.183225,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 54,
+          "gene": "ABCC12",
+          "score": -0.09262565,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 75,
+          "gene": "ABHD1",
+          "score": 0.09580065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11,
+          "gene": "AADACL3",
+          "score": -0.217905,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 69,
+          "gene": "ABCF3",
+          "score": 0.0637145,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 114,
+          "gene": "ABTB3",
+          "score": 0.33209,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 120,
+          "gene": "ACAD11",
+          "score": 0.184825,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 86,
+          "gene": "ABHD17A",
+          "score": -0.35325,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13,
+          "gene": "AADAT",
+          "score": 0.23516,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 125,
+          "gene": "ACADS",
+          "score": 0.243119,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17,
+          "gene": "AAMP",
+          "score": 0.1659475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 127,
+          "gene": "ACADVL",
+          "score": 0.0484775,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 31,
+          "gene": "ABCA10",
+          "score": -0.00779,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 35,
+          "gene": "ABCA3",
+          "score": 0.20382,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 94,
+          "gene": "ABHD8",
+          "score": -0.239638,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3,
+          "gene": "A2ML1",
+          "score": 0.005275,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 28,
+          "gene": "AATK",
+          "score": -0.027445,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18355,
+          "gene": "ZNG1F",
+          "score": 0.02004,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18364,
+          "gene": "ZNRF4",
+          "score": -0.1326135,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18333,
+          "gene": "ZNF852",
+          "score": 0.082401,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18330,
+          "gene": "ZNF846",
+          "score": 0.241646,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18372,
+          "gene": "ZPR1",
+          "score": 0.060205,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18291,
+          "gene": "ZNF784",
+          "score": 0.1521965,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18315,
+          "gene": "ZNF823",
+          "score": -0.0882665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18329,
+          "gene": "ZNF845",
+          "score": 0.174269,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18356,
+          "gene": "ZNHIT1",
+          "score": 0.285865,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18312,
+          "gene": "ZNF814",
+          "score": -0.002941,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18377,
+          "gene": "ZSCAN1",
+          "score": 0.0236465,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18363,
+          "gene": "ZNRF3",
+          "score": 0.109025,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18388,
+          "gene": "ZSCAN26",
+          "score": 0.1452,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18384,
+          "gene": "ZSCAN21",
+          "score": -0.06876,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18345,
+          "gene": "ZNF91",
+          "score": 0.072198,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18324,
+          "gene": "ZNF839",
+          "score": 0.058726,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18403,
+          "gene": "ZSWIM7",
+          "score": 0.04798,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18348,
+          "gene": "ZNF98",
+          "score": 0.1414345,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18319,
+          "gene": "ZNF830",
+          "score": -0.385385,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18360,
+          "gene": "ZNRD2",
+          "score": 0.022,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18393,
+          "gene": "ZSCAN4",
+          "score": 0.100399,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18325,
+          "gene": "ZNF84",
+          "score": -0.1180885,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18385,
+          "gene": "ZSCAN22",
+          "score": -0.0139586,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18314,
+          "gene": "ZNF821",
+          "score": 0.152965,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18376,
+          "gene": "ZRSR2",
+          "score": -0.105073,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18392,
+          "gene": "ZSCAN32",
+          "score": -0.28131,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18357,
+          "gene": "ZNHIT2",
+          "score": -0.104951,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18417,
+          "gene": "ZZZ3",
+          "score": 0.16858,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18366,
+          "gene": "ZP2",
+          "score": -0.09089255,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18416,
+          "gene": "ZZEF1",
+          "score": 0.2619375,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18294,
+          "gene": "ZNF787",
+          "score": -0.025515,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18389,
+          "gene": "ZSCAN29",
+          "score": 0.320085,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18373,
+          "gene": "ZRANB1",
+          "score": 0.32594,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18335,
+          "gene": "ZNF860",
+          "score": -0.165498,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18310,
+          "gene": "ZNF81",
+          "score": 0.0681635,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18336,
+          "gene": "ZNF862",
+          "score": 0.0335655,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18378,
+          "gene": "ZSCAN10",
+          "score": 0.0282885,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18334,
+          "gene": "ZNF853",
+          "score": 0.0603453,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18300,
+          "gene": "ZNF793",
+          "score": -0.21759,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18412,
+          "gene": "ZXDC",
+          "score": 0.10866015,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18365,
+          "gene": "ZP1",
+          "score": -0.1891195,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18391,
+          "gene": "ZSCAN31",
+          "score": 0.0142375,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18387,
+          "gene": "ZSCAN25",
+          "score": 0.04001,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18306,
+          "gene": "ZNF804B",
+          "score": 0.0680285,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18390,
+          "gene": "ZSCAN30",
+          "score": -0.0656345,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18296,
+          "gene": "ZNF79",
+          "score": 0.052601,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18386,
+          "gene": "ZSCAN23",
+          "score": -0.179549,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18313,
+          "gene": "ZNF816",
+          "score": 0.155999,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18346,
+          "gene": "ZNF92",
+          "score": -0.01364915,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18350,
+          "gene": "ZNFX1",
+          "score": -0.118895,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18342,
+          "gene": "ZNF883",
+          "score": -0.19204,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18413,
+          "gene": "ZYG11A",
+          "score": 0.14097,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18379,
+          "gene": "ZSCAN12",
+          "score": 0.31877,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18374,
+          "gene": "ZRANB2",
+          "score": 0.17481,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18406,
+          "gene": "ZUP1",
+          "score": -0.0774975,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18371,
+          "gene": "ZPLD1",
+          "score": 0.26673,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18311,
+          "gene": "ZNF813",
+          "score": 0.1106155,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18400,
+          "gene": "ZSWIM4",
+          "score": -0.2097455,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18299,
+          "gene": "ZNF792",
+          "score": -0.290714,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18331,
+          "gene": "ZNF85",
+          "score": -0.1081275,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18414,
+          "gene": "ZYG11B",
+          "score": -0.1208665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18323,
+          "gene": "ZNF837",
+          "score": -0.24985,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18327,
+          "gene": "ZNF843",
+          "score": -0.21766,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18407,
+          "gene": "ZW10",
+          "score": -0.159709,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18326,
+          "gene": "ZNF841",
+          "score": -0.245215,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18305,
+          "gene": "ZNF804A",
+          "score": 0.1808675,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18361,
+          "gene": "ZNRF1",
+          "score": -0.1483935,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18349,
+          "gene": "ZNF99",
+          "score": 0.355344,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18375,
+          "gene": "ZRANB3",
+          "score": -0.1117185,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18302,
+          "gene": "ZNF8",
+          "score": 0.1183505,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18322,
+          "gene": "ZNF836",
+          "score": -0.160919,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18339,
+          "gene": "ZNF878",
+          "score": 0.117919,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18318,
+          "gene": "ZNF83",
+          "score": -0.2179175,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18351,
+          "gene": "ZNG1A",
+          "score": 0.0520335,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18290,
+          "gene": "ZNF783",
+          "score": 0.0189365,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18382,
+          "gene": "ZSCAN2",
+          "score": 0.174456,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18380,
+          "gene": "ZSCAN16",
+          "score": 0.02777,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18396,
+          "gene": "ZSCAN9",
+          "score": -0.176105,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18337,
+          "gene": "ZNF865",
+          "score": 0.19303416,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18298,
+          "gene": "ZNF791",
+          "score": 0.0412261,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18317,
+          "gene": "ZNF829",
+          "score": -0.09893,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18343,
+          "gene": "ZNF891",
+          "score": 0.0954565,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18411,
+          "gene": "ZXDB",
+          "score": -0.02779,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18409,
+          "gene": "ZWINT",
+          "score": -0.123792,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18293,
+          "gene": "ZNF786",
+          "score": 0.1072135,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18394,
+          "gene": "ZSCAN5A",
+          "score": 0.34555,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18309,
+          "gene": "ZNF808",
+          "score": -0.113385,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18383,
+          "gene": "ZSCAN20",
+          "score": -0.3234765,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18353,
+          "gene": "ZNG1C",
+          "score": -0.1444645,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18303,
+          "gene": "ZNF80",
+          "score": 0.06814,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18368,
+          "gene": "ZP4",
+          "score": 0.06677535,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18401,
+          "gene": "ZSWIM5",
+          "score": -0.090245,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18304,
+          "gene": "ZNF800",
+          "score": -0.21139,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18307,
+          "gene": "ZNF805",
+          "score": 0.003305,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18397,
+          "gene": "ZSWIM1",
+          "score": 0.1066745,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18301,
+          "gene": "ZNF799",
+          "score": -0.077053,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18398,
+          "gene": "ZSWIM2",
+          "score": 0.08891,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18369,
+          "gene": "ZPBP",
+          "score": -0.208236,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18402,
+          "gene": "ZSWIM6",
+          "score": -0.132565,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18404,
+          "gene": "ZSWIM8",
+          "score": -0.034683,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18410,
+          "gene": "ZXDA",
+          "score": -0.044888,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18395,
+          "gene": "ZSCAN5B",
+          "score": -0.043905,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18367,
+          "gene": "ZP3",
+          "score": 0.179865,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18308,
+          "gene": "ZNF806",
+          "score": 0.2282205,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18321,
+          "gene": "ZNF835",
+          "score": 0.1356605,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18347,
+          "gene": "ZNF93",
+          "score": -0.0982335,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18338,
+          "gene": "ZNF875",
+          "score": -0.214485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18297,
+          "gene": "ZNF790",
+          "score": -0.144395,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18344,
+          "gene": "ZNF90",
+          "score": 4.8e-05,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18362,
+          "gene": "ZNRF2",
+          "score": 0.058075,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18352,
+          "gene": "ZNG1B",
+          "score": -0.2631505,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18415,
+          "gene": "ZYX",
+          "score": 0.222654,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18340,
+          "gene": "ZNF879",
+          "score": 0.2543,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18354,
+          "gene": "ZNG1E",
+          "score": -0.091448,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18341,
+          "gene": "ZNF880",
+          "score": 0.0219,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18359,
+          "gene": "ZNHIT6",
+          "score": 0.341157,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18405,
+          "gene": "ZSWIM9",
+          "score": -0.25744,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18316,
+          "gene": "ZNF827",
+          "score": 0.2394125,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18292,
+          "gene": "ZNF785",
+          "score": -0.2707485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18332,
+          "gene": "ZNF850",
+          "score": 0.135435,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18370,
+          "gene": "ZPBP2",
+          "score": -0.0285285,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18358,
+          "gene": "ZNHIT3",
+          "score": -0.1181735,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18295,
+          "gene": "ZNF789",
+          "score": -0.105075,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18399,
+          "gene": "ZSWIM3",
+          "score": -0.242955,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18320,
+          "gene": "ZNF831",
+          "score": 0.0346266,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18328,
+          "gene": "ZNF844",
+          "score": -0.114665,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18381,
+          "gene": "ZSCAN18",
+          "score": -0.49931,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 18408,
+          "gene": "ZWILCH",
+          "score": -0.146465,
+          "hit": 0,
+          "round": 1
+        }
+      ]
+    }
+  }
+}

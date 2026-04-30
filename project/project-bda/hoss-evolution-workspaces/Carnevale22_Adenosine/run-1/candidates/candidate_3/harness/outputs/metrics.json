@@ -1,0 +1,4025 @@
+{
+  "task": "perturb-genes-brief",
+  "data_name": "Carnevale22_Adenosine",
+  "measurement": "the change in T cell proliferation",
+  "task_prompt": {
+    "Task": "identify genes that, upon being knocked out, would boost the efficacy of engineered T cells in the presence of an adenosine agonist that creates an immunosuppresive condition",
+    "Measurement": "the change in T cell proliferation"
+  },
+  "metrics": {
+    "test": {
+      "pool_size": 18861,
+      "rounds": 2,
+      "executed_rounds": 1,
+      "batch_size": 128,
+      "seed": 42,
+      "baseline_total_queries": 128,
+      "baseline_total_hits": 2,
+      "delta_queries": 128,
+      "delta_hits": 5,
+      "total_queries": 256,
+      "total_hits": 7,
+      "top_k": 943,
+      "hit_curve": {
+        "queries": [
+          128,
+          256
+        ],
+        "hits": [
+          2,
+          7
+        ]
+      },
+      "auc": 576.0,
+      "auc_normalized": 0.0023860021208907743,
+      "ncg": 0.23323368332888017,
+      "round_details": [
+        {
+          "round": 1,
+          "selected_count": 128,
+          "hits": 5,
+          "cumulative_hits": 7,
+          "precision_at_batch": 0.0390625,
+          "selected": [
+            "ATP6V1E1",
+            "MON1A",
+            "EIF5A",
+            "SP140L",
+            "PLEKHF2",
+            "CLPSL2",
+            "SLC6A8",
+            "TMC3",
+            "AMY1B",
+            "TRARG1",
+            "SELENOP",
+            "PMEPA1",
+            "YIPF4",
+            "SERF1A",
+            "PTPRC",
+            "GABRA4",
+            "C2orf68",
+            "CRLS1",
+            "DENND4B",
+            "POM121L2",
+            "EXOC4",
+            "CLK2",
+            "FAM9B",
+            "TPRA1",
+            "TIMP3",
+            "DLX1",
+            "PRR20A",
+            "TMPRSS11B",
+            "MAP3K5",
+            "GET3",
+            "POU2F1",
+            "CALHM1",
+            "BRCA2",
+            "C9orf78",
+            "GMPR",
+            "CA14",
+            "FFAR1",
+            "MXRA5",
+            "MC5R",
+            "CD5",
+            "TTC4",
+            "COQ9",
+            "C9orf50",
+            "CLDN25",
+            "SMIM8",
+            "ODAPH",
+            "NonTarget.CTRL95",
+            "UCK2",
+            "SH3GL1",
+            "FGFR1OP2",
+            "DHRS2",
+            "CDK11B",
+            "NTRK2",
+            "BTBD1",
+            "MAB21L1",
+            "PLA2G6",
+            "GLUL",
+            "CCDC187",
+            "ZFP1",
+            "CUTC",
+            "MYH1",
+            "TIAM2",
+            "PGPEP1",
+            "SERAC1",
+            "B4GALT6",
+            "STAMBPL1",
+            "RNF167",
+            "CENPN",
+            "PDRG1",
+            "DIABLO",
+            "CFAP299",
+            "EXTL2",
+            "NEURL2",
+            "CSGALNACT2",
+            "UTP3",
+            "S100A13",
+            "SLC10A7",
+            "ATP5PO",
+            "ENDOD1",
+            "ABHD14B",
+            "CR1L",
+            "DENND1B",
+            "DHDH",
+            "ZNF350",
+            "SLC35G5",
+            "TPP2",
+            "ANGEL1",
+            "SPEM1",
+            "ZDHHC4",
+            "STBD1",
+            "DLK2",
+            "ZER1",
+            "FYCO1",
+            "WNT2",
+            "ADAMTS9",
+            "VWF",
+            "MFAP1",
+            "TXNDC17",
+            "SNF8",
+            "NLRP1",
+            "CDH10",
+            "RGL1",
+            "ZNF808",
+            "SPAM1",
+            "ZNF469",
+            "USP18",
+            "ZNF814",
+            "DPP3",
+            "FARP1",
+            "TRPM4",
+            "PRCP",
+            "CAND1",
+            "IGFBP2",
+            "CLMN",
+            "PSMC4",
+            "SNX27",
+            "CCL17",
+            "CDK2AP1",
+            "ARL16",
+            "CD47",
+            "CA4",
+            "CAPZA2",
+            "PDCD7",
+            "FBXL18",
+            "ECHDC3",
+            "TUBB2B",
+            "SIVA1",
+            "WFDC8"
+          ],
+          "selected_scores": [
+            0.045874,
+            -0.24772,
+            0.22815,
+            0.078495,
+            -0.023711,
+            0.14989,
+            -0.22267,
+            0.044808,
+            0.052605,
+            0.30501,
+            0.0134015,
+            -0.122093,
+            -0.21191,
+            0.25029,
+            -0.28242,
+            -0.080544,
+            -0.020633,
+            0.15191,
+            0.16249,
+            0.2843,
+            -0.0041473,
+            -0.35613,
+            -0.10442,
+            -0.16902,
+            0.033329,
+            0.01813,
+            0.060526,
+            -0.24971,
+            -0.082904,
+            -0.14026,
+            -0.43957,
+            -0.22231,
+            0.073084,
+            -0.13503,
+            -0.045694,
+            -0.14264,
+            -0.01248,
+            0.031039,
+            -0.28603,
+            0.080001,
+            -0.035282,
+            -0.17211,
+            0.36936,
+            -0.16321,
+            0.004964,
+            0.080498,
+            0.049269,
+            -0.039443,
+            -0.072301,
+            0.017969,
+            0.14619,
+            0.037942,
+            0.14333,
+            -0.43089,
+            0.07773,
+            -0.027941,
+            0.088831,
+            0.023173,
+            -0.014842,
+            -0.18485,
+            0.17845,
+            0.27459,
+            0.0388275,
+            -0.035284,
+            0.078371,
+            0.047768,
+            0.19611,
+            0.15354,
+            -0.014472,
+            0.073076,
+            -0.00070511,
+            0.045831,
+            -0.22225,
+            -0.046169,
+            -0.046037,
+            -0.21237,
+            0.19453,
+            0.082329,
+            0.20888,
+            0.023426,
+            -0.18867,
+            0.023313,
+            0.09446,
+            -0.039011,
+            0.16566,
+            0.24338,
+            -0.13474,
+            0.29424,
+            -0.043506,
+            -0.068879,
+            0.10306,
+            0.016376,
+            -0.14937,
+            0.12185,
+            -0.27175,
+            -0.1986,
+            -0.15274,
+            0.11567,
+            -0.082349,
+            -0.56947,
+            -0.095898,
+            0.065055,
+            -0.021356,
+            0.063423,
+            -0.051998,
+            0.11306,
+            0.086018,
+            -0.1326,
+            -0.19461,
+            0.031861,
+            0.23864,
+            -0.0682,
+            -0.21138,
+            -0.15263,
+            -0.20681,
+            0.05235,
+            -0.19129,
+            -0.2877,
+            0.21682,
+            0.02847,
+            -0.026209,
+            -0.14898,
+            0.14103,
+            -0.023129,
+            0.12136,
+            0.032747,
+            0.23603,
+            0.039682
+          ],
+          "selected_hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "queried_records": [
+        {
+          "candidate_index": 3648,
+          "gene": "CT45A7",
+          "score": -0.12966,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 819,
+          "gene": "APBB1IP",
+          "score": 0.10238,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9012,
+          "gene": "MAPK8IP2",
+          "score": 0.030073,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8024,
+          "gene": "KLK2",
+          "score": -0.1668,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7314,
+          "gene": "IL16",
+          "score": -0.18023,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4572,
+          "gene": "E2F6",
+          "score": -0.04133,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3358,
+          "gene": "COLGALT1",
+          "score": -0.094579,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17870,
+          "gene": "WDR44",
+          "score": -0.19475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2848,
+          "gene": "CFAP43",
+          "score": -0.035481,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13825,
+          "gene": "RPL41",
+          "score": -0.16498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1041,
+          "gene": "ARMH4",
+          "score": -0.47401,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 976,
+          "gene": "ARHGEF7",
+          "score": -0.0014975,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3070,
+          "gene": "CKS1B",
+          "score": 0.077615,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7164,
+          "gene": "IDH3A",
+          "score": 0.30811,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7623,
+          "gene": "IZUMO1R",
+          "score": 0.027915,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16559,
+          "gene": "TMEM185B",
+          "score": 0.32316,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 869,
+          "gene": "APOL5",
+          "score": 0.15146,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18390,
+          "gene": "ZNF280D",
+          "score": 0.19312,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6515,
+          "gene": "GTF2H1",
+          "score": 0.066402,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17856,
+          "gene": "WDR24",
+          "score": 0.25827,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13746,
+          "gene": "RNMT",
+          "score": 0.17691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7223,
+          "gene": "IFNL3",
+          "score": 0.15437,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14719,
+          "gene": "SLC25A12",
+          "score": -0.0409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9115,
+          "gene": "MCM9",
+          "score": 0.13342,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 212,
+          "gene": "ACTL9",
+          "score": 0.09746,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5231,
+          "gene": "FAM217B",
+          "score": 0.11815,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13848,
+          "gene": "RPRM",
+          "score": -0.09576,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11149,
+          "gene": "OR3A2",
+          "score": 0.1804,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9105,
+          "gene": "MCIDAS",
+          "score": -0.064846,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5094,
+          "gene": "EZR",
+          "score": 0.051338,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7055,
+          "gene": "HSDL2",
+          "score": -0.038049,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11029,
+          "gene": "OR10Z1",
+          "score": 0.10104,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3349,
+          "gene": "COL8A1",
+          "score": -0.029402,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3039,
+          "gene": "CIMAP2",
+          "score": -0.031647,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12449,
+          "gene": "POU4F2",
+          "score": 0.24683,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3169,
+          "gene": "CLN8",
+          "score": 0.022065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11763,
+          "gene": "PDE11A",
+          "score": 0.2464,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11270,
+          "gene": "OR5D18",
+          "score": -0.036079,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8667,
+          "gene": "LRRC17",
+          "score": 0.063089,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1423,
+          "gene": "BCAP29",
+          "score": -0.18674,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15054,
+          "gene": "SMC1A",
+          "score": 0.058556,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17571,
+          "gene": "USP1",
+          "score": -0.057823,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4090,
+          "gene": "DEFB132",
+          "score": -0.11005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12403,
+          "gene": "POLRMT",
+          "score": 0.11097,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2582,
+          "gene": "CDC25C",
+          "score": -0.037071,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18089,
+          "gene": "ZBP1",
+          "score": -0.04,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9606,
+          "gene": "MRPS7",
+          "score": 0.078211,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11850,
+          "gene": "PELI1",
+          "score": 0.028462,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6300,
+          "gene": "GPN2",
+          "score": 0.13921,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2279,
+          "gene": "CCDC138",
+          "score": 0.065409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1501,
+          "gene": "BHLHE22",
+          "score": -0.09801,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7467,
+          "gene": "INTS8",
+          "score": -0.20387,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9482,
+          "gene": "MPND",
+          "score": -0.038419,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2614,
+          "gene": "CDH11",
+          "score": 0.085857,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7628,
+          "gene": "JADE2",
+          "score": 0.27221,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3309,
+          "gene": "COIL",
+          "score": -0.18843,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12455,
+          "gene": "POU6F2",
+          "score": -0.14212,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9108,
+          "gene": "MCM3",
+          "score": 0.15926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14857,
+          "gene": "SLC37A3",
+          "score": 0.14003,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11954,
+          "gene": "PHF1",
+          "score": 0.046076,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5329,
+          "gene": "FASTKD1",
+          "score": -0.15487,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12130,
+          "gene": "PLA1A",
+          "score": 0.041628,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11641,
+          "gene": "PCDH12",
+          "score": 0.30732,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6865,
+          "gene": "HLA-DPA1",
+          "score": -0.34454,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 8748,
+          "gene": "LRTOMT",
+          "score": 0.14498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2339,
+          "gene": "CCDC43",
+          "score": 0.20342,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5607,
+          "gene": "FNDC1",
+          "score": 0.32899,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17502,
+          "gene": "UNC119",
+          "score": 0.16335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8021,
+          "gene": "KLK13",
+          "score": 0.19205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5354,
+          "gene": "FBRSL1",
+          "score": 0.17804,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15147,
+          "gene": "SNED1",
+          "score": -0.20528,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12433,
+          "gene": "POTEG",
+          "score": 0.21909,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8845,
+          "gene": "LYZL6",
+          "score": 0.022274,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18250,
+          "gene": "ZGRF1",
+          "score": -0.09377,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7196,
+          "gene": "IFITM1",
+          "score": -0.2055,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10626,
+          "gene": "NUTM2F",
+          "score": 0.056891,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1832,
+          "gene": "C1S",
+          "score": 0.18327,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7505,
+          "gene": "IQSEC3",
+          "score": 0.046515,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1051,
+          "gene": "ARPC4-TTLL3",
+          "score": 0.027792,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10336,
+          "gene": "NOD1",
+          "score": -0.18365,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13145,
+          "gene": "RAB3D",
+          "score": 0.2332,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8773,
+          "gene": "LTB",
+          "score": -0.13657,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2168,
+          "gene": "CARD9",
+          "score": -0.22407,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6913,
+          "gene": "HMX3",
+          "score": -0.09499,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18585,
+          "gene": "ZNF584",
+          "score": -0.13782,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10311,
+          "gene": "NME6",
+          "score": -0.083038,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6967,
+          "gene": "HOXB1",
+          "score": -0.12558,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16358,
+          "gene": "TIMM50",
+          "score": -0.27507,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12964,
+          "gene": "PTGR1",
+          "score": 0.15051,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15035,
+          "gene": "SMAD5",
+          "score": -0.18691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4681,
+          "gene": "EGLN1",
+          "score": 0.19385,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8679,
+          "gene": "LRRC3",
+          "score": -0.0070939,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4575,
+          "gene": "E4F1",
+          "score": 0.0095273,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8081,
+          "gene": "KRIT1",
+          "score": -0.18255,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18394,
+          "gene": "ZNF284",
+          "score": -0.13206,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17661,
+          "gene": "UTS2R",
+          "score": -0.32043,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8609,
+          "gene": "LPAR5",
+          "score": 0.16689,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14038,
+          "gene": "S1PR2",
+          "score": -0.15072,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13087,
+          "gene": "QRICH1",
+          "score": -0.090926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11861,
+          "gene": "PERP",
+          "score": -0.04397,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7186,
+          "gene": "IFI35",
+          "score": 0.030184,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4532,
+          "gene": "DXO",
+          "score": 0.20724,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16788,
+          "gene": "TNFSF8",
+          "score": -0.015146,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16261,
+          "gene": "TGFBR3L",
+          "score": -0.33596,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2993,
+          "gene": "CHST1",
+          "score": 0.24443,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1551,
+          "gene": "BMP1",
+          "score": 0.072848,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3613,
+          "gene": "CSNK2A3",
+          "score": -0.041738,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5035,
+          "gene": "ETV5",
+          "score": 0.059629,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5271,
+          "gene": "FAM53B",
+          "score": 0.049745,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13917,
+          "gene": "RRP1B",
+          "score": 0.21357,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2090,
+          "gene": "CALCOCO2",
+          "score": 0.19982,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12686,
+          "gene": "PRKCE",
+          "score": 0.088743,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12582,
+          "gene": "PPP4R4",
+          "score": 0.072569,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15427,
+          "gene": "SPOCK3",
+          "score": -0.056925,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17430,
+          "gene": "UBTD2",
+          "score": 0.051937,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8288,
+          "gene": "LAS1L",
+          "score": -0.15746,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18226,
+          "gene": "ZFP82",
+          "score": -0.10838,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 377,
+          "gene": "ADRA2B",
+          "score": 0.061005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3775,
+          "gene": "CXXC1",
+          "score": 0.074451,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17690,
+          "gene": "VBP1",
+          "score": -0.013253,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8798,
+          "gene": "LXN",
+          "score": 0.12194,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11213,
+          "gene": "OR51G2",
+          "score": -0.068408,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3677,
+          "gene": "CTC1",
+          "score": -0.085898,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9679,
+          "gene": "MTCH2",
+          "score": 0.026809,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14331,
+          "gene": "SERINC2",
+          "score": 0.083967,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5210,
+          "gene": "FAM185A",
+          "score": -0.010977,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14954,
+          "gene": "SLC6A4",
+          "score": 0.0127,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 106,
+          "gene": "ABO",
+          "score": -0.037216,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1271,
+          "gene": "ATP6V1E1",
+          "score": 0.045874,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9447,
+          "gene": "MON1A",
+          "score": -0.24772,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4751,
+          "gene": "EIF5A",
+          "score": 0.22815,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15266,
+          "gene": "SP140L",
+          "score": 0.078495,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12209,
+          "gene": "PLEKHF2",
+          "score": -0.023711,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3178,
+          "gene": "CLPSL2",
+          "score": 0.14989,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14957,
+          "gene": "SLC6A8",
+          "score": -0.22267,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16440,
+          "gene": "TMC3",
+          "score": 0.044808,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 630,
+          "gene": "AMY1B",
+          "score": 0.052605,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16960,
+          "gene": "TRARG1",
+          "score": 0.30501,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14271,
+          "gene": "SELENOP",
+          "score": 0.0134015,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12290,
+          "gene": "PMEPA1",
+          "score": -0.122093,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18045,
+          "gene": "YIPF4",
+          "score": -0.21191,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14326,
+          "gene": "SERF1A",
+          "score": 0.25029,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13004,
+          "gene": "PTPRC",
+          "score": -0.28242,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5816,
+          "gene": "GABRA4",
+          "score": -0.080544,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1903,
+          "gene": "C2orf68",
+          "score": -0.020633,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3542,
+          "gene": "CRLS1",
+          "score": 0.15191,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4112,
+          "gene": "DENND4B",
+          "score": 0.16249,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12406,
+          "gene": "POM121L2",
+          "score": 0.2843,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5064,
+          "gene": "EXOC4",
+          "score": -0.0041473,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3159,
+          "gene": "CLK2",
+          "score": -0.35613,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 5303,
+          "gene": "FAM9B",
+          "score": -0.10442,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16906,
+          "gene": "TPRA1",
+          "score": -0.16902,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16365,
+          "gene": "TIMP3",
+          "score": 0.033329,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4248,
+          "gene": "DLX1",
+          "score": 0.01813,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12771,
+          "gene": "PRR20A",
+          "score": 0.060526,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16716,
+          "gene": "TMPRSS11B",
+          "score": -0.24971,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 8979,
+          "gene": "MAP3K5",
+          "score": -0.082904,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6001,
+          "gene": "GET3",
+          "score": -0.14026,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12442,
+          "gene": "POU2F1",
+          "score": -0.43957,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 2094,
+          "gene": "CALHM1",
+          "score": -0.22231,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1614,
+          "gene": "BRCA2",
+          "score": 0.073084,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2017,
+          "gene": "C9orf78",
+          "score": -0.13503,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6158,
+          "gene": "GMPR",
+          "score": -0.045694,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2024,
+          "gene": "CA14",
+          "score": -0.14264,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5472,
+          "gene": "FFAR1",
+          "score": -0.01248,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9780,
+          "gene": "MXRA5",
+          "score": 0.031039,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9090,
+          "gene": "MC5R",
+          "score": -0.28603,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2540,
+          "gene": "CD5",
+          "score": 0.080001,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17228,
+          "gene": "TTC4",
+          "score": -0.035282,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3402,
+          "gene": "COQ9",
+          "score": -0.17211,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2012,
+          "gene": "C9orf50",
+          "score": 0.36936,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 3105,
+          "gene": "CLDN25",
+          "score": -0.16321,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15097,
+          "gene": "SMIM8",
+          "score": 0.004964,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10934,
+          "gene": "ODAPH",
+          "score": 0.080498,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10898,
+          "gene": "NonTarget.CTRL95",
+          "score": 0.049269,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17446,
+          "gene": "UCK2",
+          "score": -0.039443,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14482,
+          "gene": "SH3GL1",
+          "score": -0.072301,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5508,
+          "gene": "FGFR1OP2",
+          "score": 0.017969,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4170,
+          "gene": "DHRS2",
+          "score": 0.14619,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2644,
+          "gene": "CDK11B",
+          "score": 0.037942,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10548,
+          "gene": "NTRK2",
+          "score": 0.14333,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1652,
+          "gene": "BTBD1",
+          "score": -0.43089,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 8854,
+          "gene": "MAB21L1",
+          "score": 0.07773,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12149,
+          "gene": "PLA2G6",
+          "score": -0.027941,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6138,
+          "gene": "GLUL",
+          "score": 0.088831,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2320,
+          "gene": "CCDC187",
+          "score": 0.023173,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18209,
+          "gene": "ZFP1",
+          "score": -0.014842,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3741,
+          "gene": "CUTC",
+          "score": -0.18485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9808,
+          "gene": "MYH1",
+          "score": 0.17845,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16329,
+          "gene": "TIAM2",
+          "score": 0.27459,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11934,
+          "gene": "PGPEP1",
+          "score": 0.0388275,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14324,
+          "gene": "SERAC1",
+          "score": -0.035284,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1362,
+          "gene": "B4GALT6",
+          "score": 0.078371,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15612,
+          "gene": "STAMBPL1",
+          "score": 0.047768,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13694,
+          "gene": "RNF167",
+          "score": 0.19611,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2758,
+          "gene": "CENPN",
+          "score": 0.15354,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11819,
+          "gene": "PDRG1",
+          "score": -0.014472,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4197,
+          "gene": "DIABLO",
+          "score": 0.073076,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2843,
+          "gene": "CFAP299",
+          "score": -0.00070511,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5085,
+          "gene": "EXTL2",
+          "score": 0.045831,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10152,
+          "gene": "NEURL2",
+          "score": -0.22225,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3595,
+          "gene": "CSGALNACT2",
+          "score": -0.046169,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17655,
+          "gene": "UTP3",
+          "score": -0.046037,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14020,
+          "gene": "S100A13",
+          "score": -0.21237,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14622,
+          "gene": "SLC10A7",
+          "score": 0.19453,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1252,
+          "gene": "ATP5PO",
+          "score": 0.082329,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4837,
+          "gene": "ENDOD1",
+          "score": 0.20888,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 82,
+          "gene": "ABHD14B",
+          "score": 0.023426,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3491,
+          "gene": "CR1L",
+          "score": -0.18867,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4104,
+          "gene": "DENND1B",
+          "score": 0.023313,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4160,
+          "gene": "DHDH",
+          "score": 0.09446,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18432,
+          "gene": "ZNF350",
+          "score": -0.039011,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14849,
+          "gene": "SLC35G5",
+          "score": 0.16566,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16901,
+          "gene": "TPP2",
+          "score": 0.24338,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 647,
+          "gene": "ANGEL1",
+          "score": -0.13474,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15371,
+          "gene": "SPEM1",
+          "score": 0.29424,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18188,
+          "gene": "ZDHHC4",
+          "score": -0.043506,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15634,
+          "gene": "STBD1",
+          "score": -0.068879,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4243,
+          "gene": "DLK2",
+          "score": 0.10306,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18196,
+          "gene": "ZER1",
+          "score": 0.016376,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5781,
+          "gene": "FYCO1",
+          "score": -0.14937,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17944,
+          "gene": "WNT2",
+          "score": 0.12185,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 283,
+          "gene": "ADAMTS9",
+          "score": -0.27175,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17820,
+          "gene": "VWF",
+          "score": -0.1986,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9251,
+          "gene": "MFAP1",
+          "score": -0.15274,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17316,
+          "gene": "TXNDC17",
+          "score": 0.11567,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15148,
+          "gene": "SNF8",
+          "score": -0.082349,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10287,
+          "gene": "NLRP1",
+          "score": -0.56947,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 2613,
+          "gene": "CDH10",
+          "score": -0.095898,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13501,
+          "gene": "RGL1",
+          "score": 0.065055,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18750,
+          "gene": "ZNF808",
+          "score": -0.021356,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15295,
+          "gene": "SPAM1",
+          "score": 0.063423,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18497,
+          "gene": "ZNF469",
+          "score": -0.051998,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17602,
+          "gene": "USP18",
+          "score": 0.11306,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18754,
+          "gene": "ZNF814",
+          "score": 0.086018,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4424,
+          "gene": "DPP3",
+          "score": -0.1326,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5321,
+          "gene": "FARP1",
+          "score": -0.19461,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17105,
+          "gene": "TRPM4",
+          "score": 0.031861,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12626,
+          "gene": "PRCP",
+          "score": 0.23864,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2131,
+          "gene": "CAND1",
+          "score": -0.0682,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 7259,
+          "gene": "IGFBP2",
+          "score": -0.21138,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3164,
+          "gene": "CLMN",
+          "score": -0.15263,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12893,
+          "gene": "PSMC4",
+          "score": -0.20681,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15198,
+          "gene": "SNX27",
+          "score": 0.05235,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2399,
+          "gene": "CCL17",
+          "score": -0.19129,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2655,
+          "gene": "CDK2AP1",
+          "score": -0.2877,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1001,
+          "gene": "ARL16",
+          "score": 0.21682,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2538,
+          "gene": "CD47",
+          "score": 0.02847,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2027,
+          "gene": "CA4",
+          "score": -0.026209,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2156,
+          "gene": "CAPZA2",
+          "score": -0.14898,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11758,
+          "gene": "PDCD7",
+          "score": 0.14103,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5361,
+          "gene": "FBXL18",
+          "score": -0.023129,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4595,
+          "gene": "ECHDC3",
+          "score": 0.12136,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17270,
+          "gene": "TUBB2B",
+          "score": 0.032747,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14586,
+          "gene": "SIVA1",
+          "score": 0.23603,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17919,
+          "gene": "WFDC8",
+          "score": 0.039682,
+          "hit": 0,
+          "round": 1
+        }
+      ],
+      "queried_history": [
+        {
+          "candidate_index": 3648,
+          "gene": "CT45A7",
+          "score": -0.12966,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 819,
+          "gene": "APBB1IP",
+          "score": 0.10238,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9012,
+          "gene": "MAPK8IP2",
+          "score": 0.030073,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8024,
+          "gene": "KLK2",
+          "score": -0.1668,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7314,
+          "gene": "IL16",
+          "score": -0.18023,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4572,
+          "gene": "E2F6",
+          "score": -0.04133,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3358,
+          "gene": "COLGALT1",
+          "score": -0.094579,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17870,
+          "gene": "WDR44",
+          "score": -0.19475,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2848,
+          "gene": "CFAP43",
+          "score": -0.035481,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13825,
+          "gene": "RPL41",
+          "score": -0.16498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1041,
+          "gene": "ARMH4",
+          "score": -0.47401,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 976,
+          "gene": "ARHGEF7",
+          "score": -0.0014975,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3070,
+          "gene": "CKS1B",
+          "score": 0.077615,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7164,
+          "gene": "IDH3A",
+          "score": 0.30811,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7623,
+          "gene": "IZUMO1R",
+          "score": 0.027915,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16559,
+          "gene": "TMEM185B",
+          "score": 0.32316,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 869,
+          "gene": "APOL5",
+          "score": 0.15146,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18390,
+          "gene": "ZNF280D",
+          "score": 0.19312,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6515,
+          "gene": "GTF2H1",
+          "score": 0.066402,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17856,
+          "gene": "WDR24",
+          "score": 0.25827,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13746,
+          "gene": "RNMT",
+          "score": 0.17691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7223,
+          "gene": "IFNL3",
+          "score": 0.15437,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14719,
+          "gene": "SLC25A12",
+          "score": -0.0409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9115,
+          "gene": "MCM9",
+          "score": 0.13342,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 212,
+          "gene": "ACTL9",
+          "score": 0.09746,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5231,
+          "gene": "FAM217B",
+          "score": 0.11815,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13848,
+          "gene": "RPRM",
+          "score": -0.09576,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11149,
+          "gene": "OR3A2",
+          "score": 0.1804,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9105,
+          "gene": "MCIDAS",
+          "score": -0.064846,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5094,
+          "gene": "EZR",
+          "score": 0.051338,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7055,
+          "gene": "HSDL2",
+          "score": -0.038049,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11029,
+          "gene": "OR10Z1",
+          "score": 0.10104,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3349,
+          "gene": "COL8A1",
+          "score": -0.029402,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3039,
+          "gene": "CIMAP2",
+          "score": -0.031647,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12449,
+          "gene": "POU4F2",
+          "score": 0.24683,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3169,
+          "gene": "CLN8",
+          "score": 0.022065,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11763,
+          "gene": "PDE11A",
+          "score": 0.2464,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11270,
+          "gene": "OR5D18",
+          "score": -0.036079,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8667,
+          "gene": "LRRC17",
+          "score": 0.063089,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1423,
+          "gene": "BCAP29",
+          "score": -0.18674,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15054,
+          "gene": "SMC1A",
+          "score": 0.058556,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17571,
+          "gene": "USP1",
+          "score": -0.057823,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4090,
+          "gene": "DEFB132",
+          "score": -0.11005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12403,
+          "gene": "POLRMT",
+          "score": 0.11097,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2582,
+          "gene": "CDC25C",
+          "score": -0.037071,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18089,
+          "gene": "ZBP1",
+          "score": -0.04,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9606,
+          "gene": "MRPS7",
+          "score": 0.078211,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11850,
+          "gene": "PELI1",
+          "score": 0.028462,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6300,
+          "gene": "GPN2",
+          "score": 0.13921,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2279,
+          "gene": "CCDC138",
+          "score": 0.065409,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1501,
+          "gene": "BHLHE22",
+          "score": -0.09801,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7467,
+          "gene": "INTS8",
+          "score": -0.20387,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9482,
+          "gene": "MPND",
+          "score": -0.038419,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2614,
+          "gene": "CDH11",
+          "score": 0.085857,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7628,
+          "gene": "JADE2",
+          "score": 0.27221,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3309,
+          "gene": "COIL",
+          "score": -0.18843,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12455,
+          "gene": "POU6F2",
+          "score": -0.14212,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9108,
+          "gene": "MCM3",
+          "score": 0.15926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14857,
+          "gene": "SLC37A3",
+          "score": 0.14003,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11954,
+          "gene": "PHF1",
+          "score": 0.046076,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5329,
+          "gene": "FASTKD1",
+          "score": -0.15487,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12130,
+          "gene": "PLA1A",
+          "score": 0.041628,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11641,
+          "gene": "PCDH12",
+          "score": 0.30732,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6865,
+          "gene": "HLA-DPA1",
+          "score": -0.34454,
+          "hit": 1,
+          "round": 0
+        },
+        {
+          "candidate_index": 8748,
+          "gene": "LRTOMT",
+          "score": 0.14498,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2339,
+          "gene": "CCDC43",
+          "score": 0.20342,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5607,
+          "gene": "FNDC1",
+          "score": 0.32899,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17502,
+          "gene": "UNC119",
+          "score": 0.16335,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8021,
+          "gene": "KLK13",
+          "score": 0.19205,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5354,
+          "gene": "FBRSL1",
+          "score": 0.17804,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15147,
+          "gene": "SNED1",
+          "score": -0.20528,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12433,
+          "gene": "POTEG",
+          "score": 0.21909,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8845,
+          "gene": "LYZL6",
+          "score": 0.022274,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18250,
+          "gene": "ZGRF1",
+          "score": -0.09377,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7196,
+          "gene": "IFITM1",
+          "score": -0.2055,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10626,
+          "gene": "NUTM2F",
+          "score": 0.056891,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1832,
+          "gene": "C1S",
+          "score": 0.18327,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7505,
+          "gene": "IQSEC3",
+          "score": 0.046515,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1051,
+          "gene": "ARPC4-TTLL3",
+          "score": 0.027792,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10336,
+          "gene": "NOD1",
+          "score": -0.18365,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13145,
+          "gene": "RAB3D",
+          "score": 0.2332,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8773,
+          "gene": "LTB",
+          "score": -0.13657,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2168,
+          "gene": "CARD9",
+          "score": -0.22407,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6913,
+          "gene": "HMX3",
+          "score": -0.09499,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18585,
+          "gene": "ZNF584",
+          "score": -0.13782,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 10311,
+          "gene": "NME6",
+          "score": -0.083038,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 6967,
+          "gene": "HOXB1",
+          "score": -0.12558,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16358,
+          "gene": "TIMM50",
+          "score": -0.27507,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12964,
+          "gene": "PTGR1",
+          "score": 0.15051,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15035,
+          "gene": "SMAD5",
+          "score": -0.18691,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4681,
+          "gene": "EGLN1",
+          "score": 0.19385,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8679,
+          "gene": "LRRC3",
+          "score": -0.0070939,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4575,
+          "gene": "E4F1",
+          "score": 0.0095273,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8081,
+          "gene": "KRIT1",
+          "score": -0.18255,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18394,
+          "gene": "ZNF284",
+          "score": -0.13206,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17661,
+          "gene": "UTS2R",
+          "score": -0.32043,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8609,
+          "gene": "LPAR5",
+          "score": 0.16689,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14038,
+          "gene": "S1PR2",
+          "score": -0.15072,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13087,
+          "gene": "QRICH1",
+          "score": -0.090926,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11861,
+          "gene": "PERP",
+          "score": -0.04397,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 7186,
+          "gene": "IFI35",
+          "score": 0.030184,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 4532,
+          "gene": "DXO",
+          "score": 0.20724,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16788,
+          "gene": "TNFSF8",
+          "score": -0.015146,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 16261,
+          "gene": "TGFBR3L",
+          "score": -0.33596,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2993,
+          "gene": "CHST1",
+          "score": 0.24443,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1551,
+          "gene": "BMP1",
+          "score": 0.072848,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3613,
+          "gene": "CSNK2A3",
+          "score": -0.041738,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5035,
+          "gene": "ETV5",
+          "score": 0.059629,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5271,
+          "gene": "FAM53B",
+          "score": 0.049745,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 13917,
+          "gene": "RRP1B",
+          "score": 0.21357,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 2090,
+          "gene": "CALCOCO2",
+          "score": 0.19982,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12686,
+          "gene": "PRKCE",
+          "score": 0.088743,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 12582,
+          "gene": "PPP4R4",
+          "score": 0.072569,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 15427,
+          "gene": "SPOCK3",
+          "score": -0.056925,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17430,
+          "gene": "UBTD2",
+          "score": 0.051937,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8288,
+          "gene": "LAS1L",
+          "score": -0.15746,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 18226,
+          "gene": "ZFP82",
+          "score": -0.10838,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 377,
+          "gene": "ADRA2B",
+          "score": 0.061005,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3775,
+          "gene": "CXXC1",
+          "score": 0.074451,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 17690,
+          "gene": "VBP1",
+          "score": -0.013253,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 8798,
+          "gene": "LXN",
+          "score": 0.12194,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 11213,
+          "gene": "OR51G2",
+          "score": -0.068408,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 3677,
+          "gene": "CTC1",
+          "score": -0.085898,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 9679,
+          "gene": "MTCH2",
+          "score": 0.026809,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14331,
+          "gene": "SERINC2",
+          "score": 0.083967,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 5210,
+          "gene": "FAM185A",
+          "score": -0.010977,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 14954,
+          "gene": "SLC6A4",
+          "score": 0.0127,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 106,
+          "gene": "ABO",
+          "score": -0.037216,
+          "hit": 0,
+          "round": 0
+        },
+        {
+          "candidate_index": 1271,
+          "gene": "ATP6V1E1",
+          "score": 0.045874,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9447,
+          "gene": "MON1A",
+          "score": -0.24772,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4751,
+          "gene": "EIF5A",
+          "score": 0.22815,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15266,
+          "gene": "SP140L",
+          "score": 0.078495,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12209,
+          "gene": "PLEKHF2",
+          "score": -0.023711,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3178,
+          "gene": "CLPSL2",
+          "score": 0.14989,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14957,
+          "gene": "SLC6A8",
+          "score": -0.22267,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16440,
+          "gene": "TMC3",
+          "score": 0.044808,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 630,
+          "gene": "AMY1B",
+          "score": 0.052605,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16960,
+          "gene": "TRARG1",
+          "score": 0.30501,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14271,
+          "gene": "SELENOP",
+          "score": 0.0134015,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12290,
+          "gene": "PMEPA1",
+          "score": -0.122093,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18045,
+          "gene": "YIPF4",
+          "score": -0.21191,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14326,
+          "gene": "SERF1A",
+          "score": 0.25029,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13004,
+          "gene": "PTPRC",
+          "score": -0.28242,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5816,
+          "gene": "GABRA4",
+          "score": -0.080544,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1903,
+          "gene": "C2orf68",
+          "score": -0.020633,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3542,
+          "gene": "CRLS1",
+          "score": 0.15191,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4112,
+          "gene": "DENND4B",
+          "score": 0.16249,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12406,
+          "gene": "POM121L2",
+          "score": 0.2843,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5064,
+          "gene": "EXOC4",
+          "score": -0.0041473,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3159,
+          "gene": "CLK2",
+          "score": -0.35613,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 5303,
+          "gene": "FAM9B",
+          "score": -0.10442,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16906,
+          "gene": "TPRA1",
+          "score": -0.16902,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16365,
+          "gene": "TIMP3",
+          "score": 0.033329,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4248,
+          "gene": "DLX1",
+          "score": 0.01813,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12771,
+          "gene": "PRR20A",
+          "score": 0.060526,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16716,
+          "gene": "TMPRSS11B",
+          "score": -0.24971,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 8979,
+          "gene": "MAP3K5",
+          "score": -0.082904,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6001,
+          "gene": "GET3",
+          "score": -0.14026,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12442,
+          "gene": "POU2F1",
+          "score": -0.43957,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 2094,
+          "gene": "CALHM1",
+          "score": -0.22231,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1614,
+          "gene": "BRCA2",
+          "score": 0.073084,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2017,
+          "gene": "C9orf78",
+          "score": -0.13503,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6158,
+          "gene": "GMPR",
+          "score": -0.045694,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2024,
+          "gene": "CA14",
+          "score": -0.14264,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5472,
+          "gene": "FFAR1",
+          "score": -0.01248,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9780,
+          "gene": "MXRA5",
+          "score": 0.031039,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9090,
+          "gene": "MC5R",
+          "score": -0.28603,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2540,
+          "gene": "CD5",
+          "score": 0.080001,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17228,
+          "gene": "TTC4",
+          "score": -0.035282,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3402,
+          "gene": "COQ9",
+          "score": -0.17211,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2012,
+          "gene": "C9orf50",
+          "score": 0.36936,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 3105,
+          "gene": "CLDN25",
+          "score": -0.16321,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15097,
+          "gene": "SMIM8",
+          "score": 0.004964,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10934,
+          "gene": "ODAPH",
+          "score": 0.080498,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10898,
+          "gene": "NonTarget.CTRL95",
+          "score": 0.049269,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17446,
+          "gene": "UCK2",
+          "score": -0.039443,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14482,
+          "gene": "SH3GL1",
+          "score": -0.072301,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5508,
+          "gene": "FGFR1OP2",
+          "score": 0.017969,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4170,
+          "gene": "DHRS2",
+          "score": 0.14619,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2644,
+          "gene": "CDK11B",
+          "score": 0.037942,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10548,
+          "gene": "NTRK2",
+          "score": 0.14333,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1652,
+          "gene": "BTBD1",
+          "score": -0.43089,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 8854,
+          "gene": "MAB21L1",
+          "score": 0.07773,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12149,
+          "gene": "PLA2G6",
+          "score": -0.027941,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 6138,
+          "gene": "GLUL",
+          "score": 0.088831,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2320,
+          "gene": "CCDC187",
+          "score": 0.023173,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18209,
+          "gene": "ZFP1",
+          "score": -0.014842,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3741,
+          "gene": "CUTC",
+          "score": -0.18485,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9808,
+          "gene": "MYH1",
+          "score": 0.17845,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16329,
+          "gene": "TIAM2",
+          "score": 0.27459,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11934,
+          "gene": "PGPEP1",
+          "score": 0.0388275,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14324,
+          "gene": "SERAC1",
+          "score": -0.035284,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1362,
+          "gene": "B4GALT6",
+          "score": 0.078371,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15612,
+          "gene": "STAMBPL1",
+          "score": 0.047768,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13694,
+          "gene": "RNF167",
+          "score": 0.19611,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2758,
+          "gene": "CENPN",
+          "score": 0.15354,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11819,
+          "gene": "PDRG1",
+          "score": -0.014472,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4197,
+          "gene": "DIABLO",
+          "score": 0.073076,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2843,
+          "gene": "CFAP299",
+          "score": -0.00070511,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5085,
+          "gene": "EXTL2",
+          "score": 0.045831,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10152,
+          "gene": "NEURL2",
+          "score": -0.22225,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3595,
+          "gene": "CSGALNACT2",
+          "score": -0.046169,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17655,
+          "gene": "UTP3",
+          "score": -0.046037,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14020,
+          "gene": "S100A13",
+          "score": -0.21237,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14622,
+          "gene": "SLC10A7",
+          "score": 0.19453,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1252,
+          "gene": "ATP5PO",
+          "score": 0.082329,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4837,
+          "gene": "ENDOD1",
+          "score": 0.20888,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 82,
+          "gene": "ABHD14B",
+          "score": 0.023426,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3491,
+          "gene": "CR1L",
+          "score": -0.18867,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4104,
+          "gene": "DENND1B",
+          "score": 0.023313,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4160,
+          "gene": "DHDH",
+          "score": 0.09446,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18432,
+          "gene": "ZNF350",
+          "score": -0.039011,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14849,
+          "gene": "SLC35G5",
+          "score": 0.16566,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 16901,
+          "gene": "TPP2",
+          "score": 0.24338,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 647,
+          "gene": "ANGEL1",
+          "score": -0.13474,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15371,
+          "gene": "SPEM1",
+          "score": 0.29424,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18188,
+          "gene": "ZDHHC4",
+          "score": -0.043506,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15634,
+          "gene": "STBD1",
+          "score": -0.068879,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4243,
+          "gene": "DLK2",
+          "score": 0.10306,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18196,
+          "gene": "ZER1",
+          "score": 0.016376,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5781,
+          "gene": "FYCO1",
+          "score": -0.14937,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17944,
+          "gene": "WNT2",
+          "score": 0.12185,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 283,
+          "gene": "ADAMTS9",
+          "score": -0.27175,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17820,
+          "gene": "VWF",
+          "score": -0.1986,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 9251,
+          "gene": "MFAP1",
+          "score": -0.15274,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17316,
+          "gene": "TXNDC17",
+          "score": 0.11567,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15148,
+          "gene": "SNF8",
+          "score": -0.082349,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 10287,
+          "gene": "NLRP1",
+          "score": -0.56947,
+          "hit": 1,
+          "round": 1
+        },
+        {
+          "candidate_index": 2613,
+          "gene": "CDH10",
+          "score": -0.095898,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 13501,
+          "gene": "RGL1",
+          "score": 0.065055,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18750,
+          "gene": "ZNF808",
+          "score": -0.021356,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15295,
+          "gene": "SPAM1",
+          "score": 0.063423,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18497,
+          "gene": "ZNF469",
+          "score": -0.051998,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17602,
+          "gene": "USP18",
+          "score": 0.11306,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 18754,
+          "gene": "ZNF814",
+          "score": 0.086018,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4424,
+          "gene": "DPP3",
+          "score": -0.1326,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5321,
+          "gene": "FARP1",
+          "score": -0.19461,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17105,
+          "gene": "TRPM4",
+          "score": 0.031861,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12626,
+          "gene": "PRCP",
+          "score": 0.23864,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2131,
+          "gene": "CAND1",
+          "score": -0.0682,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 7259,
+          "gene": "IGFBP2",
+          "score": -0.21138,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 3164,
+          "gene": "CLMN",
+          "score": -0.15263,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 12893,
+          "gene": "PSMC4",
+          "score": -0.20681,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 15198,
+          "gene": "SNX27",
+          "score": 0.05235,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2399,
+          "gene": "CCL17",
+          "score": -0.19129,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2655,
+          "gene": "CDK2AP1",
+          "score": -0.2877,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 1001,
+          "gene": "ARL16",
+          "score": 0.21682,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2538,
+          "gene": "CD47",
+          "score": 0.02847,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2027,
+          "gene": "CA4",
+          "score": -0.026209,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 2156,
+          "gene": "CAPZA2",
+          "score": -0.14898,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 11758,
+          "gene": "PDCD7",
+          "score": 0.14103,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 5361,
+          "gene": "FBXL18",
+          "score": -0.023129,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 4595,
+          "gene": "ECHDC3",
+          "score": 0.12136,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17270,
+          "gene": "TUBB2B",
+          "score": 0.032747,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 14586,
+          "gene": "SIVA1",
+          "score": 0.23603,
+          "hit": 0,
+          "round": 1
+        },
+        {
+          "candidate_index": 17919,
+          "gene": "WFDC8",
+          "score": 0.039682,
+          "hit": 0,
+          "round": 1
+        }
+      ]
+    }
+  }
+}

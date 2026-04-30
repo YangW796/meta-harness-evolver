@@ -14,6 +14,12 @@ You may use any suitable algorithmic model to design the selection policy, inclu
 Do NOT modify anything except the model implementation file.
 Do NOT change any function signatures or IO behavior.
 
+## Mandatory Evidence
+Before proposing any change, you MUST inspect:
+- `best/current/harness/outputs/metrics.json` (or the latest candidate's `harness/outputs/metrics.json` if best is missing)
+Use `metrics.test.round_details` and `metrics.test.queried_history` / `metrics.test.queried_records` to identify what actually worked.
+In `proposer_reasoning.md`, cite at least one concrete observation (a gene name, a round, a hit pattern, etc.).
+
 ## Policy Interface (MUST KEEP EXACTLY)
 Your model code must provide one of the following:
 1) A module-level function:
@@ -44,6 +50,9 @@ you may import and call:
 - `bda_tools.gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int]`
 
 This returns candidate indices for similar (or diverse) genes using Achilles features.
+
+If gene search is available, prefer using it to expand from strong anchors (high-score and/or hit genes).
+If gene search is NOT available, do NOT use `candidate_index` proximity as a similarity signal unless you can justify that candidate ordering encodes biology.
 
 batch_size:
 - The number of NEW perturbations to select each round (default: 128).

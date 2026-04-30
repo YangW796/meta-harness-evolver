@@ -12,6 +12,41 @@ from nexau_runner import run_proposer_with_nexau
 from shared import iter_effective_files, iter_effective_files_recursive
 
 
+def _load_prompt_context_provider(paths: EvolverPaths):
+    style = str(os.environ.get("EVOLVER_PROMPT_STYLE", "")).strip()
+    if style != "bda_like":
+        return None
+
+    raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
+    if not raw_path:
+        return None
+
+    p = Path(raw_path).expanduser()
+    if not p.is_absolute():
+        p = (Path.cwd() / p).resolve()
+    else:
+        p = p.resolve()
+    if not p.exists():
+        print(f"[PROPOSER] EVOLVER_PROMPT_CONTEXT_FILE not found: {p}")
+        return None
+
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("evolver_prompt_context", str(p))
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fn = getattr(module, "build_prompt_context", None)
+        if callable(fn):
+            return fn
+    except Exception as e:
+        print(f"[PROPOSER] Failed to load prompt context provider: {e}")
+        return None
+    return None
+
+
 def _extract_tags(text: str) -> set[str]:
     t = (text or "").lower()
     tags: set[str] = set()
@@ -127,6 +162,7 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
     mode = choose_prompt_mode(history, best, candidate_num=candidate_num)
 
     agent_session_id = str(uuid.uuid4())[:8]
+    prompt_context_provider = _load_prompt_context_provider(paths)
 
     best_harness_dir = paths.best_dir / "harness"
     base_harness_dir = best_harness_dir
@@ -163,11 +199,21 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
     else:
         hardware_hint = "## Hardware\n- CPU only. Do NOT use CUDA/GPU-specific code.\n"
 
+    injected_context = ""
+    if prompt_context_provider is not None:
+        try:
+            ctx = prompt_context_provider(paths, cfg, candidate_num, history, best)
+        except Exception:
+            ctx = ""
+        if isinstance(ctx, str) and ctx.strip():
+            injected_context = "\n\n" + ctx.strip() + "\n"
+
     proposer_task = f"""{prompt_prefix}You are the Evolution Proposer for an AI4S (AI for Science) project.
 
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
 {hardware_hint}
+{injected_context}
 ## Your Workspace
 - Evolution history: {paths.workspace}/candidates/
 - Current best codebase: {paths.workspace}/best/current/

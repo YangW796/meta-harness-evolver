@@ -1,0 +1,10 @@
+{
+  "final_score": 14.926231786886982,
+  "total_hits": 10,
+  "top_k": 920,
+  "ncg": 0.14926231786886981,
+  "auc_normalized": 0.003260869565217391,
+  "total_queries": 256,
+  "data_name": "IFNG",
+  "task": "perturb-genes-brief"
+}

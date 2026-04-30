@@ -1,0 +1,10 @@
+{
+  "final_score": 26.512419355997114,
+  "total_hits": 17,
+  "top_k": 943,
+  "ncg": 0.26512419355997113,
+  "auc_normalized": 0.0042417815482502655,
+  "total_queries": 512,
+  "data_name": "Carnevale22_Adenosine",
+  "task": "perturb-genes-brief"
+}

@@ -1,0 +1,9 @@
+STATUS: RUNNING
+CMD: bash /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/harness_run_script.sh /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Carnevale22_Adenosine/run-2/candidates/candidate_5
+START_AT: 2026-04-30T07:19:21.578728
+[HEARTBEAT] running... elapsed=5s
+[STDOUT] Metrics saved to /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Carnevale22_Adenosine/run-2/candidates/candidate_5/harness/outputs/metrics.json
+[STDOUT] State saved to /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Carnevale22_Adenosine/run-2/bda_state.json
+STATUS: OK
+EXIT_CODE: 0
+END_AT: 2026-04-30T07:19:28.183719

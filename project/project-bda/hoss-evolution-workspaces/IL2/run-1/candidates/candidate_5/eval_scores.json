@@ -1,0 +1,10 @@
+{
+  "final_score": 18.64690483831009,
+  "total_hits": 16,
+  "top_k": 654,
+  "ncg": 0.18646904838310088,
+  "auc_normalized": 0.004969418960244648,
+  "total_queries": 512,
+  "data_name": "IL2",
+  "task": "perturb-genes-brief"
+}
