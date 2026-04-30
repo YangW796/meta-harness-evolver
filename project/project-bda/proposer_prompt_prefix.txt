@@ -57,5 +57,10 @@ seed:
 - The policy should run fast and be robust even when history is small (including empty).
 
 ## Practical Tip
-If available, inspect the previous run's `harness/outputs/metrics.json`:
+Before writing or revising `select(...)`, first inspect the previous run's result file if it is available:
+- `harness/outputs/metrics.json`
 - `metrics.test.queried_history` contains what was selected and the observed outcomes.
+
+Use the observed previous-round results to guide the next policy. For example, identify high-scoring or hit genes, low-scoring genes, repeated patterns, promising gene families, or failed regions of the search space before choosing the next candidates.
+
+When gene search is enabled, you may choose some promising genes from the previous results and call `bda_tools.gene_search(...)` to find similar or diverse candidate genes, then combine those candidates with other model-based or exploration-based choices.
