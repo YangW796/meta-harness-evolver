@@ -1,9 +1,0 @@
-STATUS: RUNNING
-CMD: bash /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/harness_run_script.sh /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Sanchez21/run-1/candidates/candidate_4
-START_AT: 2026-04-30T06:55:58.855054
-[HEARTBEAT] running... elapsed=5s
-[STDOUT] Metrics saved to /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Sanchez21/run-1/candidates/candidate_4/harness/outputs/metrics.json
-[STDOUT] State saved to /inspire/qb-ilm/project/cq-scientific-cooperation-zone/public/ywang/meta-harness-evolver/project/test/project-bda/hoss-evolution-workspaces/Sanchez21/run-1/bda_state.json
-STATUS: OK
-EXIT_CODE: 0
-END_AT: 2026-04-30T06:56:05.060402
