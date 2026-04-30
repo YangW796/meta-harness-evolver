@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
-
 def select(candidates, history, batch_size, seed) -> list[int]:
     """
     Selection policy for Project-BDA.
@@ -26,20 +24,9 @@ def select(candidates, history, batch_size, seed) -> list[int]:
 
     Output:
     - list[int] of NEW candidate indices (no repeats; already-selected may be ignored/replaced by runner).
+
+    You may implement any suitable algorithmic model here, including but not limited to:
+    traditional algorithms, machine learning models, deep learning models, biological models,
+    and mathematical models.
     """
-    n = len(candidates)
-    if n <= 0:
-        return []
-
-    already: set[int] = set()
-    for r in history or []:
-        try:
-            already.add(int(r.get("candidate_index", -1)))
-        except Exception:
-            continue
-
-    remaining = [i for i in range(n) if i not in already]
-    rng = np.random.default_rng(int(seed))
-    if remaining:
-        rng.shuffle(remaining)
-    return [int(x) for x in remaining[: int(batch_size)]]
+    pass

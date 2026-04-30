@@ -8,6 +8,8 @@ The evaluation score is based on selecting strong perturbations under a limited 
 - cumulative_hits
 - normalized cumulative gain (ncg)
 
+You may use any suitable algorithmic model to design the selection policy, including traditional algorithms, machine learning models, deep learning models, biological models, and mathematical models.
+
 ## What You Are Allowed To Change (ONLY MODEL)
 Do NOT modify anything except the model implementation file.
 Do NOT change any function signatures or IO behavior.
