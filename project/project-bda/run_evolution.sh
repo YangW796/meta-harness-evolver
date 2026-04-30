@@ -89,7 +89,12 @@ _run_one_dataset() {
 }
 
 if [[ "$DATA_NAME" == "all" ]]; then
-  mapfile -t GT_LIST < <(ls -1 "$BDA_DATASETS_DIR"/ground_truth_*.csv 2>/dev/null | sed -E 's/.*ground_truth_([^/]+)\.csv/\1/' | sort -u)
+  if [[ -n "${BDA_GT_LIST:-}" ]]; then
+    GT_LIST_STR="${BDA_GT_LIST//,/ }"
+    read -r -a GT_LIST <<<"$GT_LIST_STR"
+  else
+    mapfile -t GT_LIST < <(ls -1 "$BDA_DATASETS_DIR"/ground_truth_*.csv 2>/dev/null | sed -E 's/.*ground_truth_([^/]+)\.csv/\1/' | sort -u)
+  fi
   for ((run = 1; run <= RUNS; run++)); do
     for d in "${GT_LIST[@]}"; do
       if [[ -f "$BDA_DATASETS_DIR/task_prompts/$d.json" ]]; then
