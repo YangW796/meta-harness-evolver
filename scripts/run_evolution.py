@@ -71,6 +71,21 @@ def main():
     print(f"{'='*60}\n")
     print(f"[MAIN] Workspace: {paths.workspace}")
 
+    def print_log_tail(log_path, lines: int = 80) -> None:
+        if not log_path:
+            return
+        path = Path(log_path)
+        if not path.exists():
+            return
+        try:
+            tail = path.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:]
+        except Exception as e:
+            print(f"[MAIN] Could not read log tail from {path}: {e}")
+            return
+        print(f"[MAIN] Log tail ({path}):")
+        for line in tail:
+            print(line)
+
     def run_one(candidate_num: int) -> int:
         print(f"[MAIN] Candidate: {candidate_num}")
 
@@ -100,6 +115,7 @@ def main():
             print(f"[HARNESS] Skipped: {harness_run.get('reason')}")
         if not harness_run.get("ok", False):
             print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
+            print_log_tail(harness_run.get("log_path"))
             return 2
         print("[STEP] Harness: done")
 
@@ -158,10 +174,17 @@ def main():
         else:
             errors += 1
 
-    if errors > 0:
-        sys.exit(2)
     if success > 0:
+        if errors > 0 or skipped > 0:
+            print(
+                f"[MAIN] Completed with partial issues: "
+                f"success={success}, skipped={skipped}, errors={errors}"
+            )
         sys.exit(0)
+    if errors > 0:
+        print(f"[MAIN] Failed: success={success}, skipped={skipped}, errors={errors}")
+        sys.exit(2)
+    print(f"[MAIN] No candidate evaluated: success={success}, skipped={skipped}, errors={errors}")
     sys.exit(1)
 
 

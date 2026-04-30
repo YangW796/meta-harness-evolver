@@ -79,6 +79,10 @@ _run_one_dataset() {
   local data="$1"
   local run="$2"
   local workspace_dir="$WORKSPACE_BASE_DIR/$data/run-$run"
+  if [[ -d "$workspace_dir" ]]; then
+    echo "Skipping existing run workspace: $workspace_dir" >&2
+    return 0
+  fi
   _ensure_seed_best "$workspace_dir"
 
   export EVOLVER_WORKSPACE="$workspace_dir"
