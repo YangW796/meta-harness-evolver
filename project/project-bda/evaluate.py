@@ -32,6 +32,10 @@ def main() -> int:
     except Exception:
         total_hits = 0
     try:
+        delta_hits = int(test.get("delta_hits", total_hits))
+    except Exception:
+        delta_hits = total_hits
+    try:
         top_k = int(test.get("top_k", 0))
     except Exception:
         top_k = 0
@@ -40,11 +44,12 @@ def main() -> int:
     except Exception:
         ncg = float("nan")
 
-    final_score = float(total_hits)
+    final_score = float(delta_hits)
 
     out = {
         "final_score": float(final_score),
         "total_hits": int(total_hits),
+        "delta_hits": int(delta_hits),
         "top_k": int(top_k),
         "ncg": float(ncg) if math.isfinite(ncg) else None,
         "auc_normalized": test.get("auc_normalized"),

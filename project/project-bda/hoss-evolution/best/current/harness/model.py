@@ -47,5 +47,19 @@ def select(candidates, history, batch_size, seed) -> list[int]:
     - 返回值含义：
         - list[int]：候选的 index（直接用于返回 select 的结果；索引对应 candidates 列表）。
 
+    关于 diverse=True 的建议（重要）：
+    - diverse=True 更偏探索，通常会稀释命中密度，降低每轮新增命中（delta_hits）。
+    - 建议仅在早期（还没有 hit 或 hit 很少）使用，并控制在 batch 的 10–20%。
+    - 一旦出现稳定 hit，几乎全部预算应使用 diverse=False。
+
+    gene_search 用法升级建议（可选但推荐）：
+    - 不要简单把每个 anchor 的前 N 个邻居拼接在一起。
+    - 采用“多 anchor 的 rank 加权投票”更稳：
+      1) 选 anchors（优先 hit=1；不够再补高 score 基因）
+      2) 对每个 anchor 调 gene_search(anchor, k=K, diverse=False)
+      3) 对返回的候选按 rank 加权投票：vote += w_anchor / (rank + 1)
+      4) 按 vote 排序选 top batch_size
+    - 或者使用 Achilles 特征训练在线命中概率模型，再结合 gene_search 做局部扩展。
+
     """
     pass

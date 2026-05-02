@@ -8,6 +8,8 @@ The evaluation score is based on selecting strong perturbations under a limited 
 - cumulative_hits
 - normalized cumulative gain (ncg)
 
+IMPORTANT: The final_score is based on delta_hits (new hits found in THIS run), not cumulative total_hits.
+
 You may use any suitable algorithmic model to design the selection policy, including traditional algorithms, machine learning models, deep learning models, biological models, and mathematical models.
 
 ## What You Are Allowed To Change (ONLY MODEL)
@@ -61,6 +63,19 @@ Gene search argument meanings (MUST FOLLOW):
 - diverse:
   - False: return the most similar neighbors (exploit).
   - True: return the least similar neighbors (diverse exploration).
+
+Guidance on diverse=True (IMPORTANT):
+- diverse=True is useful for exploration but often reduces delta_hits by diluting hit density.
+- Use diverse=True sparingly: only in early rounds (no hits or very few hits), ~10–20% of the batch.
+- Once you have stable hits, use diverse=False for almost all of the budget.
+
+Suggested stronger use of gene_search (optional but recommended):
+- Upgrade from “take top-N neighbors per anchor” to “multi-anchor rank-weighted voting”.
+- Pick anchors (prefer hit=1; if too few, add high-score genes).
+- For each anchor, call gene_search(anchor, k=K, diverse=False).
+- For each returned candidate at rank r, accumulate vote: vote += w_anchor / (r + 1).
+- Select by highest vote to get consensus neighbors around multiple hits.
+- Alternatively, train an online hit-probability model using Achilles features if you can access them.
 
 If gene search is NOT available, do NOT use `candidate_index` proximity as a similarity signal unless you can justify that candidate ordering encodes biology.
 
