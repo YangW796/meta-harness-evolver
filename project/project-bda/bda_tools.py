@@ -46,18 +46,39 @@ def init_gene_search(achilles_csv: str, candidate_genes: list[str]) -> bool:
         print(f"[GENE_SEARCH] init failed: empty CSV: {csv_path}", file=sys.stderr)
         return False
 
-    gene_col = None
-    for c in ["gene", "Gene", "GENE", "symbol", "hgnc_symbol", "Unnamed: 0"]:
-        if c in df.columns:
-            gene_col = c
-            break
-    if gene_col is None:
-        gene_col = df.columns[0]
+    def _normalize_symbol(x: object) -> str:
+        s = str(x).strip()
+        if not s:
+            return ""
+        if " (" in s:
+            s = s.split(" (", 1)[0].strip()
+        elif " " in s and s.endswith(")"):
+            s = s.split(" ", 1)[0].strip()
+        return s
 
-    genes = [str(x).strip() for x in df[gene_col].tolist()]
-    feat_df = df.drop(columns=[gene_col], errors="ignore")
-    feat_df = feat_df.select_dtypes(include=["number"]).fillna(0.0)
-    feats = feat_df.to_numpy(dtype=np.float32, copy=False)
+    row_gene_cols = ["gene", "Gene", "GENE", "symbol", "hgnc_symbol", "Unnamed: 0"]
+    detected_row_gene_col = next((c for c in row_gene_cols if c in df.columns), None)
+    is_depmap_matrix = detected_row_gene_col is None and "DepMap_ID" in df.columns
+
+    if is_depmap_matrix:
+        feat_df = df.drop(columns=["DepMap_ID"], errors="ignore")
+        num_df = feat_df.select_dtypes(include=["number"])
+        if num_df.shape[1] == 0:
+            num_df = feat_df.apply(pd.to_numeric, errors="coerce")
+        num_df = num_df.fillna(0.0)
+        feats = num_df.to_numpy(dtype=np.float32, copy=False).T
+        genes = [_normalize_symbol(c) for c in list(num_df.columns)]
+        print(
+            f"[GENE_SEARCH] init: DepMap matrix detected; genes={len(genes)} samples={num_df.shape[0]}",
+            file=sys.stderr,
+        )
+    else:
+        gene_col = detected_row_gene_col if detected_row_gene_col is not None else df.columns[0]
+        genes = [_normalize_symbol(x) for x in df[gene_col].tolist()]
+        feat_df = df.drop(columns=[gene_col], errors="ignore")
+        feat_df = feat_df.select_dtypes(include=["number"]).fillna(0.0)
+        feats = feat_df.to_numpy(dtype=np.float32, copy=False)
+
     if feats.ndim != 2 or feats.shape[0] != len(genes) or feats.shape[1] == 0:
         print(
             f"[GENE_SEARCH] init failed: invalid feature matrix shape={getattr(feats, 'shape', None)} rows={len(genes)}",
