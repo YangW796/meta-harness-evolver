@@ -207,19 +207,18 @@ def _compute_ncg(
     scores_arr: np.ndarray,
     score_map: dict[object, float],
     selected_set: set[object],
-    use_abs_gain: bool,
 ) -> float:
     pred_in_lib = [x for x in selected_set if x in score_map]
     k = len(pred_in_lib)
     if k == 0:
         return float("nan")
 
-    gains_arr = np.abs(scores_arr) if use_abs_gain else scores_arr
+    gains_arr = scores_arr
     topk = np.sort(gains_arr)[::-1][:k]
     denom = float(np.sum(topk))
     if denom == 0.0 or np.isnan(denom):
         return float("nan")
-    numer = float(np.sum([abs(score_map[x]) if use_abs_gain else score_map[x] for x in pred_in_lib]))
+    numer = float(np.sum([score_map[x] for x in pred_in_lib]))
     return numer / denom
 
 
@@ -278,7 +277,6 @@ def run_bda_active_search(
     scores_arr: np.ndarray,
     score_map: dict[object, float],
     hit_set: set[object],
-    use_abs_gain: bool,
     select_fn,
     steps: int,
     batch_size: int,
@@ -394,7 +392,6 @@ def run_bda_active_search(
         scores_arr=scores_arr,
         score_map=score_map,
         selected_set=selected_set,
-        use_abs_gain=use_abs_gain,
     )
 
     return {
@@ -439,7 +436,6 @@ def main() -> int:
     task_prompt = _load_task_prompt(datasets_dir, args.data_name)
     ids, scores_arr, score_map, is_pair = _load_ground_truth(datasets_dir, args.data_name)
     topmovers = _load_topmovers(datasets_dir, args.data_name, is_pair=is_pair)
-    use_abs_gain = topmovers is not None
     if topmovers is None:
         tau = float(np.percentile(scores_arr, 90))
         hit_set: set[object] = set(ids[i] for i, s in enumerate(scores_arr) if float(s) >= tau)
@@ -499,7 +495,6 @@ def main() -> int:
         scores_arr=scores_arr,
         score_map=score_map,
         hit_set=hit_set,
-        use_abs_gain=bool(use_abs_gain),
         select_fn=select_fn,
         steps=int(args.steps),
         batch_size=int(args.batch_size),

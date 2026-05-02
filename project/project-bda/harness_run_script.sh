@@ -50,6 +50,9 @@ fi
 if [[ -z "${BDA_STATE_PATH:-}" ]]; then
   export BDA_STATE_PATH="$BDA_WORKSPACE_DIR/bda_state.json"
 fi
+if [[ -z "${BDA_GENE_SEARCH_LOG_PATH:-}" ]]; then
+  export BDA_GENE_SEARCH_LOG_PATH="$HARNESS_DIR/outputs/gene_search_calls.json"
+fi
 
 if [[ -z "${BDA_DATASETS_DIR:-}" ]]; then
   echo "BDA_DATASETS_DIR is required; set it to the BioDiscoveryAgent datasets directory." >&2

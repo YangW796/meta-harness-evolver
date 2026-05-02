@@ -119,9 +119,9 @@ def _top_records(metrics_payload: dict, *, n_hits: int = 20, n_scores: int = 20)
         norm.append({"gene": gene, "score": float(score), "abs_score": float(abs(score)), "hit": int(hit), "round": int(rr)})
 
     top_hits = [x for x in norm if int(x.get("hit", 0)) == 1]
-    top_hits.sort(key=lambda x: float(x.get("abs_score", 0.0)), reverse=True)
+    top_hits.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
     top_scores = list(norm)
-    top_scores.sort(key=lambda x: float(x.get("abs_score", 0.0)), reverse=True)
+    top_scores.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
     return {"top_hits": top_hits[: max(0, int(n_hits))], "top_scores": top_scores[: max(0, int(n_scores))]}
 
 

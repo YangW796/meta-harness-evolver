@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -118,5 +120,33 @@ def gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int
             out.append(cand_idx)
         if len(out) >= int(k):
             break
-    return out
 
+    log_path = str(os.environ.get("BDA_GENE_SEARCH_LOG_PATH", "")).strip()
+    if log_path:
+        try:
+            p = Path(log_path).expanduser().resolve()
+            payload: dict = {}
+            if p.exists():
+                try:
+                    payload = json.loads(p.read_text(encoding="utf-8"))
+                except Exception:
+                    payload = {}
+            calls = payload.get("calls")
+            if not isinstance(calls, list):
+                calls = []
+            calls.append(
+                {
+                    "query_gene": q,
+                    "k": int(k),
+                    "diverse": bool(diverse),
+                    "returned_indices": [int(x) for x in out],
+                }
+            )
+            if len(calls) > 500:
+                calls = calls[-500:]
+            payload["calls"] = calls
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+    return out

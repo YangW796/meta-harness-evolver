@@ -51,7 +51,17 @@ you may import and call:
 
 This returns candidate indices for similar (or diverse) genes using Achilles features.
 
-If gene search is available, prefer using it to expand from strong anchors (high-score and/or hit genes).
+If gene search is available, you MUST use it to expand from strong anchors (hit genes and/or high-|score| genes).
+Rationale: per-gene bandits cannot generalize in single-gene screens (each gene appears once); Achilles neighbors are
+the intended mechanism to transfer signal from tested genes to untested genes.
+
+Gene search argument meanings (MUST FOLLOW):
+- query_gene: HGNC gene symbol used as the anchor. Choose from history (hit=1 and/or high-|score| genes).
+- k: number of neighbor indices to return (<= k). Controls breadth of expansion.
+- diverse:
+  - False: return the most similar neighbors (exploit).
+  - True: return the least similar neighbors (diverse exploration).
+
 If gene search is NOT available, do NOT use `candidate_index` proximity as a similarity signal unless you can justify that candidate ordering encodes biology.
 
 batch_size:
