@@ -459,7 +459,13 @@ def main() -> int:
             except Exception:
                 init_gene_search = None
             if init_gene_search is not None:
-                init_gene_search(ach_path, [str(c.get("gene", "")).strip() for c in candidates])
+                try:
+                    ach_exists = Path(ach_path).expanduser().resolve().exists()
+                except Exception:
+                    ach_exists = False
+                print(f"[GENE_SEARCH] enabled=1 csv_dir={csv_dir} ach_path={ach_path} exists={int(ach_exists)}")
+                ok = init_gene_search(ach_path, [str(c.get("gene", "")).strip() for c in candidates])
+                print(f"[GENE_SEARCH] init_ok={int(bool(ok))}")
 
     select_fn = _load_selection_policy(args.model_dir)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -26,19 +27,23 @@ def init_gene_search(achilles_csv: str, candidate_genes: list[str]) -> bool:
 
     csv_path = Path(achilles_csv).expanduser().resolve()
     if not csv_path.exists():
+        print(f"[GENE_SEARCH] init failed: achilles.csv not found: {csv_path}", file=sys.stderr)
         return False
 
     try:
         import pandas as pd
     except Exception:
+        print("[GENE_SEARCH] init failed: pandas not available", file=sys.stderr)
         return False
 
     try:
         df = pd.read_csv(csv_path)
     except Exception:
+        print(f"[GENE_SEARCH] init failed: failed to read CSV: {csv_path}", file=sys.stderr)
         return False
 
     if df.empty:
+        print(f"[GENE_SEARCH] init failed: empty CSV: {csv_path}", file=sys.stderr)
         return False
 
     gene_col = None
@@ -54,6 +59,10 @@ def init_gene_search(achilles_csv: str, candidate_genes: list[str]) -> bool:
     feat_df = feat_df.select_dtypes(include=["number"]).fillna(0.0)
     feats = feat_df.to_numpy(dtype=np.float32, copy=False)
     if feats.ndim != 2 or feats.shape[0] != len(genes) or feats.shape[1] == 0:
+        print(
+            f"[GENE_SEARCH] init failed: invalid feature matrix shape={getattr(feats, 'shape', None)} rows={len(genes)}",
+            file=sys.stderr,
+        )
         return False
 
     norms = np.linalg.norm(feats, axis=1, keepdims=True)
@@ -83,6 +92,7 @@ def init_gene_search(achilles_csv: str, candidate_genes: list[str]) -> bool:
         sub_to_cand_idx.append(int(cand_idx))
 
     if not sub_rows:
+        print("[GENE_SEARCH] init failed: no overlap between candidate genes and achilles genes", file=sys.stderr)
         return False
 
     feats_sub = feats[np.asarray(sub_rows, dtype=np.int64)]
@@ -93,33 +103,36 @@ def init_gene_search(achilles_csv: str, candidate_genes: list[str]) -> bool:
     _SUB_TO_CAND_IDX = sub_to_cand_idx
     _CAND_GENE_SET = set(cand_gene_to_idx.keys())
     _GENE_SEARCH_READY = True
+    print(f"[GENE_SEARCH] init ok: overlap={len(sub_rows)} / candidates={len(cand_gene_to_idx)}", file=sys.stderr)
     return True
 
 
 def gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int]:
-    if not _GENE_SEARCH_READY:
-        return []
-    if _FEATS_SUB is None or _GENE_TO_SUB is None or _SUB_TO_CAND_IDX is None:
-        return []
-
     q = str(query_gene).strip()
-    qi = _GENE_TO_SUB.get(q)
-    if qi is None:
-        return []
-
-    qv = _FEATS_SUB[int(qi)]
-    sims = _FEATS_SUB @ qv
-    order = np.argsort(sims, kind="mergesort")
-    if not diverse:
-        order = order[::-1]
-
     out: list[int] = []
-    for j in order.tolist():
-        cand_idx = int(_SUB_TO_CAND_IDX[int(j)])
-        if cand_idx not in out:
-            out.append(cand_idx)
-        if len(out) >= int(k):
-            break
+    not_ready_reason = None
+    if not _GENE_SEARCH_READY:
+        not_ready_reason = "GENE_SEARCH_NOT_READY"
+    if _FEATS_SUB is None or _GENE_TO_SUB is None or _SUB_TO_CAND_IDX is None:
+        not_ready_reason = not_ready_reason or "GENE_SEARCH_NOT_INITIALIZED"
+
+    if not_ready_reason is None:
+        qi = _GENE_TO_SUB.get(q)
+        if qi is None:
+            not_ready_reason = "QUERY_GENE_NOT_IN_CANDIDATES"
+        else:
+            qv = _FEATS_SUB[int(qi)]
+            sims = _FEATS_SUB @ qv
+            order = np.argsort(sims, kind="mergesort")
+            if not diverse:
+                order = order[::-1]
+
+            for j in order.tolist():
+                cand_idx = int(_SUB_TO_CAND_IDX[int(j)])
+                if cand_idx not in out:
+                    out.append(cand_idx)
+                if len(out) >= int(k):
+                    break
 
     log_path = str(os.environ.get("BDA_GENE_SEARCH_LOG_PATH", "")).strip()
     if log_path:
@@ -140,6 +153,7 @@ def gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int
                     "k": int(k),
                     "diverse": bool(diverse),
                     "returned_indices": [int(x) for x in out],
+                    "error": not_ready_reason,
                 }
             )
             if len(calls) > 500:
