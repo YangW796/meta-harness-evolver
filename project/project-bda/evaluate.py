@@ -15,7 +15,9 @@ def main() -> int:
         print("Usage: python evaluate.py <candidate_dir>", file=sys.stderr)
         return 2
     candidate_dir = Path(sys.argv[1]).expanduser().resolve()
-    metrics_path = candidate_dir / "harness" / "outputs" / "metrics.json"
+    metrics_path = candidate_dir / "outputs" / "metrics.json"
+    if not metrics_path.exists():
+        metrics_path = candidate_dir / "harness" / "outputs" / "metrics.json"
     if not metrics_path.exists():
         print(json.dumps({"error": f"Missing metrics.json at {metrics_path}", "final_score": 0}), flush=True)
         return 0

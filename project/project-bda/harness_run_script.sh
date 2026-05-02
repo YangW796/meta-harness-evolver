@@ -50,9 +50,11 @@ fi
 if [[ -z "${BDA_STATE_PATH:-}" ]]; then
   export BDA_STATE_PATH="$BDA_WORKSPACE_DIR/bda_state.json"
 fi
+if [[ -z "${BDA_OUTPUT_DIR:-}" ]]; then
+  export BDA_OUTPUT_DIR="$CANDIDATE_DIR/outputs"
+fi
 if [[ -z "${BDA_GENE_SEARCH_LOG_PATH:-}" ]]; then
-  mkdir -p "$CANDIDATE_DIR/outputs"
-  export BDA_GENE_SEARCH_LOG_PATH="$CANDIDATE_DIR/outputs/gene_search_calls.json"
+  export BDA_GENE_SEARCH_LOG_PATH="$BDA_OUTPUT_DIR/gene_search_calls.json"
 fi
 
 if [[ -z "${BDA_DATASETS_DIR:-}" ]]; then

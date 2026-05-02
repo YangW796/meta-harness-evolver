@@ -35,9 +35,12 @@ def _read_json(path: Path) -> dict:
 
 
 def _pick_metrics_path(workspace: Path) -> Path | None:
-    best_path = workspace / "best" / "current" / "harness" / "outputs" / "metrics.json"
+    best_path = workspace / "best" / "current" / "outputs" / "metrics.json"
     if best_path.exists():
         return best_path
+    best_legacy_path = workspace / "best" / "current" / "harness" / "outputs" / "metrics.json"
+    if best_legacy_path.exists():
+        return best_legacy_path
 
     candidates_dir = workspace / "candidates"
     if not candidates_dir.exists():
@@ -52,7 +55,9 @@ def _pick_metrics_path(workspace: Path) -> Path | None:
             n = int(d.name.split("_", 1)[1])
         except Exception:
             continue
-        p = d / "harness" / "outputs" / "metrics.json"
+        p = d / "outputs" / "metrics.json"
+        if not p.exists():
+            p = d / "harness" / "outputs" / "metrics.json"
         if p.exists() and n > best_n:
             best_n = n
             best_candidate_metrics = p

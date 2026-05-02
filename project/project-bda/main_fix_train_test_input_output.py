@@ -470,7 +470,8 @@ def main() -> int:
     select_fn = _load_selection_policy(args.model_dir)
 
     model_path = Path(args.model_dir).expanduser().resolve()
-    output_dir = model_path.parent / "outputs"
+    output_dir_env = str(os.environ.get("BDA_OUTPUT_DIR", "")).strip()
+    output_dir = Path(output_dir_env).expanduser().resolve() if output_dir_env else (model_path.parent / "outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = output_dir / "metrics.json"
     default_state_path = output_dir / "bda_state.json"
