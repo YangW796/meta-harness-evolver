@@ -40,11 +40,7 @@ def main() -> int:
     except Exception:
         ncg = float("nan")
 
-    if math.isfinite(ncg):
-        final_score = _clamp(ncg, 0.0, 1.0) * 100.0
-    else:
-        recall = float(total_hits / max(1, top_k)) if top_k > 0 else 0.0
-        final_score = _clamp(recall, 0.0, 1.0) * 100.0
+    final_score = float(total_hits)
 
     out = {
         "final_score": float(final_score),
@@ -62,4 +58,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
