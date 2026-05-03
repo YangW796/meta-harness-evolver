@@ -22,6 +22,7 @@ Exit codes:
 import argparse
 import json
 import os
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +32,7 @@ from evaluation_runner import collect_change_record, evaluate_candidate, log_evo
 from evolution_paths import EvolverPaths, get_next_candidate_num
 from harness_runner import run_harness_script, validate_candidate
 from proposer_runner import run_proposer
-from shared import get_workspace, load_env_file
+from shared import get_workspace, iter_effective_files_recursive, load_env_file
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPTS_DIR.parent
@@ -89,68 +90,138 @@ def main():
     def run_one(candidate_num: int) -> int:
         print(f"[MAIN] Candidate: {candidate_num}")
 
-        # Step 1: Run proposer
-        print("[STEP] Propose: running proposer...")
-        proposer_result = run_proposer(paths, cfg, candidate_num)
-        candidate_dir = Path(proposer_result["candidate_dir"])
+        attempts = int(os.environ.get("PROPOSER_ATTEMPTS_PER_CANDIDATE", "1") or "1")
+        attempts = max(1, attempts)
 
-        if not proposer_result["success"]:
-            print(f"[MAIN] Proposer failed: {proposer_result.get('error')}")
-            print("[MAIN] Skipping this iteration.")
-            return 1
-        print("[STEP] Propose: done")
+        candidate_dir = paths.candidates_dir / f"candidate_{candidate_num}"
+        candidate_dir.mkdir(parents=True, exist_ok=True)
+        (candidate_dir / "traces").mkdir(exist_ok=True)
 
-        # Step 2: Validate
-        print("[STEP] Validate: checking candidate...")
-        if not validate_candidate(candidate_dir):
-            print("[MAIN] Validation failed. Skipping.")
-            return 1
-        print("[STEP] Validate: done")
+        attempt_root = candidate_dir / "attempts"
+        if attempts > 1:
+            attempt_root.mkdir(exist_ok=True)
 
-        print("[STEP] Harness: running harness_run_script.sh...")
-        harness_run = run_harness_script(candidate_dir, paths.workspace, cfg, candidate_num)
-        if harness_run.get("log_path"):
-            print(f"[HARNESS] Log: {harness_run.get('log_path')}")
-        if harness_run.get("skipped"):
-            print(f"[HARNESS] Skipped: {harness_run.get('reason')}")
-        if not harness_run.get("ok", False):
-            print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
-            print_log_tail(harness_run.get("log_path"))
+        best_attempt_dir: Path | None = None
+        best_scores: dict | None = None
+        best_final_score: float | None = None
+        any_proposer_ok = False
+
+        def _final_score(scores: dict | None) -> float | None:
+            if not scores:
+                return None
+            v = scores.get("final_score", None)
+            try:
+                return float(v)
+            except Exception:
+                return None
+
+        def run_attempt(attempt_dir: Path, attempt_idx: int) -> tuple[bool, dict | None]:
+            nonlocal any_proposer_ok
+            print(f"[STEP] Propose: attempt {attempt_idx}/{attempts}...")
+            proposer_result = run_proposer(paths, cfg, candidate_num, candidate_dir_override=attempt_dir)
+            if not proposer_result.get("success"):
+                print(f"[MAIN] Proposer attempt failed: {proposer_result.get('error')}")
+                return False, None
+            any_proposer_ok = True
+            print("[STEP] Propose: done")
+
+            print("[STEP] Validate: checking candidate...")
+            if not validate_candidate(attempt_dir):
+                print("[MAIN] Validation failed. Skipping this attempt.")
+                return False, None
+            print("[STEP] Validate: done")
+
+            print("[STEP] Harness: running harness_run_script.sh...")
+            harness_run = run_harness_script(attempt_dir, paths.workspace, cfg, candidate_num)
+            if harness_run.get("log_path"):
+                print(f"[HARNESS] Log: {harness_run.get('log_path')}")
+            if harness_run.get("skipped"):
+                print(f"[HARNESS] Skipped: {harness_run.get('reason')}")
+            if not harness_run.get("ok", False):
+                print(f"[MAIN] Harness execution failed: {harness_run.get('error')}")
+                print_log_tail(harness_run.get("log_path"))
+                return False, None
+            print("[STEP] Harness: done")
+
+            print("[STEP] Evaluate: running evaluation...")
+            scores = evaluate_candidate(paths, attempt_dir, args.evaluate_script)
+            if not scores or "error" in scores:
+                print(f"[MAIN] Evaluation failed: {scores.get('error')}")
+                return False, None
+            print("[STEP] Evaluate: done")
+            return True, scores
+
+        for attempt_idx in range(1, attempts + 1):
+            attempt_dir = candidate_dir if attempts == 1 else (attempt_root / f"attempt_{attempt_idx}")
+            attempt_dir.mkdir(parents=True, exist_ok=True)
+            (attempt_dir / "harness").mkdir(exist_ok=True)
+            (attempt_dir / "traces").mkdir(exist_ok=True)
+
+            ok, scores = run_attempt(attempt_dir, attempt_idx)
+            if not ok or not scores:
+                continue
+
+            scores_file = attempt_dir / "eval_scores.json"
+            with open(scores_file, "w") as sf:
+                json.dump(scores, sf, indent=2)
+
+            s = _final_score(scores)
+            if s is None:
+                continue
+            if best_final_score is None or s > best_final_score:
+                best_final_score = s
+                best_scores = scores
+                best_attempt_dir = attempt_dir
+
+        if best_attempt_dir is None or best_scores is None:
+            if not any_proposer_ok:
+                print("[MAIN] Proposer failed for all attempts. Skipping this iteration.")
+                return 1
+            print("[MAIN] No valid attempt produced a score.")
             return 2
-        print("[STEP] Harness: done")
 
-        # Step 3: Evaluate
-        print("[STEP] Evaluate: running evaluation...")
-        scores = evaluate_candidate(paths, candidate_dir, args.evaluate_script)
-        if not scores or "error" in scores:
-            print(f"[MAIN] Evaluation failed: {scores.get('error')}")
-            return 2
-        print("[STEP] Evaluate: done")
+        if best_attempt_dir != candidate_dir:
+            dst_harness = candidate_dir / "harness"
+            if dst_harness.exists():
+                shutil.rmtree(dst_harness)
+            dst_harness.mkdir(parents=True, exist_ok=True)
+            src_harness = best_attempt_dir / "harness"
+            for f in iter_effective_files_recursive(src_harness):
+                rel = f.relative_to(src_harness)
+                out_path = dst_harness / rel
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, out_path)
 
-        # Step 4: Log eval scores to candidate dir
+            src_reasoning = best_attempt_dir / "proposer_reasoning.md"
+            if src_reasoning.exists():
+                shutil.copy2(src_reasoning, candidate_dir / "proposer_reasoning.md")
+
+            src_outputs = best_attempt_dir / "outputs"
+            if src_outputs.exists() and src_outputs.is_dir():
+                dst_outputs = candidate_dir / "outputs"
+                if dst_outputs.exists():
+                    shutil.rmtree(dst_outputs)
+                shutil.copytree(src_outputs, dst_outputs)
+
         print("[STEP] Log: writing eval scores and change record...")
         scores_file = candidate_dir / "eval_scores.json"
         with open(scores_file, "w") as sf:
-            json.dump(scores, sf, indent=2)
-        print(f"[MAIN] Scores: {json.dumps(scores, indent=2)}")
+            json.dump(best_scores, sf, indent=2)
+        print(f"[MAIN] Scores: {json.dumps(best_scores, indent=2)}")
 
-        # Step 5: Record this round's changed places before best gets updated
         change_record = collect_change_record(paths, candidate_num, candidate_dir)
         print(f"[MAIN] Changes recorded: {change_record['changed_files_count']} file(s)")
 
-        # Step 6: Update best if needed
-        prev_best_score = update_best(paths, candidate_dir, scores)
+        prev_best_score = update_best(paths, candidate_dir, best_scores)
 
-        # Step 7: Log evolution
-        log_evolution(paths, candidate_num, candidate_dir, scores, proposer_result["success"], change_record)
+        log_evolution(paths, candidate_num, candidate_dir, best_scores, True, change_record)
         print("[STEP] Log: done")
 
-        # Step 8: Post to Feishu
         print("[STEP] Post: sending Feishu message...")
-        post_to_feishu(paths, candidate_num, candidate_dir, scores, proposer_result["success"], prev_best_score)
+        post_to_feishu(paths, candidate_num, candidate_dir, best_scores, True, prev_best_score)
         print("[STEP] Post: done")
 
-        print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {scores.get('final_score')}")
+        print(f"\n[MAIN] Done! Candidate {candidate_num} evaluated: {best_scores.get('final_score')}")
         print(f"{'='*60}\n")
         return 0
 

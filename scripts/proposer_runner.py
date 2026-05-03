@@ -141,10 +141,15 @@ def _diff_text(base_harness_dir: Path, candidate_harness_dir: Path) -> str:
     return "\n".join(chunks)
 
 
-def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) -> dict:
+def run_proposer(
+    paths: EvolverPaths,
+    cfg: EvolverConfig,
+    candidate_num: int,
+    candidate_dir_override: Path | None = None,
+) -> dict:
     import uuid
 
-    candidate_dir = paths.candidates_dir / f"candidate_{candidate_num}"
+    candidate_dir = candidate_dir_override or (paths.candidates_dir / f"candidate_{candidate_num}")
     candidate_dir.mkdir(parents=True, exist_ok=True)
     (candidate_dir / "harness").mkdir(exist_ok=True)
     (candidate_dir / "traces").mkdir(exist_ok=True)
@@ -208,6 +213,9 @@ def run_proposer(paths: EvolverPaths, cfg: EvolverConfig, candidate_num: int) ->
         if isinstance(ctx, str) and ctx.strip():
             injected_context = "\n\n" + ctx.strip() + "\n"
 
+    harness_out_dir = candidate_dir / "harness"
+    reasoning_path = candidate_dir / "proposer_reasoning.md"
+
     proposer_task = f"""{prompt_prefix}You are the Evolution Proposer for an AI4S (AI for Science) project.
 
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
@@ -218,7 +226,7 @@ Your job: Propose ONE targeted modification to the project code or configuration
 - Evolution history: {paths.workspace}/candidates/
 - Current best codebase: {paths.workspace}/best/current/
 - Candidate start point (copied into your output dir before editing): {base_harness_dir}
-- Your output: {paths.workspace}/candidates/candidate_{candidate_num}/harness/
+- Your output: {harness_out_dir}
 
 ## What You Must Do
 
@@ -230,7 +238,7 @@ Your job: Propose ONE targeted modification to the project code or configuration
 
 5. Copy the candidate start point files to your output dir
 6. Apply your targeted edit to the ONE file you chose
-7. Write a BRIEF reasoning trace to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
+7. Write a BRIEF reasoning trace to {reasoning_path}
    explaining: what you changed, why, what you expect to improve
 
 ## Constraints
@@ -270,8 +278,8 @@ Best score so far: {best['final_score'] if best else 'N/A'}
 5. Ensure the candidate writes `proposer_reasoning.md` summarizing: (a) what changed, (b) expected impact, (c) why this is better than prior attempts.
 
 ## Output Format
-Write your modified file to {paths.workspace}/candidates/candidate_{candidate_num}/harness/<FILENAME>
-Write reasoning to {paths.workspace}/candidates/candidate_{candidate_num}/proposer_reasoning.md
+Write your modified file to {harness_out_dir}/<FILENAME>
+Write reasoning to {reasoning_path}
 
 Start now. Read the history first, then propose.
 """
@@ -289,7 +297,7 @@ Start now. Read the history first, then propose.
         ]
     )
 
-    print(f"[PROPOSER] Spawning sub-agent for candidate_{candidate_num}...")
+    print(f"[PROPOSER] Spawning sub-agent for candidate_{candidate_num} ({candidate_dir.name})...")
     print(f"[PROPOSER] History: {len(history)} prior candidates")
     if mode is not None:
         print(f"[PROPOSER] Mode: {mode.name}")
