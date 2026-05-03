@@ -9,7 +9,13 @@ from evolver_config import EvolverConfig
 from evolution_paths import EvolverPaths, get_best_candidate
 from evolution_prompting import choose_prompt_mode
 from nexau_runner import run_proposer_with_nexau
-from shared import iter_effective_files, iter_effective_files_recursive
+from shared import (
+    find_sidecar_next_to_script,
+    get_repo_root,
+    iter_effective_files,
+    iter_effective_files_recursive,
+    load_callable_from_python_file,
+)
 
 
 def _load_prompt_context_provider(paths: EvolverPaths):
@@ -20,31 +26,11 @@ def _load_prompt_context_provider(paths: EvolverPaths):
     raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
     if not raw_path:
         return None
-
-    p = Path(raw_path).expanduser()
-    if not p.is_absolute():
-        p = (Path.cwd() / p).resolve()
-    else:
-        p = p.resolve()
-    if not p.exists():
-        print(f"[PROPOSER] EVOLVER_PROMPT_CONTEXT_FILE not found: {p}")
+    fn = load_callable_from_python_file(raw_path, "build_prompt_context", "evolver_prompt_context")
+    if fn is None:
+        print(f"[PROPOSER] EVOLVER_PROMPT_CONTEXT_FILE not found or missing build_prompt_context: {raw_path}")
         return None
-
-    try:
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location("evolver_prompt_context", str(p))
-        if spec is None or spec.loader is None:
-            return None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        fn = getattr(module, "build_prompt_context", None)
-        if callable(fn):
-            return fn
-    except Exception as e:
-        print(f"[PROPOSER] Failed to load prompt context provider: {e}")
-        return None
-    return None
+    return fn
 
 
 def _load_attempt_planner_context_provider(cfg: EvolverConfig):
@@ -55,50 +41,21 @@ def _load_attempt_planner_context_provider(cfg: EvolverConfig):
     if not raw_path:
         script_raw = str(getattr(cfg, "harness_run_script", "") or "").strip()
         if script_raw:
-            script_path = Path(script_raw).expanduser()
-            candidates: list[Path] = []
-            if script_path.is_absolute():
-                candidates.append(script_path)
-            else:
-                candidates.append((Path.cwd() / script_path).resolve())
-                candidates.append((Path(__file__).resolve().parents[1] / script_path).resolve())
-            for sp in candidates:
-                p = sp.parent / "prompt_context.py"
-                if p.exists():
-                    raw_path = str(p)
-                    break
+            p = find_sidecar_next_to_script(script_raw, "prompt_context.py")
+            if p is not None:
+                raw_path = str(p)
 
     if not raw_path:
-        default_path = Path(__file__).resolve().parents[1] / "project" / "project-bda" / "prompt_context.py"
+        default_path = get_repo_root() / "project" / "project-bda" / "prompt_context.py"
         if default_path.exists():
             raw_path = str(default_path)
     if not raw_path:
         return None
-
-    p = Path(raw_path).expanduser()
-    if not p.is_absolute():
-        p = (Path.cwd() / p).resolve()
-    else:
-        p = p.resolve()
-    if not p.exists():
-        print(f"[PROPOSER] EVOLVER_ATTEMPT_PLANNER_CONTEXT_FILE not found: {p}")
+    fn = load_callable_from_python_file(raw_path, "build_attempt_planner_context", "evolver_attempt_planner_context")
+    if fn is None:
+        print(f"[PROPOSER] Attempt planner context file missing build_attempt_planner_context: {raw_path}")
         return None
-
-    try:
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location("evolver_attempt_planner_context", str(p))
-        if spec is None or spec.loader is None:
-            return None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        fn = getattr(module, "build_attempt_planner_context", None)
-        if callable(fn):
-            return fn
-    except Exception as e:
-        print(f"[PROPOSER] Failed to load attempt planner context provider: {e}")
-        return None
-    return None
+    return fn
 
 
 def _extract_tags(text: str) -> set[str]:
@@ -223,25 +180,16 @@ def plan_attempts(
     prefix_parts: list[str] = []
     script_raw = str(getattr(cfg, "harness_run_script", "") or "").strip()
     if script_raw:
-        script_path = Path(script_raw).expanduser()
-        candidates = []
-        if script_path.is_absolute():
-            candidates.append(script_path)
-        else:
-            candidates.append((Path.cwd() / script_path).resolve())
-            candidates.append((Path(__file__).resolve().parents[1] / script_path).resolve())
-        for sp in candidates:
-            p = sp.parent / "proposer_prompt_prefix.txt"
-            if p.exists():
-                try:
-                    txt = p.read_text(encoding="utf-8", errors="replace").strip()
-                except Exception:
-                    txt = ""
-                if txt:
-                    prefix_parts.append(txt)
-                break
+        p = find_sidecar_next_to_script(script_raw, "proposer_prompt_prefix.txt")
+        if p is not None:
+            try:
+                txt = p.read_text(encoding="utf-8", errors="replace").strip()
+            except Exception:
+                txt = ""
+            if txt:
+                prefix_parts.append(txt)
     if not prefix_parts:
-        default_prefix = Path(__file__).resolve().parents[1] / "project" / "project-bda" / "proposer_prompt_prefix.txt"
+        default_prefix = get_repo_root() / "project" / "project-bda" / "proposer_prompt_prefix.txt"
         if default_prefix.exists():
             try:
                 txt = default_prefix.read_text(encoding="utf-8", errors="replace").strip()

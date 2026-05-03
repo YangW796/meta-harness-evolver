@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import importlib.util
 from pathlib import Path
 from typing import Iterable
 
@@ -82,3 +83,43 @@ def iter_effective_files_recursive(directory: Path) -> Iterable[Path]:
                 stack.append(p)
             elif p.is_file():
                 yield p
+
+
+def get_repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def resolve_maybe_relative_path(raw_path: str | Path, *, cwd: Path | None = None) -> Path:
+    p = Path(raw_path).expanduser()
+    if p.is_absolute():
+        return p.resolve()
+    base = (cwd or Path.cwd()).expanduser().resolve()
+    return (base / p).resolve()
+
+
+def find_sidecar_next_to_script(script_path: str | Path, filename: str) -> Path | None:
+    try:
+        sp = resolve_maybe_relative_path(script_path)
+    except Exception:
+        return None
+    p = sp.parent / filename
+    return p if p.exists() else None
+
+
+def load_callable_from_python_file(raw_path: str | Path, fn_name: str, module_name: str) -> object | None:
+    try:
+        p = resolve_maybe_relative_path(raw_path)
+    except Exception:
+        return None
+    if not p.exists():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, str(p))
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fn = getattr(module, fn_name, None)
+        return fn if callable(fn) else None
+    except Exception:
+        return None

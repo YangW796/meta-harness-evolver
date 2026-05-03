@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from evolver_config import EvolverConfig
-from shared import iter_effective_files, iter_effective_files_recursive
+from shared import iter_effective_files, iter_effective_files_recursive, resolve_maybe_relative_path
 
 
 def validate_candidate(candidate_dir: Path) -> bool:
@@ -57,8 +57,7 @@ def run_harness_script(candidate_dir: Path, workspace: Path, cfg: EvolverConfig,
         return {"ok": True, "skipped": True, "reason": "no harness run script", "log_path": str(log_path)}
 
     script_path = Path(script).expanduser()
-    if not script_path.is_absolute():
-        script_path = (Path.cwd() / script_path).resolve()
+    script_path = resolve_maybe_relative_path(script_path)
 
     cmd = ["bash", str(script_path), str(candidate_dir)]
     env = os.environ.copy()

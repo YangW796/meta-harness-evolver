@@ -9,6 +9,7 @@ import traceback
 import fnmatch
 from pathlib import Path
 
+from shared import get_repo_root
 
 def tail_text(text: str, limit: int) -> str:
     if len(text) <= limit:
@@ -151,7 +152,7 @@ def nexau_proposer_child(log_path: Path) -> int:
             raise RuntimeError(f"NEXAU_CODE_AGENT_DIR does not exist: {base_dir}")
 
         deny_py_globs = [s.strip() for s in str(os.environ.get("NEXAU_DENY_READ_PY_GLOBS", "")).split(",") if s.strip()]
-        repo_root = Path(__file__).resolve().parents[1]
+        repo_root = get_repo_root()
 
         def _deny_read_message(path_text: str) -> str:
             return (

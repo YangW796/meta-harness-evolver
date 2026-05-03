@@ -9,16 +9,14 @@ from datetime import datetime
 from pathlib import Path
 
 from evolution_paths import EvolverPaths
-from shared import iter_effective_files, iter_effective_files_recursive
+from shared import iter_effective_files, iter_effective_files_recursive, resolve_maybe_relative_path
 
 
 def evaluate_candidate(paths: EvolverPaths, candidate_dir: Path, evaluate_script: str | None) -> dict:
     print(f"[EVALUATE] Running benchmark for {candidate_dir.name}...")
 
     if evaluate_script:
-        script_path = Path(evaluate_script).expanduser()
-        if not script_path.is_absolute():
-            script_path = (Path.cwd() / script_path).resolve()
+        script_path = resolve_maybe_relative_path(evaluate_script)
 
         if script_path.suffix == ".py":
             cmd = [sys.executable, str(script_path), str(candidate_dir)]
