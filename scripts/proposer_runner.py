@@ -14,16 +14,10 @@ from shared import iter_effective_files, iter_effective_files_recursive
 
 def _load_prompt_context_provider(paths: EvolverPaths):
     style = str(os.environ.get("EVOLVER_PROMPT_STYLE", "")).strip()
-    script_hint = str(getattr(getattr(paths, "cfg", None), "harness_run_script", "") or "").replace("\\", "/")
-    bda_hint = bool(os.environ.get("BDA_DATASETS_DIR")) or ("project-bda" in script_hint)
-    if style != "bda_like" and not bda_hint:
+    if style != "bda_like":
         return None
 
     raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
-    if not raw_path:
-        repo_root = Path(__file__).resolve().parents[1]
-        default_path = repo_root / "project" / "project-bda" / "prompt_context.py"
-        raw_path = str(default_path) if default_path.exists() else ""
     if not raw_path:
         return None
 
@@ -172,6 +166,40 @@ def plan_attempts(
     else:
         target_files_str = "   - (No files found)"
 
+    prefix_parts: list[str] = []
+    script_raw = str(getattr(cfg, "harness_run_script", "") or "").strip()
+    if script_raw:
+        script_path = Path(script_raw).expanduser()
+        candidates = []
+        if script_path.is_absolute():
+            candidates.append(script_path)
+        else:
+            candidates.append((Path.cwd() / script_path).resolve())
+            candidates.append((Path(__file__).resolve().parents[1] / script_path).resolve())
+        for sp in candidates:
+            p = sp.parent / "proposer_prompt_prefix.txt"
+            if p.exists():
+                try:
+                    txt = p.read_text(encoding="utf-8", errors="replace").strip()
+                except Exception:
+                    txt = ""
+                if txt:
+                    prefix_parts.append(txt)
+                break
+    if not prefix_parts:
+        default_prefix = Path(__file__).resolve().parents[1] / "project" / "project-bda" / "proposer_prompt_prefix.txt"
+        if default_prefix.exists():
+            try:
+                txt = default_prefix.read_text(encoding="utf-8", errors="replace").strip()
+            except Exception:
+                txt = ""
+            if txt:
+                prefix_parts.append(txt)
+    extra_prefix = str(getattr(cfg, "proposer_prompt_prefix", "") or "").strip()
+    if extra_prefix:
+        prefix_parts.append(extra_prefix)
+    injected_prefix = ("\n\n".join(prefix_parts).strip() + "\n\n") if prefix_parts else ""
+
     planner_task = "\n".join(
         [
             "You are the Attempt Planner for an evolution run.",
@@ -198,6 +226,8 @@ def plan_attempts(
             "Now plan the attempts and output the JSON array.",
         ]
     )
+    if injected_prefix:
+        planner_task = injected_prefix + planner_task
 
     agent_session_id = str(uuid.uuid4())[:8]
     result = run_proposer_with_nexau(

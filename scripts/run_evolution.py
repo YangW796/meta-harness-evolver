@@ -142,6 +142,22 @@ def main():
                 attempt_plans = []
         if attempts > 1 and attempt_plans:
             print(f"[MAIN] Attempt plans: {json.dumps(attempt_plans, ensure_ascii=False)}")
+            try:
+                (candidate_dir / "attempt_plans.json").write_text(
+                    json.dumps(
+                        {
+                            "candidate": f"candidate_{candidate_num}",
+                            "attempts": int(attempts),
+                            "generated_at": datetime.now().isoformat(),
+                            "plans": attempt_plans,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
+            except Exception as e:
+                print(f"[MAIN] Failed to write attempt_plans.json: {e}")
 
         def _final_score(scores: dict | None) -> float | None:
             if not scores:
@@ -197,6 +213,13 @@ def main():
             os.environ["EVOLVER_ATTEMPT_IDX"] = str(attempt_idx)
             os.environ["EVOLVER_ATTEMPT_ROOT"] = str(attempt_root)
             if attempt_plans and 0 <= (attempt_idx - 1) < len(attempt_plans):
+                try:
+                    (attempt_dir / "attempt_plan.json").write_text(
+                        json.dumps(attempt_plans[attempt_idx - 1], ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                except Exception as e:
+                    print(f"[MAIN] Failed to write attempt_plan.json for attempt_{attempt_idx}: {e}")
                 os.environ["EVOLVER_ATTEMPT_PLAN_JSON"] = json.dumps(attempt_plans[attempt_idx - 1], ensure_ascii=False)
                 os.environ["EVOLVER_ATTEMPT_PLANS_JSON"] = json.dumps(attempt_plans, ensure_ascii=False)
             else:
