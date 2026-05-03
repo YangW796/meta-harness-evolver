@@ -19,8 +19,8 @@ from shared import (
 
 
 def _load_prompt_context_provider(paths: EvolverPaths):
-    style = str(os.environ.get("EVOLVER_PROMPT_STYLE", "")).strip()
-    if style != "bda_like":
+    enabled = str(os.environ.get("EVOLVER_INJECT_PROMPT_CONTEXT", "")).strip() == "1"
+    if not enabled:
         return None
 
     raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
