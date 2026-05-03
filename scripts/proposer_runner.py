@@ -14,10 +14,16 @@ from shared import iter_effective_files, iter_effective_files_recursive
 
 def _load_prompt_context_provider(paths: EvolverPaths):
     style = str(os.environ.get("EVOLVER_PROMPT_STYLE", "")).strip()
-    if style != "bda_like":
+    script_hint = str(getattr(getattr(paths, "cfg", None), "harness_run_script", "") or "").replace("\\", "/")
+    bda_hint = bool(os.environ.get("BDA_DATASETS_DIR")) or ("project-bda" in script_hint)
+    if style != "bda_like" and not bda_hint:
         return None
 
     raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
+    if not raw_path:
+        repo_root = Path(__file__).resolve().parents[1]
+        default_path = repo_root / "project" / "project-bda" / "prompt_context.py"
+        raw_path = str(default_path) if default_path.exists() else ""
     if not raw_path:
         return None
 
@@ -108,6 +114,156 @@ def _recent_tags(candidates_dir: Path, k: int) -> set[str]:
     for txt in _load_recent_change_texts(candidates_dir, k=k):
         tags |= _extract_tags(txt)
     return tags
+
+
+def _extract_json_payload(text: str) -> object | None:
+    if not isinstance(text, str):
+        return None
+    lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
+    for ln in reversed(lines[-50:]):
+        if not (ln.startswith("[") or ln.startswith("{")):
+            continue
+        try:
+            return json.loads(ln)
+        except Exception:
+            continue
+    t = text.strip()
+    candidates: list[str] = []
+    b0, b1 = t.rfind("["), t.rfind("]")
+    if 0 <= b0 < b1:
+        candidates.append(t[b0 : b1 + 1])
+    o0, o1 = t.rfind("{"), t.rfind("}")
+    if 0 <= o0 < o1:
+        candidates.append(t[o0 : o1 + 1])
+    for cand in candidates:
+        try:
+            return json.loads(cand)
+        except Exception:
+            pass
+    return None
+
+
+def plan_attempts(
+    paths: EvolverPaths,
+    cfg: EvolverConfig,
+    candidate_num: int,
+    attempts: int,
+    candidate_dir_override: Path | None = None,
+) -> list[dict]:
+    import uuid
+
+    attempts = max(1, int(attempts))
+    if attempts <= 1:
+        return []
+
+    candidate_dir = candidate_dir_override or (paths.candidates_dir / f"candidate_{candidate_num}")
+    candidate_dir.mkdir(parents=True, exist_ok=True)
+    (candidate_dir / "traces").mkdir(exist_ok=True)
+
+    best = get_best_candidate(paths)
+    novelty_k = int(os.environ.get("EVOLVER_NOVELTY_LOOKBACK", "10"))
+    novelty_k = max(1, novelty_k)
+    recent_tag_set = _recent_tags(paths.candidates_dir, k=novelty_k)
+
+    best_harness_dir = paths.best_dir / "harness"
+    if best_harness_dir.exists():
+        files = [f.relative_to(best_harness_dir).as_posix() for f in iter_effective_files_recursive(best_harness_dir)]
+        target_files_str = "\n".join([f"   - {f}" for f in sorted(files)])
+    else:
+        target_files_str = "   - (No files found)"
+
+    planner_task = "\n".join(
+        [
+            "You are the Attempt Planner for an evolution run.",
+            "",
+            f"Goal: produce {attempts} distinct attempt directions for candidate_{candidate_num}.",
+            "Each attempt should be meaningfully different in algorithmic direction and not a trivial variant.",
+            "",
+            "Constraints:",
+            "- Attempts should avoid repeating these recently used strategy tags where possible:",
+            f"{sorted(recent_tag_set)}",
+            "- Each attempt must specify what to change and why.",
+            "- The edit should be compatible with the project harness run script.",
+            "",
+            "Allowed files include:",
+            f"{target_files_str}",
+            "",
+            "Output requirement:",
+            "- Output ONLY a JSON array on a single line (no markdown).",
+            "- JSON schema: [{attempt:int, title:str, strategy_tags:list[str], hypothesis:str, implementation_outline:str}].",
+            "- attempt values must be 1..N.",
+            "",
+            f"Best score so far: {best['final_score'] if best else 'N/A'}",
+            "",
+            "Now plan the attempts and output the JSON array.",
+        ]
+    )
+
+    agent_session_id = str(uuid.uuid4())[:8]
+    result = run_proposer_with_nexau(
+        task=planner_task,
+        label=f"evolver-attempt-planner-{agent_session_id}",
+        work_dir=paths.workspace,
+        timeout_seconds=int(os.environ.get("PROPOSER_ATTEMPT_PLANNER_TIMEOUT_SECONDS", "120") or "120"),
+        log_dir=candidate_dir / "traces",
+        max_iterations_override=min(max(int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20")) // 2, 10), 40),
+    )
+
+    output_text = result.get("output", "")
+    payload = _extract_json_payload(output_text if isinstance(output_text, str) else "")
+    if isinstance(payload, list):
+        plans = [p for p in payload if isinstance(p, dict)]
+        normalized: list[dict] = []
+        for p in plans:
+            try:
+                idx = int(p.get("attempt", 0))
+            except Exception:
+                idx = 0
+            if not (1 <= idx <= attempts):
+                continue
+            normalized.append(
+                {
+                    "attempt": idx,
+                    "title": str(p.get("title", "")).strip(),
+                    "strategy_tags": list(p.get("strategy_tags", []) or []),
+                    "hypothesis": str(p.get("hypothesis", "")).strip(),
+                    "implementation_outline": str(p.get("implementation_outline", "")).strip(),
+                }
+            )
+        normalized.sort(key=lambda x: int(x.get("attempt", 0)))
+        if normalized:
+            return normalized
+    fallback_templates: list[dict] = [
+        {
+            "title": "Diversity-first exploration",
+            "strategy_tags": ["diversity", "exploration"],
+            "hypothesis": "Improve hit rate by exploring diverse candidates and reducing redundancy.",
+            "implementation_outline": "Prefer diverse/novel candidates vs. history; add stochastic exploration and diversity penalty.",
+        },
+        {
+            "title": "Uncertainty-guided selection",
+            "strategy_tags": ["uncertainty", "exploration"],
+            "hypothesis": "Improve discovery by querying candidates with high uncertainty under a lightweight model.",
+            "implementation_outline": "Train a simple model on history; select by uncertainty or ensemble variance.",
+        },
+        {
+            "title": "Exploit high-score regions",
+            "strategy_tags": ["rank", "exploitation"],
+            "hypothesis": "If score correlates with hits, exploit top predicted score region aggressively.",
+            "implementation_outline": "Use score-based ranking with mild randomization; add monotonic transforms and priors.",
+        },
+        {
+            "title": "Epsilon-greedy hybrid",
+            "strategy_tags": ["hybrid", "epsilon_greedy"],
+            "hypothesis": "Balance exploitation and exploration for better cumulative hits early.",
+            "implementation_outline": "With probability eps explore diverse; otherwise exploit model score; anneal eps by round.",
+        },
+    ]
+    out: list[dict] = []
+    for i in range(1, attempts + 1):
+        tmpl = fallback_templates[(i - 1) % len(fallback_templates)]
+        out.append({"attempt": i, **tmpl})
+    return out
 
 
 def _diff_text(base_harness_dir: Path, candidate_harness_dir: Path) -> str:
@@ -216,12 +372,46 @@ def run_proposer(
     harness_out_dir = candidate_dir / "harness"
     reasoning_path = candidate_dir / "proposer_reasoning.md"
 
+    attempt_idx_raw = str(os.environ.get("EVOLVER_ATTEMPT_IDX", "")).strip()
+    attempt_root_raw = str(os.environ.get("EVOLVER_ATTEMPT_ROOT", "")).strip()
+    attempt_plan_raw = str(os.environ.get("EVOLVER_ATTEMPT_PLAN_JSON", "")).strip()
+    attempt_plans_raw = str(os.environ.get("EVOLVER_ATTEMPT_PLANS_JSON", "")).strip()
+    attempt_hint = ""
+    try:
+        attempt_idx = int(attempt_idx_raw) if attempt_idx_raw else 0
+    except Exception:
+        attempt_idx = 0
+    if attempt_idx > 0:
+        if len(attempt_plan_raw) > 2000:
+            attempt_plan_raw = attempt_plan_raw[:2000] + "...(truncated)"
+        if len(attempt_plans_raw) > 2000:
+            attempt_plans_raw = attempt_plans_raw[:2000] + "...(truncated)"
+        attempt_hint_lines = [
+            "",
+            "## Attempt Context",
+            f"- Attempt index: {attempt_idx}",
+            f"- Attempt root (if present): {attempt_root_raw or '(not set)'}",
+        ]
+        if attempt_plan_raw:
+            attempt_hint_lines.append(f"- Planned direction (JSON): {attempt_plan_raw}")
+        if attempt_plans_raw:
+            attempt_hint_lines.append(f"- All attempt plans (JSON): {attempt_plans_raw}")
+        attempt_hint_lines.extend(
+            [
+                "- If there are multiple attempts for the same candidate, you MUST follow the planned direction for this attempt.",
+                "- You MUST avoid proposing the same edit as other attempts.",
+                "",
+            ]
+        )
+        attempt_hint = "\n".join(attempt_hint_lines)
+
     proposer_task = f"""{prompt_prefix}You are the Evolution Proposer for an AI4S (AI for Science) project.
 
 Your job: Propose ONE targeted modification to the project code or configuration based on evolution history to improve the benchmark score.
 
 {hardware_hint}
 {injected_context}
+{attempt_hint}
 ## Your Workspace
 - Evolution history: {paths.workspace}/candidates/
 - Current best codebase: {paths.workspace}/best/current/

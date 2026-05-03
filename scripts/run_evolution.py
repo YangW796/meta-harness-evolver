@@ -31,7 +31,7 @@ from evolver_config import load_config
 from evaluation_runner import collect_change_record, evaluate_candidate, log_evolution, post_to_feishu, update_best
 from evolution_paths import EvolverPaths, get_next_candidate_num
 from harness_runner import run_harness_script, validate_candidate
-from proposer_runner import run_proposer
+from proposer_runner import plan_attempts, run_proposer
 from shared import get_workspace, iter_effective_files_recursive, load_env_file
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -101,6 +101,13 @@ def main():
         if attempts > 1:
             attempt_root.mkdir(exist_ok=True)
 
+        original_attempt_env = {
+            "EVOLVER_ATTEMPT_IDX": os.environ.get("EVOLVER_ATTEMPT_IDX"),
+            "EVOLVER_ATTEMPT_ROOT": os.environ.get("EVOLVER_ATTEMPT_ROOT"),
+            "EVOLVER_ATTEMPT_PLAN_JSON": os.environ.get("EVOLVER_ATTEMPT_PLAN_JSON"),
+            "EVOLVER_ATTEMPT_PLANS_JSON": os.environ.get("EVOLVER_ATTEMPT_PLANS_JSON"),
+        }
+
         known_state_keys = ["BDA_STATE_PATH", "PROJECT_PU_STATE_PATH", "PROJECT3_STATE_PATH"]
         state_bases: dict[str, Path] = {}
         for key in known_state_keys:
@@ -119,6 +126,22 @@ def main():
         best_scores: dict | None = None
         best_final_score: float | None = None
         any_proposer_ok = False
+
+        attempt_plans: list[dict] = []
+        if attempts > 1 and os.environ.get("PROPOSER_PLAN_ATTEMPTS", "1") == "1":
+            try:
+                attempt_plans = plan_attempts(
+                    paths,
+                    cfg,
+                    candidate_num=candidate_num,
+                    attempts=attempts,
+                    candidate_dir_override=candidate_dir,
+                )
+            except Exception as e:
+                print(f"[MAIN] Attempt planning failed: {e}")
+                attempt_plans = []
+        if attempts > 1 and attempt_plans:
+            print(f"[MAIN] Attempt plans: {json.dumps(attempt_plans, ensure_ascii=False)}")
 
         def _final_score(scores: dict | None) -> float | None:
             if not scores:
@@ -171,6 +194,15 @@ def main():
             (attempt_dir / "harness").mkdir(exist_ok=True)
             (attempt_dir / "traces").mkdir(exist_ok=True)
 
+            os.environ["EVOLVER_ATTEMPT_IDX"] = str(attempt_idx)
+            os.environ["EVOLVER_ATTEMPT_ROOT"] = str(attempt_root)
+            if attempt_plans and 0 <= (attempt_idx - 1) < len(attempt_plans):
+                os.environ["EVOLVER_ATTEMPT_PLAN_JSON"] = json.dumps(attempt_plans[attempt_idx - 1], ensure_ascii=False)
+                os.environ["EVOLVER_ATTEMPT_PLANS_JSON"] = json.dumps(attempt_plans, ensure_ascii=False)
+            else:
+                os.environ.pop("EVOLVER_ATTEMPT_PLAN_JSON", None)
+                os.environ.pop("EVOLVER_ATTEMPT_PLANS_JSON", None)
+
             if attempts > 1 and state_bases:
                 attempt_state_paths: dict[str, Path] = {}
                 for key, base_path in state_bases.items():
@@ -208,6 +240,11 @@ def main():
                         os.environ.pop(key, None)
                     else:
                         os.environ[key] = prev
+            for key, prev in original_attempt_env.items():
+                if prev is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = prev
             if not any_proposer_ok:
                 print("[MAIN] Proposer failed for all attempts. Skipping this iteration.")
                 return 1
@@ -225,6 +262,11 @@ def main():
                     if base_path.exists():
                         base_path.unlink()
             for key, prev in original_state_env.items():
+                if prev is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = prev
+            for key, prev in original_attempt_env.items():
                 if prev is None:
                     os.environ.pop(key, None)
                 else:

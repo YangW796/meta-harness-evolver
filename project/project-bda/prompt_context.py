@@ -70,6 +70,12 @@ def extract_key_stats(metrics_payload: dict) -> dict:
     top_k = _safe_int(test.get("top_k"), 0)
     total_queries = _safe_int(test.get("total_queries"), 0)
     total_hits = _safe_int(test.get("total_hits"), 0)
+    baseline_total_queries = _safe_int(test.get("baseline_total_queries"), 0)
+    baseline_total_hits = _safe_int(test.get("baseline_total_hits"), 0)
+    delta_queries = _safe_int(test.get("delta_queries"), 0)
+    delta_hits = _safe_int(test.get("delta_hits"), 0)
+    rounds = _safe_int(test.get("rounds"), 0)
+    executed_rounds = _safe_int(test.get("executed_rounds"), 0)
     hit_curve = test.get("hit_curve") if isinstance(test.get("hit_curve"), dict) else {}
     round_details = test.get("round_details") if isinstance(test.get("round_details"), list) else []
     ncg = _safe_float(test.get("ncg"), None)
@@ -89,6 +95,12 @@ def extract_key_stats(metrics_payload: dict) -> dict:
         "top_k": top_k,
         "total_queries": total_queries,
         "total_hits": total_hits,
+        "baseline_total_queries": baseline_total_queries,
+        "baseline_total_hits": baseline_total_hits,
+        "delta_queries": delta_queries,
+        "delta_hits": delta_hits,
+        "rounds": rounds,
+        "executed_rounds": executed_rounds,
         "hit_curve": hit_curve,
         "round_details": round_details,
         "ncg": ncg,
@@ -121,13 +133,45 @@ def _top_records(metrics_payload: dict, *, n_hits: int = 20, n_scores: int = 20)
         score = _safe_float(r.get("score"), 0.0) or 0.0
         hit = _safe_int(r.get("hit"), 0)
         rr = _safe_int(r.get("round"), 0)
-        norm.append({"gene": gene, "score": float(score), "abs_score": float(abs(score)), "hit": int(hit), "round": int(rr)})
+        norm.append({"gene": gene, "score": float(score), "hit": int(hit), "round": int(rr)})
 
     top_hits = [x for x in norm if int(x.get("hit", 0)) == 1]
     top_hits.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
     top_scores = list(norm)
     top_scores.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
     return {"top_hits": top_hits[: max(0, int(n_hits))], "top_scores": top_scores[: max(0, int(n_scores))]}
+
+
+def _top_new_records(metrics_payload: dict, stats: dict, *, n_hits: int = 20, n_scores: int = 20) -> dict[str, list[dict]]:
+    test = ((metrics_payload.get("metrics") or {}).get("test") or {}) if isinstance(metrics_payload, dict) else {}
+    records = test.get("queried_records", [])
+    if not isinstance(records, list):
+        return {"top_new_hits": [], "top_new_scores": []}
+
+    rounds = _safe_int(stats.get("rounds"), 0)
+    executed_rounds = _safe_int(stats.get("executed_rounds"), 0)
+    start_round = max(0, int(rounds) - int(executed_rounds))
+
+    norm: list[dict] = []
+    for r in records:
+        if not isinstance(r, dict):
+            continue
+        rr = _safe_int(r.get("round"), 0)
+        if rr < start_round:
+            continue
+        gene = str(r.get("gene", "")).strip()
+        score = _safe_float(r.get("score"), 0.0) or 0.0
+        hit = _safe_int(r.get("hit"), 0)
+        norm.append({"gene": gene, "score": float(score), "hit": int(hit), "round": int(rr)})
+
+    top_new_hits = [x for x in norm if int(x.get("hit", 0)) == 1]
+    top_new_hits.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
+    top_new_scores = list(norm)
+    top_new_scores.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
+    return {
+        "top_new_hits": top_new_hits[: max(0, int(n_hits))],
+        "top_new_scores": top_new_scores[: max(0, int(n_scores))],
+    }
 
 
 def build_prompt_context(paths, cfg, candidate_num: int, history, best) -> str:
@@ -138,7 +182,15 @@ def build_prompt_context(paths, cfg, candidate_num: int, history, best) -> str:
 
     payload = _read_json(metrics_path)
     stats = extract_key_stats(payload)
-    tops = _top_records(payload, n_hits=20, n_scores=20)
+    try:
+        top_limit = int(str(getattr(cfg, "bda_prompt_top_genes", "")).strip() or "")
+    except Exception:
+        top_limit = 0
+    if top_limit <= 0:
+        top_limit = _safe_int(__import__("os").environ.get("BDA_PROMPT_TOP_GENES"), 20)
+
+    tops = _top_records(payload, n_hits=int(top_limit), n_scores=int(top_limit))
+    new_tops = _top_new_records(payload, stats, n_hits=int(top_limit), n_scores=int(top_limit))
 
     warnings: list[str] = []
     ratio = stats.get("hit_rate_ratio_vs_random")
@@ -172,14 +224,21 @@ def build_prompt_context(paths, cfg, candidate_num: int, history, best) -> str:
         "top_k": stats.get("top_k"),
         "total_queries": stats.get("total_queries"),
         "total_hits": stats.get("total_hits"),
+        "baseline_total_queries": stats.get("baseline_total_queries"),
+        "baseline_total_hits": stats.get("baseline_total_hits"),
+        "delta_queries": stats.get("delta_queries"),
+        "delta_hits": stats.get("delta_hits"),
         "ncg": stats.get("ncg"),
         "actual_hit_rate": stats.get("actual_hit_rate"),
         "expected_hit_rate_random": stats.get("expected_hit_rate"),
         "expected_hits_random": stats.get("expected_hits"),
         "hit_rate_ratio_vs_random": stats.get("hit_rate_ratio_vs_random"),
         "recent_rounds": recent_rounds,
-        "top_hits_by_abs_score": tops.get("top_hits", []),
-        "top_scores_by_abs_score": tops.get("top_scores", []),
+        "top_hits_by_score": tops.get("top_hits", []),
+        "top_scores_by_score": tops.get("top_scores", []),
+        "top_new_hits_by_score": new_tops.get("top_new_hits", []),
+        "top_new_scores_by_score": new_tops.get("top_new_scores", []),
+        "recommended_direct_queries": [x.get("gene") for x in (new_tops.get("top_new_hits", []) or []) if isinstance(x, dict) and str(x.get("gene", "")).strip()][: int(top_limit)],
         "warnings": warnings,
     }
 
@@ -187,6 +246,8 @@ def build_prompt_context(paths, cfg, candidate_num: int, history, best) -> str:
         "## Experiment Feedback Summary (MANDATORY)\n"
         "You MUST use this summary when deciding what to change, and cite at least one concrete item from it in proposer_reasoning.md.\n"
         "Do NOT assume candidate_index has biological meaning.\n"
+        "If `recommended_direct_queries` is non-empty, you MAY prioritize querying these genes early (unless they are already in history / already_selected). "
+        "If gene_search is enabled, use these genes as anchors for gene_search.\n"
         "\n"
         + "```json\n"
         + json.dumps(ctx, ensure_ascii=False, indent=2)
