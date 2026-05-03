@@ -253,3 +253,48 @@ def build_prompt_context(paths, cfg, candidate_num: int, history, best) -> str:
         + json.dumps(ctx, ensure_ascii=False, indent=2)
         + "\n```\n"
     )
+
+
+def build_attempt_planner_context(paths, cfg, candidate_num: int, attempts: int, best) -> dict:
+    workspace = Path(getattr(paths, "workspace", "")).expanduser().resolve()
+    metrics_path = _pick_metrics_path(workspace)
+    if metrics_path is None:
+        return {}
+
+    payload = _read_json(metrics_path)
+    stats = extract_key_stats(payload)
+    try:
+        top_limit = int(str(getattr(cfg, "bda_prompt_top_genes", "")).strip() or "")
+    except Exception:
+        top_limit = 0
+    if top_limit <= 0:
+        try:
+            import os
+
+            top_limit = _safe_int(os.environ.get("BDA_PROMPT_TOP_GENES"), 20)
+        except Exception:
+            top_limit = 20
+
+    new_tops = _top_new_records(payload, stats, n_hits=int(top_limit), n_scores=int(top_limit))
+    direct = [
+        x.get("gene")
+        for x in (new_tops.get("top_new_hits", []) or [])
+        if isinstance(x, dict) and str(x.get("gene", "")).strip()
+    ][: int(top_limit)]
+
+    prompt = "\n".join(
+        [
+            "## Candidate Summary For Attempt Planning",
+            f"- data_name: {stats.get('data_name')}",
+            f"- task: {stats.get('task')}",
+            f"- total_hits: {stats.get('total_hits')} / total_queries: {stats.get('total_queries')}",
+            f"- delta_hits: {stats.get('delta_hits')} / delta_queries: {stats.get('delta_queries')}",
+            f"- recommended_direct_queries: {direct}",
+            "",
+            "Planning guidance:",
+            "- Each attempt should be different, but you MAY prioritize querying genes in recommended_direct_queries early (unless already selected).",
+            "- If gene_search is enabled, you MAY use these genes as anchors for gene_search expansion.",
+            "",
+        ]
+    )
+    return {"prompt": prompt, "per_attempt_fields": {"recommended_direct_queries": direct}}

@@ -47,6 +47,60 @@ def _load_prompt_context_provider(paths: EvolverPaths):
     return None
 
 
+def _load_attempt_planner_context_provider(cfg: EvolverConfig):
+    raw_path = str(os.environ.get("EVOLVER_ATTEMPT_PLANNER_CONTEXT_FILE", "")).strip()
+    if not raw_path:
+        raw_path = str(os.environ.get("EVOLVER_PROMPT_CONTEXT_FILE", "")).strip()
+
+    if not raw_path:
+        script_raw = str(getattr(cfg, "harness_run_script", "") or "").strip()
+        if script_raw:
+            script_path = Path(script_raw).expanduser()
+            candidates: list[Path] = []
+            if script_path.is_absolute():
+                candidates.append(script_path)
+            else:
+                candidates.append((Path.cwd() / script_path).resolve())
+                candidates.append((Path(__file__).resolve().parents[1] / script_path).resolve())
+            for sp in candidates:
+                p = sp.parent / "prompt_context.py"
+                if p.exists():
+                    raw_path = str(p)
+                    break
+
+    if not raw_path:
+        default_path = Path(__file__).resolve().parents[1] / "project" / "project-bda" / "prompt_context.py"
+        if default_path.exists():
+            raw_path = str(default_path)
+    if not raw_path:
+        return None
+
+    p = Path(raw_path).expanduser()
+    if not p.is_absolute():
+        p = (Path.cwd() / p).resolve()
+    else:
+        p = p.resolve()
+    if not p.exists():
+        print(f"[PROPOSER] EVOLVER_ATTEMPT_PLANNER_CONTEXT_FILE not found: {p}")
+        return None
+
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("evolver_attempt_planner_context", str(p))
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fn = getattr(module, "build_attempt_planner_context", None)
+        if callable(fn):
+            return fn
+    except Exception as e:
+        print(f"[PROPOSER] Failed to load attempt planner context provider: {e}")
+        return None
+    return None
+
+
 def _extract_tags(text: str) -> set[str]:
     t = (text or "").lower()
     tags: set[str] = set()
@@ -229,6 +283,23 @@ def plan_attempts(
     if injected_prefix:
         planner_task = injected_prefix + planner_task
 
+    attempt_planner_context_provider = _load_attempt_planner_context_provider(cfg)
+    per_attempt_fields: dict[str, object] = {}
+    if attempt_planner_context_provider is not None:
+        try:
+            ctx = attempt_planner_context_provider(paths, cfg, candidate_num, attempts, best)
+        except Exception:
+            ctx = None
+        if isinstance(ctx, dict):
+            prompt_extra = str(ctx.get("prompt", "") or "").strip()
+            if prompt_extra:
+                planner_task = prompt_extra + "\n\n" + planner_task
+            paf = ctx.get("per_attempt_fields", None)
+            if isinstance(paf, dict):
+                per_attempt_fields = dict(paf)
+        elif isinstance(ctx, str) and ctx.strip():
+            planner_task = ctx.strip() + "\n\n" + planner_task
+
     agent_session_id = str(uuid.uuid4())[:8]
     result = run_proposer_with_nexau(
         task=planner_task,
@@ -258,6 +329,7 @@ def plan_attempts(
                     "strategy_tags": list(p.get("strategy_tags", []) or []),
                     "hypothesis": str(p.get("hypothesis", "")).strip(),
                     "implementation_outline": str(p.get("implementation_outline", "")).strip(),
+                    **per_attempt_fields,
                 }
             )
         normalized.sort(key=lambda x: int(x.get("attempt", 0)))
@@ -292,7 +364,7 @@ def plan_attempts(
     out: list[dict] = []
     for i in range(1, attempts + 1):
         tmpl = fallback_templates[(i - 1) % len(fallback_templates)]
-        out.append({"attempt": i, **tmpl})
+        out.append({"attempt": i, **tmpl, **per_attempt_fields})
     return out
 
 
