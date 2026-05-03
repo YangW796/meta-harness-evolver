@@ -101,6 +101,20 @@ def main():
         if attempts > 1:
             attempt_root.mkdir(exist_ok=True)
 
+        known_state_keys = ["BDA_STATE_PATH", "PROJECT_PU_STATE_PATH", "PROJECT3_STATE_PATH"]
+        state_bases: dict[str, Path] = {}
+        for key in known_state_keys:
+            raw = (os.environ.get(key, "") or "").strip()
+            if raw:
+                state_bases[key] = Path(raw).expanduser()
+        if "BDA_STATE_PATH" not in state_bases:
+            script_hint = str(cfg.harness_run_script or "").replace("\\", "/")
+            if os.environ.get("BDA_DATASETS_DIR") or "project-bda" in script_hint:
+                state_bases["BDA_STATE_PATH"] = paths.workspace / "bda_state.json"
+
+        original_state_env: dict[str, str | None] = {k: os.environ.get(k) for k in state_bases}
+        attempt_state_paths_by_dir: dict[Path, dict[str, Path]] = {}
+
         best_attempt_dir: Path | None = None
         best_scores: dict | None = None
         best_final_score: float | None = None
@@ -157,6 +171,20 @@ def main():
             (attempt_dir / "harness").mkdir(exist_ok=True)
             (attempt_dir / "traces").mkdir(exist_ok=True)
 
+            if attempts > 1 and state_bases:
+                attempt_state_paths: dict[str, Path] = {}
+                for key, base_path in state_bases.items():
+                    attempt_state_path = attempt_dir / "outputs" / f"{key.lower()}_{base_path.name}"
+                    attempt_state_path.parent.mkdir(parents=True, exist_ok=True)
+                    if base_path.exists():
+                        shutil.copy2(base_path, attempt_state_path)
+                    else:
+                        if attempt_state_path.exists():
+                            attempt_state_path.unlink()
+                    os.environ[key] = str(attempt_state_path)
+                    attempt_state_paths[key] = attempt_state_path
+                attempt_state_paths_by_dir[attempt_dir] = attempt_state_paths
+
             ok, scores = run_attempt(attempt_dir, attempt_idx)
             if not ok or not scores:
                 continue
@@ -174,11 +202,33 @@ def main():
                 best_attempt_dir = attempt_dir
 
         if best_attempt_dir is None or best_scores is None:
+            if attempts > 1 and state_bases:
+                for key, prev in original_state_env.items():
+                    if prev is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = prev
             if not any_proposer_ok:
                 print("[MAIN] Proposer failed for all attempts. Skipping this iteration.")
                 return 1
             print("[MAIN] No valid attempt produced a score.")
             return 2
+
+        if attempts > 1 and state_bases:
+            best_state_paths = attempt_state_paths_by_dir.get(best_attempt_dir, {})
+            for key, base_path in state_bases.items():
+                src = best_state_paths.get(key)
+                if src is not None and src.exists():
+                    base_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, base_path)
+                else:
+                    if base_path.exists():
+                        base_path.unlink()
+            for key, prev in original_state_env.items():
+                if prev is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = prev
 
         if best_attempt_dir != candidate_dir:
             dst_harness = candidate_dir / "harness"
