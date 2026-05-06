@@ -566,6 +566,67 @@ Start now. Read the history first, then propose.
             )
             return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": {"mode": "test"}}
 
+        traditional_model_raw = str(os.environ.get("EVOLVER_TRADITIONAL_MODEL_PATH", "")).strip()
+        traditional_mode = str(os.environ.get("EVOLVER_PROPOSER_MODE", "")).strip().lower() in {"traditional", "baseline"}
+        if traditional_model_raw or traditional_mode:
+            if not traditional_model_raw:
+                raise RuntimeError("EVOLVER_PROPOSER_MODE=traditional requires EVOLVER_TRADITIONAL_MODEL_PATH")
+            src = Path(traditional_model_raw).expanduser()
+            if not src.is_absolute():
+                src = (paths.workspace / src).resolve()
+            else:
+                src = src.resolve()
+            if not src.exists() or not src.is_file():
+                raise RuntimeError(f"Traditional model file not found: {src}")
+
+            model_dst = (candidate_dir / "harness" / "model.py").resolve()
+            model_dst.parent.mkdir(parents=True, exist_ok=True)
+            model_dst.write_text(src.read_text(encoding="utf-8", errors="replace"), encoding="utf-8")
+
+            policy = str(os.environ.get("BDA_TRADITIONAL_POLICY", "")).strip() or "(not set)"
+            reasoning_path.write_text(
+                "\n".join(
+                    [
+                        "# Traditional Proposer (No NexAU)",
+                        "",
+                        "This candidate is generated without NexAU / LLM proposer.",
+                        "",
+                        "## What Happened",
+                        "- Copied base harness into candidate harness directory.",
+                        "- Overwrote harness/model.py with a predefined traditional baseline policy.",
+                        "",
+                        "## Configuration",
+                        f"- EVOLVER_TRADITIONAL_MODEL_PATH: {src}",
+                        f"- BDA_TRADITIONAL_POLICY: {policy}",
+                        "",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            trace_path = candidate_dir / "traces" / f"traditional-proposer-{agent_session_id}.log"
+            trace_path.write_text(
+                json.dumps(
+                    {
+                        "mode": "traditional",
+                        "candidate": candidate_dir.name,
+                        "traditional_model_path": str(src),
+                        "bda_traditional_policy": policy,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(f"[PROPOSER] Traditional proposer used: {src}")
+            return {
+                "success": True,
+                "candidate_dir": str(candidate_dir),
+                "agent_result": {"mode": "traditional", "traditional_model_path": str(src), "policy": policy},
+            }
+
         proposer_timeout_seconds = 300
         result = run_proposer_with_nexau(
             task=proposer_task,

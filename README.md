@@ -122,6 +122,19 @@ scripts 的职责是“通用外循环”，与具体任务无关；任务差异
 | `PROPOSER_TIMEOUT_SECONDS` | `300` | proposer 子进程超时（秒）。 |
 | `PROPOSER_LLM_TIMEOUT_SECONDS` | 空 | 单次 LLM 请求超时（秒），透传给 NexAU 的 OpenAI client `timeout`。 |
 
+#### 4.2.1 Proposer（传统基线：不调用 NexAU）
+
+当你不想使用 NexAU/LLM 生成候选（例如做 reproducible baseline），可以让 proposer 直接把一个固定的 `model.py` 写入 candidate，从而“跳过 NexAU 生成步骤”，但仍走同样的外循环评测链路（Validate → Harness Run → Evaluate → Best）。
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `EVOLVER_PROPOSER_MODE` | 空 | 设为 `traditional` / `baseline` 时启用传统 proposer，跳过 NexAU。 |
+| `EVOLVER_TRADITIONAL_MODEL_PATH` | 空 | 传统 proposer 要写入的模型文件路径（将覆盖 `candidate_*/harness/model.py`）。可用绝对路径或相对 `EVOLVER_WORKSPACE`。 |
+| `BDA_TRADITIONAL_POLICY` | `random` | `tradition_model.py` 的策略：`random` 或 `linear`。 |
+| `BDA_TRADITIONAL_RIDGE_LAMBDA` | `1.0` | `linear` 策略的 ridge 正则强度。 |
+| `BDA_TRADITIONAL_USE_GENE_SEARCH` | `1` | `linear` 策略是否用 `bda_tools.gene_search()` 做邻域扩展。 |
+| `BDA_TRADITIONAL_GENE_SEARCH_K` | `30` | `linear` 策略扩展时每个 anchor 的 gene_search 邻居数。 |
+
 ### 4.3 Harness 执行（训练/搜索脚本）
 
 | 变量 | 默认值 | 说明 |
@@ -171,6 +184,38 @@ scripts 的职责是“通用外循环”，与具体任务无关；任务差异
 ### 4.6 Project 环境变量
 
 project 的 `harness_run_script.sh` 通常会提供任务级变量（可在 `.env` 或 shell 中覆盖）。
+
+**Project-BDA**（见 [project-bda/run_evolution.sh](./project/project-bda/run_evolution.sh) 与 [project-bda/harness_run_script.sh](./project/project-bda/harness_run_script.sh)）
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PROJECT_BDA_TRADITIONAL_MODE` | `0` | =1 时启用传统 proposer（不调用 NexAU），并强制 `PROPOSER_ATTEMPTS_PER_CANDIDATE=1`、`PROPOSER_PLAN_ATTEMPTS=0`。 |
+| `EVOLVER_TRADITIONAL_MODEL_PATH` | `$PROJECT_DIR/tradition_model.py` | Project-BDA 传统 proposer 的默认模型路径。 |
+| `BDA_TRADITIONAL_POLICY` | `random` | 传统 baseline 的策略（`random` / `linear`）。 |
+| `BDA_DATASETS_DIR` | 空（必须设置） | BioDiscoveryAgent datasets 目录（包含 ground_truth_*.csv / task_prompts 等）。 |
+| `BDA_CSV_PATH` | 空 | gene_search 使用的目录（包含 `achilles.csv`）。 |
+| `CONDA_ENV` | `meta-harness-evolver0` | project-bda/run_evolution.sh 使用的 conda env 名称。 |
+| `PROJECT_BDA_WORKSPACE_BASE_DIR` | `$PROJECT_DIR/hoss-evolution-workspaces` | workspace 根目录（每个数据集会创建子目录）。 |
+| `PROJECT_BDA_SEED_BEST_DIR` | `$PROJECT_DIR/hoss-evolution/best` | 初始 best 种子目录（首次 run 会拷贝到 workspace 的 best）。 |
+
+使用示例：
+
+```bash
+# 传统随机 baseline（不需要 LLM_MODEL / LLM_API_KEY）
+PROJECT_BDA_TRADITIONAL_MODE=1 BDA_TRADITIONAL_POLICY=random bash project/project-bda/run_evolution.sh
+
+# 传统线性 baseline（需要 gene_search 时同时设置 BDA_CSV_PATH 指向含 achilles.csv 的目录）
+PROJECT_BDA_TRADITIONAL_MODE=1 BDA_TRADITIONAL_POLICY=linear BDA_CSV_PATH=/path/to/BioDiscoveryAgent bash project/project-bda/run_evolution.sh
+```
+
+**跨机器复现时“必须检查/修改”的项（Project-BDA）**
+
+| 类别 | 必须修改/确认 |
+|---|---|
+| 数据路径 | `BDA_DATASETS_DIR`（必需）、`BDA_CSV_PATH`（启用 gene_search 时必需） |
+| Python/环境 | `source ~/miniconda3/...` 的 conda 初始化路径、`CONDA_ENV` 是否存在 |
+| workspace/seed | `PROJECT_BDA_WORKSPACE_BASE_DIR`（写入位置）、`PROJECT_BDA_SEED_BEST_DIR`（baseline 种子来源） |
+| LLM（仅 NexAU 模式） | `LLM_MODEL`、`LLM_API_KEY`（必需）、`LLM_BASE_URL`（如需） |
 
 **Project-1**（见 [project-1/harness_run_script.sh](./project/project-1/harness_run_script.sh)）
 

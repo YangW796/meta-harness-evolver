@@ -11,66 +11,16 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-# 迁移到其他机器时通常需要调整：Conda 安装路径 / 环境名
-source ~/miniconda3/etc/profile.d/conda.sh
-CONDA_ENV="meta-harness-evolver0"
-WORKSPACE_INDEX="${WORKSPACE_INDEX:-}"
-
-# 迁移到其他机器时通常需要调整：工作区目录 / 初始 best 种子目录（可用 PROJECT_PU_WORKSPACE_DIR / PROJECT_PU_SEED_BEST_DIR 覆盖）
-PROJECT_PU_WORKSPACE_DIR="${PROJECT_PU_WORKSPACE_DIR:-${WORKSPACE_DIR:-$PROJECT_DIR/hoss-evolution${WORKSPACE_INDEX:+-$WORKSPACE_INDEX}}}"
-PROJECT_PU_SEED_BEST_DIR="${PROJECT_PU_SEED_BEST_DIR:-$PROJECT_DIR/hoss-evolution/best}"
-
-if [[ ! -d "$PROJECT_PU_WORKSPACE_DIR" ]]; then
-  mkdir -p "$PROJECT_PU_WORKSPACE_DIR"
-fi
-
-if [[ -d "$PROJECT_PU_SEED_BEST_DIR" && ! -d "$PROJECT_PU_WORKSPACE_DIR/best/current" ]]; then
-  mkdir -p "$PROJECT_PU_WORKSPACE_DIR/best"
-  cp -a "$PROJECT_PU_SEED_BEST_DIR/." "$PROJECT_PU_WORKSPACE_DIR/best/"
-fi
-EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate.py"
-CANDIDATE_NUM=""
-ITERATIONS="${ITERATIONS:-20}"
-export PROPOSER_MAX_ITERATIONS=40
-export PROPOSER_TIMEOUT_SECONDS=600
-export PROPOSER_LLM_TIMEOUT_SECONDS="${PROPOSER_LLM_TIMEOUT_SECONDS:-}"
-export EVOLVER_WORKSPACE="$PROJECT_PU_WORKSPACE_DIR"
+export EVOLVER_WORKSPACE="${EVOLVER_WORKSPACE:-$PROJECT_DIR/hoss-evolution}"
 export HARNESS_RUN_SCRIPT="$PROJECT_DIR/harness_run_script.sh"
 export REQUIRE_HARNESS_RUN_SCRIPT="1"
-export HARNESS_RUN_TIMEOUT_SECONDS="3600"
+export HARNESS_RUN_TIMEOUT_SECONDS="${HARNESS_RUN_TIMEOUT_SECONDS:-600}"
 export FEISHU_POST_ENABLED=0
-export NEXAU_ENABLE_RUN_SHELL_COMMAND="1"
-export NEXAU_DENY_RUN_SHELL_SUBSTRINGS="${NEXAU_DENY_RUN_SHELL_SUBSTRINGS:-PROJECT_PU_POSITIVE_CSV,positive.csv}"
-export NEXAU_DENY_READ_PY_GLOBS="${NEXAU_DENY_READ_PY_GLOBS:-}"
-# Default: test mode off (set to 1 for quick dry run without real proposer edits)
-export EVOLVER_TEST_MODE="${EVOLVER_TEST_MODE:-0}"
 
-USE_GPU="${USE_GPU:-1}"
-GPU_COUNT="0"
-if command -v nvidia-smi >/dev/null 2>&1; then
-  GPU_COUNT="$(nvidia-smi -L 2>/dev/null | grep -c '^GPU ' || true)"
-fi
-if [[ "$GPU_COUNT" == "0" ]]; then
-  if compgen -G "/dev/nvidia[0-9]*" >/dev/null; then
-    GPU_COUNT="$(ls -1 /dev/nvidia[0-9]* 2>/dev/null | wc -l | tr -d ' ')"
-  fi
-fi
-
-if [[ -z "${HARNESS_DEVICE:-}" ]]; then
-  if [[ "$USE_GPU" == "1" && "${GPU_COUNT:-0}" != "0" ]]; then
-    export HARNESS_DEVICE="cuda"
-  else
-    export HARNESS_DEVICE="cpu"
-  fi
-fi
-
-if [[ "${HARNESS_DEVICE:-}" == "cuda" && "$USE_GPU" == "1" && "${GPU_COUNT:-0}" != "0" ]]; then
-  export EVOLVER_NUM_GPUS="$GPU_COUNT"
-else
-  export EVOLVER_NUM_GPUS="0"
-fi
-export HARNESS_BATCH_SIZE="${HARNESS_BATCH_SIZE:-16}"
-export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+export PROPOSER_MAX_ITERATIONS="${PROPOSER_MAX_ITERATIONS:-30}"
+export PROPOSER_TIMEOUT_SECONDS="${PROPOSER_TIMEOUT_SECONDS:-600}"
+export PROPOSER_LLM_TIMEOUT_SECONDS="${PROPOSER_LLM_TIMEOUT_SECONDS:-}"
+export NEXAU_ENABLE_RUN_SHELL_COMMAND="${NEXAU_ENABLE_RUN_SHELL_COMMAND:-0}"
 
 PROPOSER_PROMPT_PREFIX_PATH="$PROJECT_DIR/proposer_prompt_prefix.txt"
 if [[ ! -f "$PROPOSER_PROMPT_PREFIX_PATH" ]]; then
@@ -79,16 +29,31 @@ if [[ ! -f "$PROPOSER_PROMPT_PREFIX_PATH" ]]; then
 fi
 export PROPOSER_PROMPT_PREFIX="$(cat "$PROPOSER_PROMPT_PREFIX_PATH")"$'\n'
 
+ITERATIONS="${ITERATIONS:-1}"
+EVALUATE_SCRIPT_PATH="$PROJECT_DIR/evaluate.py"
 
-
-ARGS=(python -u "$EVOLVER_ROOT/scripts/run_evolution.py" --workspace "$PROJECT_PU_WORKSPACE_DIR" --iterations "$ITERATIONS" --evaluate-script "$EVALUATE_SCRIPT_PATH")
-if [[ -n "$CANDIDATE_NUM" ]]; then
-  ARGS+=(--candidate-num "$CANDIDATE_NUM")
+if [[ -z "${LLM_MODEL:-}" || -z "${LLM_API_KEY:-}" ]]; then
+  echo "Missing LLM_MODEL / LLM_API_KEY. Put them in .env or export them before running." >&2
+  exit 2
+fi
+if [[ -z "${NEXAU_CODE_AGENT_DIR:-}" ]]; then
+  echo "Missing NEXAU_CODE_AGENT_DIR (path to NexAU examples/code_agent)." >&2
+  exit 2
+fi
+if [[ -z "${PROJECT_PU_P_CSV:-}" || ! -f "${PROJECT_PU_P_CSV:-}" ]]; then
+  echo "Missing PROJECT_PU_P_CSV=/path/to/P.csv" >&2
+  exit 2
+fi
+if [[ -z "${PROJECT_PU_U_CSV:-}" || ! -f "${PROJECT_PU_U_CSV:-}" ]]; then
+  echo "Missing PROJECT_PU_U_CSV=/path/to/U.csv" >&2
+  exit 2
 fi
 
-cd "$EVOLVER_ROOT"
-CONDA_RUN_ARGS=(-n "$CONDA_ENV")
-if conda run --help 2>/dev/null | grep -q -- "--no-capture-output"; then
-  CONDA_RUN_ARGS=(--no-capture-output -n "$CONDA_ENV")
-fi
-conda run "${CONDA_RUN_ARGS[@]}" "${ARGS[@]}"
+ARGS=(
+  python -u "$EVOLVER_ROOT/scripts/run_evolution.py"
+  --workspace "$EVOLVER_WORKSPACE"
+  --iterations "$ITERATIONS"
+  --evaluate-script "$EVALUATE_SCRIPT_PATH"
+)
+(cd "$EVOLVER_ROOT" && "${ARGS[@]}")
+

@@ -1,0 +1,11 @@
+{
+  "u_id_col": "5design",
+  "kept": [
+    "u2",
+    "u3"
+  ],
+  "removed": [
+    "u4",
+    "u1"
+  ]
+}

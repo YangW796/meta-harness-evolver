@@ -1,0 +1,42 @@
+{
+  "p_csv": "/tmp/tmpg889mlot/p.csv",
+  "u_csv": "/tmp/tmpg889mlot/u.csv",
+  "model_kind": "custom",
+  "model_path": "/home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/project/project-pu-learning/hoss-evolution/best/current/harness/model.py",
+  "seed": 42,
+  "p_rows": 3,
+  "u_rows": 4,
+  "removed_n": 2,
+  "kept_n": 2,
+  "p_id_col": "name",
+  "u_id_col": "5design",
+  "feature_cols": [],
+  "score_stats_all": {
+    "min": -2044.2431077694225,
+    "p25": -1867.547619047618,
+    "median": -904.6040100250622,
+    "p75": -0.4978070175438586,
+    "max": -0.31453634085212767,
+    "mean": -963.4414160400997
+  },
+  "score_stats_kept": {
+    "min": -0.5588972431077689,
+    "p25": -0.4978070175438586,
+    "median": -0.4367167919799483,
+    "p75": -0.375626566416038,
+    "max": -0.31453634085212767,
+    "mean": -0.4367167919799483
+  },
+  "score_stats_removed": {
+    "min": -2044.2431077694225,
+    "p25": -1985.3446115288211,
+    "median": -1926.4461152882195,
+    "p75": -1867.547619047618,
+    "max": -1808.6491228070165,
+    "mean": -1926.4461152882195
+  },
+  "outputs": {
+    "u_kept_csv": "/home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/project/project-pu-learning/hoss-evolution/best/current/harness/outputs/u_kept.csv",
+    "u_removed_csv": "/home/wy/Documents/Sciharness/metaHarness/meta-harness-evolver/project/project-pu-learning/hoss-evolution/best/current/harness/outputs/u_removed.csv"
+  }
+}
