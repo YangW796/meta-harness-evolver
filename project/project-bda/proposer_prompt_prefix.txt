@@ -28,6 +28,8 @@ Before proposing any change, you MUST inspect:
 Use `metrics.test.round_details` and `metrics.test.queried_history` / `metrics.test.queried_records` to identify what actually worked.
 In `proposer_reasoning.md`, cite at least one concrete observation (a gene name, a round, a hit pattern, etc.).
 
+If `recommended_direct_queries` is provided in injected prompt context (e.g., from `prompt_context.py`), you SHOULD use those specific genes as anchors for `bda_tools.gene_search(...)` whenever they are not already selected. This is a strong hint from recent runs.
+
 ## Policy Interface (MUST KEEP EXACTLY)
 Your model code must provide one of the following:
 1) A module-level function:

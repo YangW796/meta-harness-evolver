@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -42,77 +43,11 @@ def _load_model_module(model_path: Path):
     return module
 
 
-def _get_score_fn(model_path: Path | None):
-    if model_path is None:
-        return None
-    module = _load_model_module(model_path)
-    fn = getattr(module, "score_u", None)
-    if callable(fn):
-        return fn
-    for cls_name in ["Model", "Scorer"]:
-        cls = getattr(module, cls_name, None)
-        if cls is None:
-            continue
-        inst = cls()
-        fn2 = getattr(inst, "score_u", None)
-        if callable(fn2):
-            return lambda p_df, u_df, seed=42: fn2(p_df=p_df, u_df=u_df, seed=seed)
-    raise ValueError("model.py must define score_u(p_df, u_df, seed=42) -> np.ndarray or a class with score_u")
-
-
 def _common_numeric_features(p: pd.DataFrame, u: pd.DataFrame) -> list[str]:
     p_num = {c for c in p.columns if pd.api.types.is_numeric_dtype(p[c])}
     u_num = {c for c in u.columns if pd.api.types.is_numeric_dtype(u[c])}
     common = sorted(p_num & u_num)
     return [c for c in common if c not in {"name", "seq", "design", "5design"}]
-
-
-def _default_scores(p_df: pd.DataFrame, u_df: pd.DataFrame, seed: int) -> tuple[np.ndarray, list[str]]:
-    p = _normalized_df(p_df)
-    u = _normalized_df(u_df)
-    feature_cols = _common_numeric_features(p, u)
-    if not feature_cols:
-        feature_cols = [c for c in p.columns if pd.api.types.is_numeric_dtype(p[c]) and c not in {"name", "seq"}]
-        feature_cols = [c for c in feature_cols if c in u.columns and pd.api.types.is_numeric_dtype(u[c])]
-    if not feature_cols:
-        raise ValueError("No usable numeric feature columns found in P/U for default model.")
-
-    x_p = p.reindex(columns=feature_cols)
-    x_u = u.reindex(columns=feature_cols)
-
-    x_p_num = np.column_stack([pd.to_numeric(x_p[c], errors="coerce").to_numpy(dtype=float) for c in feature_cols])
-    x_u_num = np.column_stack([pd.to_numeric(x_u[c], errors="coerce").to_numpy(dtype=float) for c in feature_cols])
-    x_p_num = np.where(np.isfinite(x_p_num), x_p_num, np.nan)
-    x_u_num = np.where(np.isfinite(x_u_num), x_u_num, np.nan)
-
-    medians = np.nanmedian(x_p_num, axis=0)
-    x_p_imp = np.where(np.isnan(x_p_num), medians[None, :], x_p_num)
-    x_u_imp = np.where(np.isnan(x_u_num), medians[None, :], x_u_num)
-
-    means = np.mean(x_p_imp, axis=0)
-    stds = np.std(x_p_imp, axis=0)
-    inv_stds = 1.0 / np.maximum(stds, 1e-8)
-
-    z = (x_u_imp - means[None, :]) * inv_stds[None, :]
-    d2 = np.mean(z * z, axis=1)
-    scores = -d2
-    scores = np.asarray(scores, dtype=float)
-    scores[~np.isfinite(scores)] = float("-inf")
-    return scores, feature_cols
-
-
-def _select_removed(scores: np.ndarray, remove_n: int) -> tuple[np.ndarray, np.ndarray]:
-    n = int(scores.shape[0])
-    remove_n = int(max(0, min(remove_n, n)))
-    if remove_n == 0:
-        kept = np.arange(n, dtype=int)
-        removed = np.asarray([], dtype=int)
-        return kept, removed
-    order = np.argsort(scores, kind="mergesort")
-    removed = order[:remove_n]
-    removed_set = set(int(i) for i in removed.tolist())
-    kept = np.asarray([i for i in range(n) if i not in removed_set], dtype=int)
-    return kept, removed
 
 
 def _safe_float(v: object) -> float | None:
@@ -125,20 +60,191 @@ def _safe_float(v: object) -> float | None:
     return x
 
 
-def _summary_stats(scores: np.ndarray) -> dict[str, float | None]:
-    if scores.size == 0:
-        return {"min": None, "p25": None, "median": None, "p75": None, "max": None, "mean": None}
-    s = scores[np.isfinite(scores)]
-    if s.size == 0:
-        return {"min": None, "p25": None, "median": None, "p75": None, "max": None, "mean": None}
-    return {
-        "min": _safe_float(np.min(s)),
-        "p25": _safe_float(np.percentile(s, 25)),
-        "median": _safe_float(np.median(s)),
-        "p75": _safe_float(np.percentile(s, 75)),
-        "max": _safe_float(np.max(s)),
-        "mean": _safe_float(np.mean(s)),
-    }
+def _split_indices(n: int, test_ratio: float, test_n: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    n = int(n)
+    if n <= 0:
+        return np.asarray([], dtype=int), np.asarray([], dtype=int)
+    if int(test_n) > 0:
+        k = int(test_n)
+    else:
+        r = float(test_ratio)
+        r = 0.0 if not np.isfinite(r) else max(0.0, min(1.0, r))
+        k = int(round(n * r))
+    k = int(max(0, min(k, n)))
+    if n >= 2:
+        k = int(max(1, min(k, n - 1)))
+    else:
+        k = int(min(k, n))
+    rng = np.random.RandomState(int(seed))
+    perm = rng.permutation(n).astype(int)
+    test_idx = perm[:k]
+    train_idx = perm[k:]
+    return train_idx, test_idx
+
+
+def _prf1_from_counts(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
+    tp = int(tp)
+    fp = int(fp)
+    fn = int(fn)
+    precision = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+    recall = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+    f1 = float(2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+    return precision, recall, f1
+
+
+def _eval_topk(scores: np.ndarray, y_true: np.ndarray, k: int) -> dict[str, object]:
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    y_true = np.asarray(y_true, dtype=int).reshape(-1)
+    n = int(scores.shape[0])
+    k = int(max(0, min(int(k), n)))
+    if n == 0 or k == 0:
+        return {"k": k, "tp": 0, "fp": 0, "fn": int(np.sum(y_true == 1)), "precision": 0.0, "recall": 0.0, "f1": 0.0}
+    order = np.argsort(scores, kind="mergesort")[::-1]
+    pred_pos = np.zeros(n, dtype=bool)
+    pred_pos[order[:k]] = True
+    tp = int(np.sum((y_true == 1) & pred_pos))
+    fp = int(np.sum((y_true == 0) & pred_pos))
+    fn = int(np.sum((y_true == 1) & (~pred_pos)))
+    p, r, f1 = _prf1_from_counts(tp, fp, fn)
+    return {"k": k, "tp": tp, "fp": fp, "fn": fn, "precision": p, "recall": r, "f1": f1}
+
+
+def _eval_threshold(scores: np.ndarray, y_true: np.ndarray, threshold: float) -> dict[str, object]:
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    y_true = np.asarray(y_true, dtype=int).reshape(-1)
+    pred_pos = scores >= float(threshold)
+    tp = int(np.sum((y_true == 1) & pred_pos))
+    fp = int(np.sum((y_true == 0) & pred_pos))
+    fn = int(np.sum((y_true == 1) & (~pred_pos)))
+    p, r, f1 = _prf1_from_counts(tp, fp, fn)
+    return {"threshold": float(threshold), "tp": tp, "fp": fp, "fn": fn, "precision": p, "recall": r, "f1": f1}
+
+
+def _eval_maxf1(scores: np.ndarray, y_true: np.ndarray) -> dict[str, object]:
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    y_true = np.asarray(y_true, dtype=int).reshape(-1)
+    n = int(scores.shape[0])
+    if n == 0:
+        return {"best_k": 0, "best_f1": 0.0, "best_precision": 0.0, "best_recall": 0.0}
+    order = np.argsort(scores, kind="mergesort")[::-1]
+    y_sorted = y_true[order]
+    tp_cum = np.cumsum(y_sorted == 1)
+    fp_cum = np.cumsum(y_sorted == 0)
+    total_pos = int(np.sum(y_true == 1))
+    best = {"best_k": 0, "best_f1": 0.0, "best_precision": 0.0, "best_recall": 0.0}
+    for k in range(1, n + 1):
+        tp = int(tp_cum[k - 1])
+        fp = int(fp_cum[k - 1])
+        fn = int(total_pos - tp)
+        p, r, f1 = _prf1_from_counts(tp, fp, fn)
+        if f1 > float(best["best_f1"]):
+            best = {"best_k": int(k), "best_f1": float(f1), "best_precision": float(p), "best_recall": float(r)}
+    return best
+
+
+def _default_fit(p_train: pd.DataFrame, u_df: pd.DataFrame) -> tuple[list[str], np.ndarray, np.ndarray]:
+    p = _normalized_df(p_train)
+    u = _normalized_df(u_df)
+    feature_cols = _common_numeric_features(p, u)
+    if not feature_cols:
+        feature_cols = [c for c in p.columns if pd.api.types.is_numeric_dtype(p[c]) and c not in {"name", "seq"}]
+        feature_cols = [c for c in feature_cols if c in u.columns and pd.api.types.is_numeric_dtype(u[c])]
+    if not feature_cols:
+        raise ValueError("No usable numeric feature columns found in P_train/U for default model.")
+    x_p = p.reindex(columns=feature_cols)
+    x_p_num = np.column_stack([pd.to_numeric(x_p[c], errors="coerce").to_numpy(dtype=float) for c in feature_cols])
+    x_p_num = np.where(np.isfinite(x_p_num), x_p_num, np.nan)
+    center = np.nanmedian(x_p_num, axis=0)
+    abs_dev = np.abs(x_p_num - center[None, :])
+    mad = np.nanmedian(abs_dev, axis=0)
+    scale = np.maximum(mad * 1.4826, 1e-8)
+    return feature_cols, center, scale
+
+
+def _default_score_any(x_df: pd.DataFrame, feature_cols: list[str], center: np.ndarray, scale: np.ndarray) -> np.ndarray:
+    x = _normalized_df(x_df).reindex(columns=feature_cols)
+    x_num = np.column_stack([pd.to_numeric(x[c], errors="coerce").to_numpy(dtype=float) for c in feature_cols])
+    x_num = np.where(np.isfinite(x_num), x_num, np.nan)
+    x_imp = np.where(np.isnan(x_num), center[None, :], x_num)
+    z = (x_imp - center[None, :]) / scale[None, :]
+    d2 = np.mean(z * z, axis=1)
+    scores = -d2
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    scores[~np.isfinite(scores)] = float("-inf")
+    return scores
+
+
+def _load_backend(model_path: Path | None, p_train: pd.DataFrame, u_df: pd.DataFrame, seed: int):
+    if model_path is None:
+        feature_cols, center, scale = _default_fit(p_train, u_df)
+        return ("default", {"feature_cols": feature_cols}, lambda df: _default_score_any(df, feature_cols, center, scale))
+
+    module = _load_model_module(model_path)
+
+    fit_fn = getattr(module, "fit", None)
+    if callable(fit_fn):
+        last_err: Exception | None = None
+        for kwargs in (
+            {"p_df": p_train, "u_df": u_df, "seed": int(seed)},
+            {"p_train_df": p_train, "u_df": u_df, "seed": int(seed)},
+            {"p_df": p_train, "u_df": u_df},
+            {"p_train_df": p_train, "u_df": u_df},
+        ):
+            try:
+                scorer = fit_fn(**kwargs)
+                break
+            except Exception as e:
+                last_err = e
+                scorer = None
+        if scorer is None:
+            raise RuntimeError(f"fit(...) failed: {last_err}")
+        for attr in ["score", "score_df", "score_x", "predict", "predict_score"]:
+            m = getattr(scorer, attr, None)
+            if callable(m):
+                def _score_any(df: pd.DataFrame, _m=m) -> np.ndarray:
+                    out = _m(df)
+                    out = np.asarray(out, dtype=float).reshape(-1)
+                    if out.shape[0] != df.shape[0]:
+                        raise ValueError(f"scorer.{attr} returned {out.shape[0]} scores, but X has {df.shape[0]} rows")
+                    out[~np.isfinite(out)] = float("-inf")
+                    return out
+                return ("custom_fit", {}, _score_any)
+        raise ValueError("fit(...) must return an object with score(x_df)->np.ndarray (or score_df/score_x/predict).")
+
+    score_x_fn = getattr(module, "score_x", None)
+    if callable(score_x_fn):
+        def _score_any(df: pd.DataFrame) -> np.ndarray:
+            last_err: Exception | None = None
+            for kwargs in (
+                {"p_df": p_train, "u_df": u_df, "x_df": df, "seed": int(seed)},
+                {"p_train_df": p_train, "u_df": u_df, "x_df": df, "seed": int(seed)},
+                {"p_df": p_train, "u_df": u_df, "x_df": df},
+                {"p_train_df": p_train, "u_df": u_df, "x_df": df},
+            ):
+                try:
+                    out = score_x_fn(**kwargs)
+                    out = np.asarray(out, dtype=float).reshape(-1)
+                    if out.shape[0] != df.shape[0]:
+                        raise ValueError(f"score_x returned {out.shape[0]} scores, but X has {df.shape[0]} rows")
+                    out[~np.isfinite(out)] = float("-inf")
+                    return out
+                except Exception as e:
+                    last_err = e
+            raise RuntimeError(f"score_x(...) failed: {last_err}")
+        return ("custom_score_x", {}, _score_any)
+
+    score_u_fn = getattr(module, "score_u", None)
+    if callable(score_u_fn):
+        def _score_u(u_df2: pd.DataFrame) -> np.ndarray:
+            out = score_u_fn(_normalized_df(p_train), _normalized_df(u_df2), seed=int(seed))
+            out = np.asarray(out, dtype=float).reshape(-1)
+            if out.shape[0] != u_df2.shape[0]:
+                raise ValueError(f"score_u returned {out.shape[0]} scores, but X has {u_df2.shape[0]} rows")
+            out[~np.isfinite(out)] = float("-inf")
+            return out
+        return ("legacy_score_u", {}, lambda df: _score_u(df))
+
+    raise ValueError("model.py must define fit(...) or score_x(...) or score_u(p_df, u_df, seed=42).")
 
 
 def main() -> int:
@@ -147,8 +253,11 @@ def main() -> int:
     parser.add_argument("--u_csv", type=str, required=True)
     parser.add_argument("--candidate_dir", type=str, required=True)
     parser.add_argument("--model_path", type=str, default="")
-    parser.add_argument("--remove_ratio", type=float, default=0.2)
-    parser.add_argument("--remove_n", type=int, default=0)
+    parser.add_argument("--test_ratio", type=float, default=0.2)
+    parser.add_argument("--test_n", type=int, default=0)
+    parser.add_argument("--metric_mode", type=str, default="topk")
+    parser.add_argument("--topk_k", type=int, default=0)
+    parser.add_argument("--threshold", type=str, default="")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -172,78 +281,114 @@ def main() -> int:
     p_id_col = _guess_id_col(p_norm, preferred=["name", "id"])
     u_id_col = _guess_id_col(u_norm, preferred=["5design", "design", "name", "id"])
 
-    score_fn = _get_score_fn(model_path)
-    if score_fn is not None:
-        scores = score_fn(p_norm, u_norm, seed=int(args.seed))
-        scores = np.asarray(scores, dtype=float).reshape(-1)
-        if scores.shape[0] != u_norm.shape[0]:
-            raise ValueError(f"score_u returned {scores.shape[0]} scores, but U has {u_norm.shape[0]} rows")
-        scores[~np.isfinite(scores)] = float("-inf")
-        feature_cols: list[str] = []
-        model_kind = "custom"
-    else:
-        scores, feature_cols = _default_scores(p_norm, u_norm, seed=int(args.seed))
-        model_kind = "default"
-
-    n_u = int(u_norm.shape[0])
-    if int(args.remove_n) > 0:
-        remove_n = int(args.remove_n)
-    else:
-        ratio = float(args.remove_ratio)
-        ratio = 0.0 if not np.isfinite(ratio) else max(0.0, min(1.0, ratio))
-        remove_n = int(round(n_u * ratio))
-        if ratio > 0.0 and remove_n == 0:
-            remove_n = 1
-
-    kept_idx, removed_idx = _select_removed(scores, remove_n=remove_n)
+    train_idx, test_idx = _split_indices(int(p_norm.shape[0]), float(args.test_ratio), int(args.test_n), int(args.seed))
+    p_train_norm = p_norm.iloc[train_idx].copy()
+    p_test_norm = p_norm.iloc[test_idx].copy()
+    p_train_raw = p_raw.iloc[train_idx].copy()
+    p_test_raw = p_raw.iloc[test_idx].copy()
 
     out_dir = candidate_dir / "harness" / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    u_with_scores = u_raw.copy()
-    u_with_scores["pu_score_like_p"] = scores
+    model_kind, model_meta, score_any = _load_backend(model_path, p_train=p_train_norm, u_df=u_norm, seed=int(args.seed))
 
-    kept_df = u_with_scores.iloc[kept_idx].copy()
-    removed_df = u_with_scores.iloc[removed_idx].copy()
+    u_scores = score_any(u_norm)
 
-    kept_path = out_dir / "u_kept.csv"
-    removed_path = out_dir / "u_removed.csv"
-    kept_df.to_csv(kept_path, index=False)
-    removed_df.to_csv(removed_path, index=False)
+    if model_kind == "legacy_score_u":
+        p_test_scores_list: list[float] = []
+        for i in range(int(p_test_norm.shape[0])):
+            s1 = score_any(p_test_norm.iloc[[i]])
+            p_test_scores_list.append(float(s1[0]) if s1.size else float("-inf"))
+        p_test_scores = np.asarray(p_test_scores_list, dtype=float)
+    else:
+        p_test_scores = score_any(p_test_norm)
 
-    kept_ids = [str(x) for x in u_norm.iloc[kept_idx][u_id_col].tolist()] if u_id_col in u_norm.columns else []
-    removed_ids = [str(x) for x in u_norm.iloc[removed_idx][u_id_col].tolist()] if u_id_col in u_norm.columns else []
+    scores = np.concatenate([p_test_scores, u_scores], axis=0).astype(float, copy=False)
+    scores[~np.isfinite(scores)] = float("-inf")
+    y_true = np.concatenate([np.ones(int(p_test_norm.shape[0]), dtype=int), np.zeros(int(u_norm.shape[0]), dtype=int)], axis=0)
 
-    payload = {
+    metric_mode = str(args.metric_mode or "topk").strip().lower()
+    if metric_mode not in {"topk", "maxf1", "threshold"}:
+        raise ValueError(f"Unsupported metric_mode: {metric_mode}")
+
+    eval_out: dict[str, object]
+    used_k: int | None = None
+    used_threshold: float | None = None
+    if metric_mode == "topk":
+        k = int(args.topk_k) if int(args.topk_k) > 0 else int(p_test_norm.shape[0])
+        used_k = int(max(1, min(k, int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
+        eval_out = _eval_topk(scores, y_true, k=used_k)
+    elif metric_mode == "threshold":
+        raw_t = str(args.threshold or "").strip()
+        if not raw_t:
+            raise ValueError("metric_mode=threshold requires --threshold")
+        t = float(raw_t)
+        if not math.isfinite(t):
+            raise ValueError("threshold must be finite")
+        used_threshold = float(t)
+        eval_out = _eval_threshold(scores, y_true, threshold=used_threshold)
+    else:
+        best = _eval_maxf1(scores, y_true)
+        used_k = int(best.get("best_k", 0) or 0)
+        eval_out = {
+            "best_k": used_k,
+            "best_precision": float(best.get("best_precision", 0.0) or 0.0),
+            "best_recall": float(best.get("best_recall", 0.0) or 0.0),
+            "best_f1": float(best.get("best_f1", 0.0) or 0.0),
+        }
+
+    if metric_mode != "maxf1":
+        best = _eval_maxf1(scores, y_true)
+        eval_out["best_k"] = int(best.get("best_k", 0) or 0)
+        eval_out["best_precision"] = float(best.get("best_precision", 0.0) or 0.0)
+        eval_out["best_recall"] = float(best.get("best_recall", 0.0) or 0.0)
+        eval_out["best_f1"] = float(best.get("best_f1", 0.0) or 0.0)
+
+    p_test_ids = (
+        [str(x) for x in p_test_norm[p_id_col].tolist()]
+        if p_id_col in p_test_norm.columns
+        else [str(i) for i in range(int(p_test_norm.shape[0]))]
+    )
+    u_ids = (
+        [str(x) for x in u_norm[u_id_col].tolist()]
+        if u_id_col in u_norm.columns
+        else [str(i) for i in range(int(u_norm.shape[0]))]
+    )
+
+    scores_df = pd.DataFrame(
+        {
+            "split": (["p_test"] * int(p_test_norm.shape[0])) + (["u"] * int(u_norm.shape[0])),
+            "label": y_true.astype(int),
+            "id": p_test_ids + u_ids,
+            "score": scores.astype(float),
+        }
+    )
+    scores_path = out_dir / "scores_test.csv"
+    scores_df.to_csv(scores_path, index=False)
+
+    payload: dict[str, object] = {
         "p_csv": str(p_csv),
         "u_csv": str(u_csv),
         "model_kind": model_kind,
         "model_path": str(model_path) if model_path is not None else "",
         "seed": int(args.seed),
         "p_rows": int(p_norm.shape[0]),
-        "u_rows": int(n_u),
-        "removed_n": int(removed_idx.shape[0]),
-        "kept_n": int(kept_idx.shape[0]),
+        "p_train_rows": int(p_train_norm.shape[0]),
+        "p_test_rows": int(p_test_norm.shape[0]),
+        "u_rows": int(u_norm.shape[0]),
         "p_id_col": p_id_col,
         "u_id_col": u_id_col,
-        "feature_cols": feature_cols,
-        "score_stats_all": _summary_stats(scores),
-        "score_stats_kept": _summary_stats(scores[kept_idx]),
-        "score_stats_removed": _summary_stats(scores[removed_idx]),
-        "outputs": {
-            "u_kept_csv": str(kept_path),
-            "u_removed_csv": str(removed_path),
-        },
+        "metric_mode": metric_mode,
+        "used_k": used_k,
+        "used_threshold": used_threshold,
+        "precision": _safe_float(eval_out.get("precision")) if "precision" in eval_out else _safe_float(eval_out.get("best_precision")),
+        "recall": _safe_float(eval_out.get("recall")) if "recall" in eval_out else _safe_float(eval_out.get("best_recall")),
+        "f1": _safe_float(eval_out.get("f1")) if "f1" in eval_out else _safe_float(eval_out.get("best_f1")),
+        "eval": eval_out,
+        "model_meta": model_meta,
+        "outputs": {"scores_test_csv": str(scores_path)},
     }
-
-    selection = {
-        "u_id_col": u_id_col,
-        "kept": kept_ids,
-        "removed": removed_ids,
-    }
-
     (out_dir / "metrics.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    (out_dir / "selection.json").write_text(json.dumps(selection, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
 
 

@@ -19,18 +19,6 @@ def _safe_float(x) -> float | None:
     return None
 
 
-def _sigmoid(x: float) -> float:
-    if x >= 0:
-        z = math.exp(-x)
-        return 1.0 / (1.0 + z)
-    z = math.exp(x)
-    return z / (1.0 + z)
-
-
-def _clamp(v: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, v))
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Project PU evaluator")
     parser.add_argument("candidate_dir", type=Path)
@@ -43,49 +31,48 @@ def main() -> int:
         return 1
 
     payload = json.loads(metrics_path.read_text(encoding="utf-8"))
-    all_stats = payload.get("score_stats_all", {}) or {}
-    kept_stats = payload.get("score_stats_kept", {}) or {}
-    removed_stats = payload.get("score_stats_removed", {}) or {}
+    metric_mode = str(payload.get("metric_mode", "topk") or "topk").strip().lower()
+    f1 = _safe_float(payload.get("f1"))
+    precision = _safe_float(payload.get("precision"))
+    recall = _safe_float(payload.get("recall"))
 
-    mean_all = _safe_float(all_stats.get("mean"))
-    p25_all = _safe_float(all_stats.get("p25"))
-    p75_all = _safe_float(all_stats.get("p75"))
-    mean_kept = _safe_float(kept_stats.get("mean"))
-    mean_removed = _safe_float(removed_stats.get("mean"))
+    eval_payload = payload.get("eval", {}) or {}
+    best_f1 = _safe_float(eval_payload.get("best_f1"))
+    best_precision = _safe_float(eval_payload.get("best_precision"))
+    best_recall = _safe_float(eval_payload.get("best_recall"))
+    best_k = payload.get("eval", {}).get("best_k", None) if isinstance(payload.get("eval", {}), dict) else None
 
-    removed_n = int(payload.get("removed_n", 0) or 0)
-    kept_n = int(payload.get("kept_n", 0) or 0)
-    u_rows = int(payload.get("u_rows", 0) or 0)
+    if metric_mode == "maxf1":
+        f1 = best_f1 if best_f1 is not None else f1
+        precision = best_precision if best_precision is not None else precision
+        recall = best_recall if best_recall is not None else recall
 
-    if mean_kept is None or mean_removed is None:
-        print(json.dumps({"error": "missing kept/removed score means in metrics.json"}))
+    if f1 is None or not math.isfinite(float(f1)):
+        print(json.dumps({"error": "missing f1 in metrics.json"}))
         return 1
 
-    iqr = None
-    if p25_all is not None and p75_all is not None:
-        iqr = p75_all - p25_all
-    if iqr is None or not math.isfinite(iqr) or abs(iqr) < 1e-9:
-        iqr = 1.0
-
-    gap = mean_kept - mean_removed
-    norm_gap = float(gap / iqr)
-    score_100 = _clamp(_sigmoid(norm_gap) * 100.0, 0.0, 100.0)
+    score_100 = float(f1) * 100.0
 
     results = {
-        "final_score": round(score_100, 3),
+        "final_score": round(float(score_100), 3),
         "category_scores": {
-            "separation": round(score_100, 3),
+            "f1": round(float(score_100), 3),
         },
         "scenario_scores": {
-            "u_rows": u_rows,
-            "kept_n": kept_n,
-            "removed_n": removed_n,
-            "mean_all": mean_all,
-            "mean_kept": mean_kept,
-            "mean_removed": mean_removed,
-            "gap": float(gap),
-            "iqr_all": float(iqr),
-            "normalized_gap": float(norm_gap),
+            "metric_mode": metric_mode,
+            "p_rows": int(payload.get("p_rows", 0) or 0),
+            "p_train_rows": int(payload.get("p_train_rows", 0) or 0),
+            "p_test_rows": int(payload.get("p_test_rows", 0) or 0),
+            "u_rows": int(payload.get("u_rows", 0) or 0),
+            "used_k": payload.get("used_k", None),
+            "used_threshold": payload.get("used_threshold", None),
+            "precision": precision,
+            "recall": recall,
+            "f1": float(f1),
+            "best_k": best_k,
+            "best_precision": best_precision,
+            "best_recall": best_recall,
+            "best_f1": best_f1,
         },
         "total_scenarios": 1,
         "evaluated_at": datetime.now().isoformat(),
@@ -96,4 +83,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
