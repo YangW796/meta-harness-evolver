@@ -8,11 +8,11 @@ from pathlib import Path
 from evolver_config import EvolverConfig
 from evolution_paths import EvolverPaths, get_best_candidate
 from evolution_prompting import choose_prompt_mode
+from claude_code_runner import run_proposer_with_claude_code
 from nexau_runner import run_proposer_with_nexau
 from shared import (
     find_sidecar_next_to_script,
     get_repo_root,
-    iter_effective_files,
     iter_effective_files_recursive,
     load_callable_from_python_file,
 )
@@ -78,6 +78,34 @@ def _extract_tags(text: str) -> set[str]:
         if any(k in t for k in keys):
             tags.add(tag)
     return tags
+
+
+def _run_proposer_backend(
+    task: str,
+    label: str,
+    work_dir: Path,
+    timeout_seconds: int,
+    log_dir: Path,
+    max_iterations_override: int | None = None,
+) -> dict:
+    backend = str(os.environ.get("PROPOSER_BACKEND", "nexau")).strip().lower()
+    if backend in {"claude", "claude_code", "claude-code"}:
+        return run_proposer_with_claude_code(
+            task=task,
+            label=label,
+            work_dir=work_dir,
+            timeout_seconds=timeout_seconds,
+            log_dir=log_dir,
+            max_iterations_override=max_iterations_override,
+        )
+    return run_proposer_with_nexau(
+        task=task,
+        label=label,
+        work_dir=work_dir,
+        timeout_seconds=timeout_seconds,
+        log_dir=log_dir,
+        max_iterations_override=max_iterations_override,
+    )
 
 
 def _load_recent_change_texts(candidates_dir: Path, k: int) -> list[str]:
@@ -249,7 +277,7 @@ def plan_attempts(
             planner_task = ctx.strip() + "\n\n" + planner_task
 
     agent_session_id = str(uuid.uuid4())[:8]
-    result = run_proposer_with_nexau(
+    result = _run_proposer_backend(
         task=planner_task,
         label=f"evolver-attempt-planner-{agent_session_id}",
         work_dir=paths.workspace,
@@ -628,7 +656,7 @@ Start now. Read the history first, then propose.
             }
 
         proposer_timeout_seconds = 300
-        result = run_proposer_with_nexau(
+        result = _run_proposer_backend(
             task=proposer_task,
             label=f"evolver-proposer-{agent_session_id}",
             work_dir=paths.workspace,
@@ -644,7 +672,7 @@ Start now. Read the history first, then propose.
             print(
                 f"[PROPOSER] Detected max-iterations termination; retrying with max_iterations={retry_max_iter}, timeout_seconds={retry_timeout}"
             )
-            result = run_proposer_with_nexau(
+            result = _run_proposer_backend(
                 task=proposer_task,
                 label=f"evolver-proposer-{agent_session_id}-retry",
                 work_dir=paths.workspace,
@@ -710,7 +738,7 @@ Start now. Read the history first, then propose.
                     + f"\n\n## Mandatory Change Size\nYour previous attempt was too small. In this round you MUST make a substantial change (>= {threshold} total line delta) within the allowed file(s). Do not do a trivial edit.\n"
                 )
                 force_max_iter = min(max(int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20")) * 2, 60), 160)
-                result = run_proposer_with_nexau(
+                result = _run_proposer_backend(
                     task=force_task,
                     label=f"evolver-proposer-{agent_session_id}-force",
                     work_dir=paths.workspace,
@@ -742,7 +770,7 @@ Start now. Read the history first, then propose.
                     "Do not make a trivial edit; change the algorithm family or objective.\n"
                 )
                 force_max_iter = min(max(int(os.environ.get("PROPOSER_MAX_ITERATIONS", "20")) * 2, 60), 160)
-                result = run_proposer_with_nexau(
+                result = _run_proposer_backend(
                     task=force_task,
                     label=f"evolver-proposer-{agent_session_id}-novelty",
                     work_dir=paths.workspace,
@@ -750,7 +778,8 @@ Start now. Read the history first, then propose.
                     log_dir=candidate_dir / "traces",
                     max_iterations_override=force_max_iter,
                 )
-        print(f"[PROPOSER] NexAU returned: {result}")
+        backend = str(os.environ.get("PROPOSER_BACKEND", "nexau")).strip().lower()
+        print(f"[PROPOSER] {backend} returned: {result}")
         return {"success": True, "candidate_dir": str(candidate_dir), "agent_result": result}
     except Exception as e:
         print(f"[PROPOSER] Error running proposer: {e}")
