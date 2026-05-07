@@ -16,6 +16,12 @@ You may use any suitable algorithmic model to design the selection policy, inclu
 Do NOT modify anything except the model implementation file.
 Do NOT change any function signatures or IO behavior.
 
+## Python Syntax (STRICT)
+- Use ONLY ASCII quotes in code: `"`, `'`, `"""`, `'''`.
+- DO NOT use smart quotes: `“”` or `‘’` anywhere (including docstrings and f-strings).
+- Before you finish, you MUST ensure the file passes:
+  `python -m py_compile harness/model.py`
+
 ## Mandatory Evidence
 Before proposing any change, you MUST inspect:
 - `best/current/harness/outputs/metrics.json` (or the latest candidate's `harness/outputs/metrics.json` if best is missing)
@@ -52,6 +58,15 @@ you may import and call:
 - `bda_tools.gene_search(query_gene: str, k: int = 10, diverse: bool = False) -> list[int]`
 
 This returns candidate indices for similar (or diverse) genes using Achilles features.
+
+Mandatory requirement (STRICT):
+- If gene search is available, you MUST call `bda_tools.gene_search(...)` in EVERY invocation of `select(...)`.
+- You MUST actually use the returned indices as part of the batch you return (not just call it and ignore it).
+- Your strategy MUST be phrased so that regardless of `strategy_tags` (exploration/exploitation/uncertainty/etc.), gene_search is always involved when available.
+
+For attempt planning (if you are asked to output `strategy_tags`):
+- Every planned attempt MUST include the tag `gene_search`.
+- Every attempt’s hypothesis/outline MUST explicitly state where gene_search is called and how its results are incorporated into the returned indices.
 
 If gene search is available, you MUST use it to expand from strong anchors (hit genes and/or high-|score| genes).
 Rationale: per-gene bandits cannot generalize in single-gene screens (each gene appears once); Achilles neighbors are

@@ -12,6 +12,32 @@ from evolver_config import EvolverConfig
 from shared import iter_effective_files, iter_effective_files_recursive, resolve_maybe_relative_path
 
 
+def _sanitize_python_smart_quotes(path: Path) -> bool:
+    try:
+        raw = path.read_text(encoding="utf-8", errors="strict")
+    except UnicodeDecodeError:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return False
+
+    repl = {
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2018": "'",
+        "\u2019": "'",
+    }
+    new = raw
+    for a, b in repl.items():
+        new = new.replace(a, b)
+    if new == raw:
+        return False
+    try:
+        path.write_text(new, encoding="utf-8")
+    except Exception:
+        return False
+    return True
+
+
 def validate_candidate(candidate_dir: Path) -> bool:
     print(f"[VALIDATE] Checking {candidate_dir}/harness/...")
 
@@ -28,6 +54,11 @@ def validate_candidate(candidate_dir: Path) -> bool:
     for f in files:
         if f.suffix == ".py":
             import py_compile
+
+            if str(os.environ.get("EVOLVER_SANITIZE_SMART_QUOTES", "1")).strip() == "1":
+                changed = _sanitize_python_smart_quotes(f)
+                if changed:
+                    print(f"[VALIDATE] Sanitized smart quotes in {f.name}")
 
             try:
                 py_compile.compile(str(f), doraise=True)
