@@ -258,6 +258,7 @@ def main() -> int:
     parser.add_argument("--metric_mode", type=str, default="topk")
     parser.add_argument("--topk_k", type=int, default=0)
     parser.add_argument("--threshold", type=str, default="")
+    parser.add_argument("--u_bottom_n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -293,6 +294,15 @@ def main() -> int:
     model_kind, model_meta, score_any = _load_backend(model_path, p_train=p_train_norm, u_df=u_norm, seed=int(args.seed))
 
     u_scores = score_any(u_norm)
+    u_bottom_n = int(max(0, min(int(args.u_bottom_n), int(u_norm.shape[0]))))
+    u_most_unlike_path = ""
+    if u_bottom_n > 0:
+        u_rank = u_raw.copy()
+        u_rank["pu_score_like_p"] = u_scores.astype(float, copy=False)
+        order_u = np.argsort(u_scores.astype(float, copy=False), kind="mergesort")
+        u_most_unlike = u_rank.iloc[order_u[:u_bottom_n]].copy()
+        u_most_unlike_path = str(out_dir / "u_most_unlike_p.csv")
+        u_most_unlike.to_csv(u_most_unlike_path, index=False)
 
     if model_kind == "legacy_score_u":
         p_test_scores_list: list[float] = []
@@ -386,7 +396,11 @@ def main() -> int:
         "f1": _safe_float(eval_out.get("f1")) if "f1" in eval_out else _safe_float(eval_out.get("best_f1")),
         "eval": eval_out,
         "model_meta": model_meta,
-        "outputs": {"scores_test_csv": str(scores_path)},
+        "outputs": {
+            "scores_test_csv": str(scores_path),
+            "u_most_unlike_p_csv": u_most_unlike_path,
+            "u_bottom_n": u_bottom_n,
+        },
     }
     (out_dir / "metrics.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
