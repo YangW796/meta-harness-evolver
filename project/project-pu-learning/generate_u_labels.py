@@ -47,33 +47,101 @@ def _robust_center_scale(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return center, scale
 
 
-def _make_oracle_scores(z: np.ndarray, seed: int) -> np.ndarray:
+def _winsorize(z: np.ndarray, limit: float = 6.0) -> np.ndarray:
     z = np.asarray(z, dtype=float)
     z = np.where(np.isfinite(z), z, 0.0)
+    lim = float(limit)
+    if not np.isfinite(lim) or lim <= 0.0:
+        return z
+    return np.clip(z, -lim, lim)
+
+
+def _shrink_inv_cov(z: np.ndarray) -> np.ndarray:
+    z = np.asarray(z, dtype=float)
+    n, d = z.shape
+    if n <= 1 or d <= 0:
+        return np.eye(int(d), dtype=float)
+    mu = np.mean(z, axis=0)
+    x = z - mu[None, :]
+    s = (x.T @ x) / float(max(1, n - 1))
+    tr = float(np.trace(s))
+    if not np.isfinite(tr) or tr <= 0.0:
+        s = np.eye(int(d), dtype=float)
+        tr = float(d)
+    alpha = float(min(0.95, max(0.05, float(d) / float(n + d))))
+    cov = (1.0 - alpha) * s + alpha * (tr / float(d)) * np.eye(int(d), dtype=float)
+    cov = cov + 1e-8 * np.eye(int(d), dtype=float)
+    inv = np.linalg.pinv(cov)
+    inv = np.asarray(inv, dtype=float)
+    return inv
+
+
+def _kmeans2(z: np.ndarray, seed: int, iters: int = 12) -> tuple[np.ndarray, np.ndarray]:
+    z = np.asarray(z, dtype=float)
     n, d = z.shape
     if n == 0:
+        return np.zeros((d,), dtype=float), np.zeros((d,), dtype=float)
+    if n == 1:
+        c = z[0].copy()
+        return c, c.copy()
+    rng = np.random.default_rng(int(seed))
+    i0 = int(rng.integers(0, n))
+    c1 = z[i0].copy()
+    d2 = np.sum((z - c1[None, :]) ** 2, axis=1)
+    i1 = int(np.argmax(d2))
+    c2 = z[i1].copy()
+    for _ in range(int(max(1, iters))):
+        d21 = np.sum((z - c1[None, :]) ** 2, axis=1)
+        d22 = np.sum((z - c2[None, :]) ** 2, axis=1)
+        a = d21 <= d22
+        if np.any(a):
+            c1 = np.mean(z[a], axis=0)
+        if np.any(~a):
+            c2 = np.mean(z[~a], axis=0)
+    return np.asarray(c1, dtype=float), np.asarray(c2, dtype=float)
+
+
+def _score_like_p(z_x: np.ndarray, z_p: np.ndarray, seed: int) -> np.ndarray:
+    z_x = np.asarray(z_x, dtype=float)
+    z_p = np.asarray(z_p, dtype=float)
+    n_x, d = z_x.shape
+    if n_x == 0:
         return np.zeros((0,), dtype=float)
     if d == 0:
-        return np.zeros((n,), dtype=float)
+        return np.zeros((n_x,), dtype=float)
 
-    base = -np.mean(z * z, axis=1)
-    rng = np.random.default_rng(int(seed))
-    w1 = rng.normal(size=(d,))
-    w2 = rng.normal(size=(d,))
-    w3 = rng.normal(size=(d,))
-    w1 = w1 / (np.linalg.norm(w1) + 1e-12)
-    w2 = w2 / (np.linalg.norm(w2) + 1e-12)
-    w3 = w3 / (np.linalg.norm(w3) + 1e-12)
+    z_p2 = _winsorize(z_p, limit=6.0)
+    z_x2 = _winsorize(z_x, limit=6.0)
+    inv_cov = _shrink_inv_cov(z_p2)
+    c1, c2 = _kmeans2(z_p2, seed=int(seed), iters=12)
 
-    p1 = (z @ w1) / np.sqrt(float(d))
-    p2 = (z @ w2) / np.sqrt(float(d))
-    p3 = (z @ w3) / np.sqrt(float(d))
+    x1 = z_x2 - c1[None, :]
+    x2 = z_x2 - c2[None, :]
+    md2_1 = np.einsum("ni,ij,nj->n", x1, inv_cov, x1, optimize=True)
+    md2_2 = np.einsum("ni,ij,nj->n", x2, inv_cov, x2, optimize=True)
+    md2 = np.minimum(md2_1, md2_2)
+    md2 = np.where(np.isfinite(md2), md2, float("inf"))
+    base = -0.5 * md2
 
-    t1 = np.tanh(p1)
-    t2 = np.sin(1.3 * p2 + 0.7 * np.tanh(p3))
-    t3 = np.tanh(np.mean(np.tanh(z), axis=1))
+    rng = np.random.default_rng(int(seed) + 17)
+    h = int(min(48, max(12, d)))
+    w1 = rng.normal(scale=1.0 / np.sqrt(float(max(1, d))), size=(d, h))
+    b1 = rng.normal(scale=0.2, size=(h,))
+    w2 = rng.normal(scale=1.0 / np.sqrt(float(max(1, h))), size=(h,))
 
-    scores = base + 0.12 * t1 + 0.08 * t2 + 0.05 * t3
+    t = np.tanh(z_x2 @ w1 + b1[None, :])
+    mlp = t @ w2
+    mlp = np.asarray(mlp, dtype=float).reshape(-1)
+
+    sign = np.sign(np.mean(np.tanh(z_p2), axis=0))
+    align = np.mean(np.tanh(z_x2) * sign[None, :], axis=1)
+
+    proj = rng.normal(size=(d,))
+    proj = proj / (np.linalg.norm(proj) + 1e-12)
+    p = (z_x2 @ proj) / np.sqrt(float(d))
+    ripple = np.sin(1.7 * p + 0.3 * np.tanh(mlp))
+
+    scores = base + 0.08 * mlp + 0.05 * align + 0.03 * ripple
     scores = np.asarray(scores, dtype=float).reshape(-1)
     scores[~np.isfinite(scores)] = float("-inf")
     return scores
@@ -124,17 +192,17 @@ def main() -> int:
     z_p = (x_p_imp - center[None, :]) / scale[None, :]
     z_u = (x_u_imp - center[None, :]) / scale[None, :]
 
-    scores_p = _make_oracle_scores(z_p, seed=int(args.seed))
-    scores_u = _make_oracle_scores(z_u, seed=int(args.seed))
+    scores_p = _score_like_p(z_p, z_p, seed=int(args.seed))
+    scores_u = _score_like_p(z_u, z_p, seed=int(args.seed))
 
     u_pos_ratio = float(args.u_positive_ratio)
     u_pos_ratio = 0.0 if not np.isfinite(u_pos_ratio) else max(0.0, min(1.0, u_pos_ratio))
     if scores_u.size == 0:
         threshold = float("inf")
     elif u_pos_ratio <= 0.0:
-        threshold = float("-inf")
-    elif u_pos_ratio >= 1.0:
         threshold = float("inf")
+    elif u_pos_ratio >= 1.0:
+        threshold = float("-inf")
     else:
         threshold = float(np.quantile(scores_u, 1.0 - u_pos_ratio))
 

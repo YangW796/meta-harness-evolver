@@ -428,19 +428,20 @@ def main() -> int:
         u_bottom_n = 0
 
     u_train_mask = np.ones((int(u_train_norm0.shape[0]),), dtype=bool)
-    
+
+    u_train_id_to_pos = {str(_id): int(i) for i, _id in enumerate(u_train_ids0)}
+
     global_removed_ids: set[str] = set()
+    removed_for_next_candidates_ids: list[str] = []
     if state_path is not None:
         state_payload = _load_state(state_path)
         global_removed_ids = set(state_payload.get("removed_u_ids", []))
-        if global_removed_ids:
-            for idx_str in global_removed_ids:
-                try:
-                    pos = u_train_ids0.index(idx_str)
-                    if 0 <= pos < u_train_mask.shape[0]:
-                        u_train_mask[pos] = False
-                except ValueError:
-                    pass
+        for _id in list(global_removed_ids):
+            pos = u_train_id_to_pos.get(str(_id), None)
+            if pos is None:
+                continue
+            if 0 <= int(pos) < u_train_mask.shape[0]:
+                u_train_mask[int(pos)] = False
 
     iter_records: list[dict[str, object]] = []
     last_scores_df: pd.DataFrame | None = None
@@ -618,10 +619,29 @@ def main() -> int:
                     removed_id = u_train_ids0[pos] if pos < len(u_train_ids0) else str(pos)
                     removed_ids.append(removed_id)
                     global_removed_ids.add(removed_id)
+                    removed_for_next_candidates_ids.append(str(removed_id))
 
             rem_df = u_train_raw0.iloc[np.nonzero(~u_train_mask)[0]].copy()
             removed_path = str(out_dir / f"u_train_removed_until_iter{int(it + 1)}.csv")
             rem_df.to_csv(removed_path, index=False)
+
+        removed_for_next_candidates_this_iter: list[str] = []
+        if state_path is not None and it == (iterations - 1) and remove_n_per_iter_eff > 0 and int(u_train_norm.shape[0]) > 0:
+            u_train_scores = score_any(u_train_norm)
+            remove_n = int(min(remove_n_per_iter_eff, int(u_train_norm.shape[0])))
+            order_train = np.argsort(u_train_scores.astype(float, copy=False), kind="mergesort")
+            remove_pos = order_train[:remove_n]
+            active_positions = np.nonzero(u_train_mask)[0]
+            for p in remove_pos.tolist():
+                if not (0 <= int(p) < int(active_positions.shape[0])):
+                    continue
+                pos0 = int(active_positions[int(p)])
+                if 0 <= pos0 < u_train_mask.shape[0]:
+                    u_train_mask[pos0] = False
+                    removed_id = u_train_ids0[pos0] if pos0 < len(u_train_ids0) else str(pos0)
+                    removed_for_next_candidates_this_iter.append(str(removed_id))
+                    removed_for_next_candidates_ids.append(str(removed_id))
+                    global_removed_ids.add(str(removed_id))
 
         iter_records.append(
             {
@@ -630,6 +650,8 @@ def main() -> int:
                 "u_eval_rows": int(u_eval_norm.shape[0]),
                 "removed_this_iter_n": int(len(removed_ids)),
                 "removed_this_iter_ids": removed_ids,
+                "removed_for_next_candidates_n": int(len(removed_for_next_candidates_this_iter)),
+                "removed_for_next_candidates_ids": removed_for_next_candidates_this_iter,
                 "u_most_unlike_p_csv": u_most_unlike_path,
                 "u_train_removed_until_csv": removed_path,
                 "remove_n_per_iter_effective": int(remove_n_per_iter_eff),
@@ -672,6 +694,9 @@ def main() -> int:
         "u_holdout_n": u_holdout_n,
         "remove_n_per_iter": remove_n_per_iter_raw,
         "remove_ratio_per_iter": remove_ratio_per_iter,
+        "state_path": str(state_path) if state_path is not None else "",
+        "removed_u_ids_total": int(len(global_removed_ids)),
+        "removed_u_ids_added_this_candidate": sorted(list(set(removed_for_next_candidates_ids))),
         "precision": _safe_float(last_eval_out.get("precision")) if "precision" in last_eval_out else _safe_float(last_eval_out.get("best_precision")),
         "recall": _safe_float(last_eval_out.get("recall")) if "recall" in last_eval_out else _safe_float(last_eval_out.get("best_recall")),
         "f1": _safe_float(last_eval_out.get("f1")) if "f1" in last_eval_out else _safe_float(last_eval_out.get("best_f1")),
