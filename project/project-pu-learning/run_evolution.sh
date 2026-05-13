@@ -22,6 +22,10 @@ export PROPOSER_TIMEOUT_SECONDS="${PROPOSER_TIMEOUT_SECONDS:-600}"
 export PROPOSER_LLM_TIMEOUT_SECONDS="${PROPOSER_LLM_TIMEOUT_SECONDS:-}"
 export NEXAU_ENABLE_RUN_SHELL_COMMAND="${NEXAU_ENABLE_RUN_SHELL_COMMAND:-0}"
 
+export EVOLVER_INJECT_PROMPT_CONTEXT="${EVOLVER_INJECT_PROMPT_CONTEXT:-1}"
+export EVOLVER_PROMPT_CONTEXT_FILE="${EVOLVER_PROMPT_CONTEXT_FILE:-$PROJECT_DIR/prompt_context.py}"
+export EVOLVER_ATTEMPT_PLANNER_CONTEXT_FILE="${EVOLVER_ATTEMPT_PLANNER_CONTEXT_FILE:-$PROJECT_DIR/prompt_context.py}"
+
 PROPOSER_PROMPT_PREFIX_PATH="$PROJECT_DIR/proposer_prompt_prefix.txt"
 if [[ ! -f "$PROPOSER_PROMPT_PREFIX_PATH" ]]; then
   echo "Missing proposer prompt prefix file: $PROPOSER_PROMPT_PREFIX_PATH" >&2
@@ -48,6 +52,10 @@ if [[ -z "${PROJECT_PU_U_CSV:-}" || ! -f "${PROJECT_PU_U_CSV:-}" ]]; then
   echo "Missing PROJECT_PU_U_CSV=/path/to/U.csv" >&2
   exit 2
 fi
+if [[ -z "${PROJECT_PU_U_LABELED_CSV:-}" || ! -f "${PROJECT_PU_U_LABELED_CSV:-}" ]]; then
+  echo "Missing PROJECT_PU_U_LABELED_CSV=/path/to/U_labeled.csv" >&2
+  exit 2
+fi
 
 ARGS=(
   python -u "$EVOLVER_ROOT/scripts/run_evolution.py"
@@ -56,4 +64,3 @@ ARGS=(
   --evaluate-script "$EVALUATE_SCRIPT_PATH"
 )
 (cd "$EVOLVER_ROOT" && "${ARGS[@]}")
-

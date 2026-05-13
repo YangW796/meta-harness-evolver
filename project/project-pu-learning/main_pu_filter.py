@@ -251,6 +251,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--p_csv", type=str, required=True)
     parser.add_argument("--u_csv", type=str, required=True)
+    parser.add_argument("--u_labeled_csv", type=str, default="")
+    parser.add_argument("--u_label_col", type=str, default="u_label")
     parser.add_argument("--candidate_dir", type=str, required=True)
     parser.add_argument("--model_path", type=str, default="")
     parser.add_argument("--test_ratio", type=float, default=0.2)
@@ -258,12 +260,17 @@ def main() -> int:
     parser.add_argument("--metric_mode", type=str, default="topk")
     parser.add_argument("--topk_k", type=int, default=0)
     parser.add_argument("--threshold", type=str, default="")
-    parser.add_argument("--u_bottom_n", type=int, default=200)
+    parser.add_argument("--u_bottom_n", type=int, default=0)
+    parser.add_argument("--u_bottom_ratio", type=float, default=0.0)
+    parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument("--remove_n_per_iter", type=int, default=0)
+    parser.add_argument("--remove_ratio_per_iter", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     p_csv = Path(args.p_csv).expanduser().resolve()
     u_csv = Path(args.u_csv).expanduser().resolve()
+    u_labeled_csv = Path(args.u_labeled_csv).expanduser().resolve() if args.u_labeled_csv else None
     candidate_dir = Path(args.candidate_dir).expanduser().resolve()
     model_path = Path(args.model_path).expanduser().resolve() if args.model_path else None
 
@@ -271,11 +278,14 @@ def main() -> int:
         raise FileNotFoundError(str(p_csv))
     if not u_csv.exists():
         raise FileNotFoundError(str(u_csv))
+    if u_labeled_csv is not None and not u_labeled_csv.exists():
+        raise FileNotFoundError(str(u_labeled_csv))
     if model_path is not None and not model_path.exists():
         raise FileNotFoundError(str(model_path))
 
     p_raw = pd.read_csv(p_csv)
     u_raw = pd.read_csv(u_csv)
+    u_labeled_raw = pd.read_csv(u_labeled_csv) if u_labeled_csv is not None else None
     p_norm = _normalized_df(p_raw)
     u_norm = _normalized_df(u_raw)
 
@@ -291,95 +301,209 @@ def main() -> int:
     out_dir = candidate_dir / "harness" / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    model_kind, model_meta, score_any = _load_backend(model_path, p_train=p_train_norm, u_df=u_norm, seed=int(args.seed))
+    u_eval_norm = u_norm.copy()
+    u_eval_raw = u_raw.copy()
 
-    u_scores = score_any(u_norm)
-    u_bottom_n = int(max(0, min(int(args.u_bottom_n), int(u_norm.shape[0]))))
-    u_most_unlike_path = ""
-    if u_bottom_n > 0:
-        u_rank = u_raw.copy()
-        u_rank["pu_score_like_p"] = u_scores.astype(float, copy=False)
-        order_u = np.argsort(u_scores.astype(float, copy=False), kind="mergesort")
-        u_most_unlike = u_rank.iloc[order_u[:u_bottom_n]].copy()
-        u_most_unlike_path = str(out_dir / "u_most_unlike_p.csv")
-        u_most_unlike.to_csv(u_most_unlike_path, index=False)
-
-    if model_kind == "legacy_score_u":
-        p_test_scores_list: list[float] = []
-        for i in range(int(p_test_norm.shape[0])):
-            s1 = score_any(p_test_norm.iloc[[i]])
-            p_test_scores_list.append(float(s1[0]) if s1.size else float("-inf"))
-        p_test_scores = np.asarray(p_test_scores_list, dtype=float)
-    else:
-        p_test_scores = score_any(p_test_norm)
-
-    scores = np.concatenate([p_test_scores, u_scores], axis=0).astype(float, copy=False)
-    scores[~np.isfinite(scores)] = float("-inf")
-    y_true = np.concatenate([np.ones(int(p_test_norm.shape[0]), dtype=int), np.zeros(int(u_norm.shape[0]), dtype=int)], axis=0)
+    u_labels_map: dict[str, int] | None = None
+    if u_labeled_raw is not None:
+        u_lab_norm = _normalized_df(u_labeled_raw)
+        u_lab_id_col = _guess_id_col(u_lab_norm, preferred=["5design", "design", "name", "id"])
+        lab_col = _norm_col(str(args.u_label_col))
+        if lab_col not in u_lab_norm.columns:
+            raise ValueError(f"u_labeled_csv missing label column: {args.u_label_col}")
+        if u_lab_id_col not in u_lab_norm.columns:
+            raise ValueError(f"u_labeled_csv missing id column: {u_lab_id_col}")
+        u_labels_map = {}
+        ids = u_lab_norm[u_lab_id_col].astype(str).tolist()
+        labs = u_lab_norm[lab_col].tolist()
+        for _id, _lab in zip(ids, labs):
+            try:
+                u_labels_map[str(_id)] = 1 if int(float(str(_lab).strip())) != 0 else 0
+            except Exception:
+                u_labels_map[str(_id)] = 0
 
     metric_mode = str(args.metric_mode or "topk").strip().lower()
     if metric_mode not in {"topk", "maxf1", "threshold"}:
         raise ValueError(f"Unsupported metric_mode: {metric_mode}")
 
-    eval_out: dict[str, object]
-    used_k: int | None = None
-    used_threshold: float | None = None
-    if metric_mode == "topk":
-        k = int(args.topk_k) if int(args.topk_k) > 0 else int(p_test_norm.shape[0])
-        used_k = int(max(1, min(k, int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
-        eval_out = _eval_topk(scores, y_true, k=used_k)
-    elif metric_mode == "threshold":
-        raw_t = str(args.threshold or "").strip()
-        if not raw_t:
-            raise ValueError("metric_mode=threshold requires --threshold")
-        t = float(raw_t)
-        if not math.isfinite(t):
-            raise ValueError("threshold must be finite")
-        used_threshold = float(t)
-        eval_out = _eval_threshold(scores, y_true, threshold=used_threshold)
+    iterations = int(max(1, int(args.iterations)))
+    remove_n_per_iter_raw = int(max(0, int(args.remove_n_per_iter)))
+    remove_ratio_per_iter = float(args.remove_ratio_per_iter)
+    remove_ratio_per_iter = 0.0 if not np.isfinite(remove_ratio_per_iter) else max(0.0, min(1.0, remove_ratio_per_iter))
+    u_bottom_n_raw = int(max(0, int(args.u_bottom_n)))
+    u_bottom_ratio = float(args.u_bottom_ratio)
+    u_bottom_ratio = 0.0 if not np.isfinite(u_bottom_ratio) else max(0.0, min(1.0, u_bottom_ratio))
+    if u_bottom_n_raw > 0:
+        u_bottom_n = u_bottom_n_raw
+    elif u_bottom_ratio > 0.0:
+        u_bottom_n = int(round(float(u_eval_norm.shape[0]) * u_bottom_ratio))
+        if int(u_eval_norm.shape[0]) >= 1:
+            u_bottom_n = int(max(1, min(u_bottom_n, int(u_eval_norm.shape[0]))))
+        else:
+            u_bottom_n = 0
     else:
-        best = _eval_maxf1(scores, y_true)
-        used_k = int(best.get("best_k", 0) or 0)
-        eval_out = {
-            "best_k": used_k,
-            "best_precision": float(best.get("best_precision", 0.0) or 0.0),
-            "best_recall": float(best.get("best_recall", 0.0) or 0.0),
-            "best_f1": float(best.get("best_f1", 0.0) or 0.0),
-        }
-
-    if metric_mode != "maxf1":
-        best = _eval_maxf1(scores, y_true)
-        eval_out["best_k"] = int(best.get("best_k", 0) or 0)
-        eval_out["best_precision"] = float(best.get("best_precision", 0.0) or 0.0)
-        eval_out["best_recall"] = float(best.get("best_recall", 0.0) or 0.0)
-        eval_out["best_f1"] = float(best.get("best_f1", 0.0) or 0.0)
-
-    p_test_ids = (
-        [str(x) for x in p_test_norm[p_id_col].tolist()]
-        if p_id_col in p_test_norm.columns
-        else [str(i) for i in range(int(p_test_norm.shape[0]))]
-    )
-    u_ids = (
-        [str(x) for x in u_norm[u_id_col].tolist()]
-        if u_id_col in u_norm.columns
-        else [str(i) for i in range(int(u_norm.shape[0]))]
+        u_bottom_n = 0
+    u_ids_all = (
+        [str(x) for x in u_eval_norm[u_id_col].tolist()]
+        if u_id_col in u_eval_norm.columns
+        else [str(i) for i in range(int(u_eval_norm.shape[0]))]
     )
 
-    scores_df = pd.DataFrame(
-        {
-            "split": (["p_test"] * int(p_test_norm.shape[0])) + (["u"] * int(u_norm.shape[0])),
-            "label": y_true.astype(int),
-            "id": p_test_ids + u_ids,
-            "score": scores.astype(float),
-        }
-    )
-    scores_path = out_dir / "scores_test.csv"
-    scores_df.to_csv(scores_path, index=False)
+    u_train_mask = np.ones((int(u_eval_norm.shape[0]),), dtype=bool)
+    iter_records: list[dict[str, object]] = []
+    last_scores_df: pd.DataFrame | None = None
+    last_scores_path: Path | None = None
+    last_model_kind: str = ""
+    last_model_meta: dict[str, object] = {}
+    last_used_k: int | None = None
+    last_used_threshold: float | None = None
+    last_eval_out: dict[str, object] = {}
+
+    for it in range(iterations):
+        u_train_norm = u_eval_norm.iloc[np.nonzero(u_train_mask)[0]].copy()
+        model_kind, model_meta, score_any = _load_backend(model_path, p_train=p_train_norm, u_df=u_train_norm, seed=int(args.seed))
+        last_model_kind = model_kind
+        last_model_meta = model_meta
+
+        if model_kind == "legacy_score_u":
+            p_test_scores_list: list[float] = []
+            for i in range(int(p_test_norm.shape[0])):
+                s1 = score_any(p_test_norm.iloc[[i]])
+                p_test_scores_list.append(float(s1[0]) if s1.size else float("-inf"))
+            p_test_scores = np.asarray(p_test_scores_list, dtype=float)
+        else:
+            p_test_scores = score_any(p_test_norm)
+
+        u_eval_scores = score_any(u_eval_norm)
+        scores = np.concatenate([p_test_scores, u_eval_scores], axis=0).astype(float, copy=False)
+        scores[~np.isfinite(scores)] = float("-inf")
+
+        if u_labels_map is None:
+            u_eval_labels = np.zeros((int(u_eval_norm.shape[0]),), dtype=int)
+        else:
+            u_eval_labels = np.asarray([int(u_labels_map.get(_id, 0)) for _id in u_ids_all], dtype=int)
+        y_true = np.concatenate([np.ones(int(p_test_norm.shape[0]), dtype=int), u_eval_labels.astype(int)], axis=0)
+
+        eval_out: dict[str, object]
+        used_k: int | None = None
+        used_threshold: float | None = None
+        if metric_mode == "topk":
+            k = int(args.topk_k) if int(args.topk_k) > 0 else int(p_test_norm.shape[0])
+            used_k = int(max(1, min(k, int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
+            eval_out = _eval_topk(scores, y_true, k=used_k)
+        elif metric_mode == "threshold":
+            raw_t = str(args.threshold or "").strip()
+            if not raw_t:
+                raise ValueError("metric_mode=threshold requires --threshold")
+            t = float(raw_t)
+            if not math.isfinite(t):
+                raise ValueError("threshold must be finite")
+            used_threshold = float(t)
+            eval_out = _eval_threshold(scores, y_true, threshold=used_threshold)
+        else:
+            best = _eval_maxf1(scores, y_true)
+            used_k = int(best.get("best_k", 0) or 0)
+            eval_out = {
+                "best_k": used_k,
+                "best_precision": float(best.get("best_precision", 0.0) or 0.0),
+                "best_recall": float(best.get("best_recall", 0.0) or 0.0),
+                "best_f1": float(best.get("best_f1", 0.0) or 0.0),
+            }
+
+        if metric_mode != "maxf1":
+            best = _eval_maxf1(scores, y_true)
+            eval_out["best_k"] = int(best.get("best_k", 0) or 0)
+            eval_out["best_precision"] = float(best.get("best_precision", 0.0) or 0.0)
+            eval_out["best_recall"] = float(best.get("best_recall", 0.0) or 0.0)
+            eval_out["best_f1"] = float(best.get("best_f1", 0.0) or 0.0)
+
+        last_used_k = used_k
+        last_used_threshold = used_threshold
+        last_eval_out = eval_out
+
+        p_test_ids = (
+            [str(x) for x in p_test_norm[p_id_col].tolist()]
+            if p_id_col in p_test_norm.columns
+            else [str(i) for i in range(int(p_test_norm.shape[0]))]
+        )
+        scores_df = pd.DataFrame(
+            {
+                "split": (["p_test"] * int(p_test_norm.shape[0])) + (["u_eval"] * int(u_eval_norm.shape[0])),
+                "label": y_true.astype(int),
+                "id": p_test_ids + u_ids_all,
+                "score": scores.astype(float),
+                "iter": int(it + 1),
+            }
+        )
+        scores_path = out_dir / f"scores_test_iter{int(it + 1)}.csv"
+        scores_df.to_csv(scores_path, index=False)
+        last_scores_df = scores_df
+        last_scores_path = scores_path
+
+        u_most_unlike_path = ""
+        if u_bottom_n > 0 and int(u_eval_norm.shape[0]) > 0:
+            u_rank = u_eval_raw.copy()
+            u_rank["pu_score_like_p"] = u_eval_scores.astype(float, copy=False)
+            order_u = np.argsort(u_eval_scores.astype(float, copy=False), kind="mergesort")
+            u_most_unlike = u_rank.iloc[order_u[: int(min(u_bottom_n, int(u_eval_norm.shape[0])))]].copy()
+            u_most_unlike_path = str(out_dir / f"u_most_unlike_p_iter{int(it + 1)}.csv")
+            u_most_unlike.to_csv(u_most_unlike_path, index=False)
+
+        removed_ids: list[str] = []
+        removed_path = ""
+        remove_n_per_iter_eff: int
+        if remove_n_per_iter_raw > 0:
+            remove_n_per_iter_eff = remove_n_per_iter_raw
+        elif remove_ratio_per_iter > 0.0:
+            remove_n_per_iter_eff = int(round(float(u_train_norm.shape[0]) * remove_ratio_per_iter))
+        else:
+            remove_n_per_iter_eff = 0
+
+        if it < (iterations - 1) and remove_n_per_iter_eff > 0 and int(u_train_norm.shape[0]) > 0:
+            u_train_scores = score_any(u_train_norm)
+            remove_n = int(min(remove_n_per_iter_eff, int(u_train_norm.shape[0])))
+            order_train = np.argsort(u_train_scores.astype(float, copy=False), kind="mergesort")
+            remove_pos = order_train[:remove_n]
+            remove_idx = u_train_norm.index.to_numpy()[remove_pos]
+            for idx in remove_idx.tolist():
+                try:
+                    pos = int(np.where(u_eval_norm.index.to_numpy() == idx)[0][0])
+                except Exception:
+                    continue
+                if 0 <= pos < u_train_mask.shape[0]:
+                    u_train_mask[pos] = False
+                    removed_ids.append(u_ids_all[pos] if pos < len(u_ids_all) else str(pos))
+
+            rem_df = u_eval_raw.iloc[np.nonzero(~u_train_mask)[0]].copy()
+            removed_path = str(out_dir / f"u_train_removed_until_iter{int(it + 1)}.csv")
+            rem_df.to_csv(removed_path, index=False)
+
+        iter_records.append(
+            {
+                "iter": int(it + 1),
+                "u_train_rows": int(u_train_norm.shape[0]),
+                "u_eval_rows": int(u_eval_norm.shape[0]),
+                "removed_this_iter_n": int(len(removed_ids)),
+                "removed_this_iter_ids": removed_ids,
+                "u_most_unlike_p_csv": u_most_unlike_path,
+                "u_train_removed_until_csv": removed_path,
+                "remove_n_per_iter_effective": int(remove_n_per_iter_eff),
+                "remove_ratio_per_iter": remove_ratio_per_iter,
+                "precision": _safe_float(eval_out.get("precision")) if "precision" in eval_out else _safe_float(eval_out.get("best_precision")),
+                "recall": _safe_float(eval_out.get("recall")) if "recall" in eval_out else _safe_float(eval_out.get("best_recall")),
+                "f1": _safe_float(eval_out.get("f1")) if "f1" in eval_out else _safe_float(eval_out.get("best_f1")),
+                "eval": eval_out,
+                "used_k": used_k,
+                "used_threshold": used_threshold,
+            }
+        )
 
     payload: dict[str, object] = {
         "p_csv": str(p_csv),
         "u_csv": str(u_csv),
-        "model_kind": model_kind,
+        "u_labeled_csv": str(u_labeled_csv) if u_labeled_csv is not None else "",
+        "u_label_col": str(args.u_label_col),
+        "model_kind": last_model_kind,
         "model_path": str(model_path) if model_path is not None else "",
         "seed": int(args.seed),
         "p_rows": int(p_norm.shape[0]),
@@ -389,17 +513,21 @@ def main() -> int:
         "p_id_col": p_id_col,
         "u_id_col": u_id_col,
         "metric_mode": metric_mode,
-        "used_k": used_k,
-        "used_threshold": used_threshold,
-        "precision": _safe_float(eval_out.get("precision")) if "precision" in eval_out else _safe_float(eval_out.get("best_precision")),
-        "recall": _safe_float(eval_out.get("recall")) if "recall" in eval_out else _safe_float(eval_out.get("best_recall")),
-        "f1": _safe_float(eval_out.get("f1")) if "f1" in eval_out else _safe_float(eval_out.get("best_f1")),
-        "eval": eval_out,
-        "model_meta": model_meta,
+        "used_k": last_used_k,
+        "used_threshold": last_used_threshold,
+        "iterations": iterations,
+        "remove_n_per_iter": remove_n_per_iter_raw,
+        "remove_ratio_per_iter": remove_ratio_per_iter,
+        "precision": _safe_float(last_eval_out.get("precision")) if "precision" in last_eval_out else _safe_float(last_eval_out.get("best_precision")),
+        "recall": _safe_float(last_eval_out.get("recall")) if "recall" in last_eval_out else _safe_float(last_eval_out.get("best_recall")),
+        "f1": _safe_float(last_eval_out.get("f1")) if "f1" in last_eval_out else _safe_float(last_eval_out.get("best_f1")),
+        "eval": last_eval_out,
+        "model_meta": last_model_meta,
+        "iter": iter_records,
         "outputs": {
-            "scores_test_csv": str(scores_path),
-            "u_most_unlike_p_csv": u_most_unlike_path,
+            "scores_test_csv": str(last_scores_path) if last_scores_path is not None else "",
             "u_bottom_n": u_bottom_n,
+            "u_bottom_ratio": u_bottom_ratio,
         },
     }
     (out_dir / "metrics.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
