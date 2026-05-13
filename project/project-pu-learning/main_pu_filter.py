@@ -259,9 +259,12 @@ def main() -> int:
     parser.add_argument("--test_n", type=int, default=0)
     parser.add_argument("--metric_mode", type=str, default="topk")
     parser.add_argument("--topk_k", type=int, default=0)
+    parser.add_argument("--topk_ratio", type=float, default=0.0)
     parser.add_argument("--threshold", type=str, default="")
     parser.add_argument("--u_bottom_n", type=int, default=0)
     parser.add_argument("--u_bottom_ratio", type=float, default=0.0)
+    parser.add_argument("--u_holdout_ratio", type=float, default=0.0)
+    parser.add_argument("--u_holdout_n", type=int, default=0)
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--remove_n_per_iter", type=int, default=0)
     parser.add_argument("--remove_ratio_per_iter", type=float, default=0.0)
@@ -301,9 +304,6 @@ def main() -> int:
     out_dir = candidate_dir / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    u_eval_norm = u_norm.copy()
-    u_eval_raw = u_raw.copy()
-
     u_labels_map: dict[str, int] | None = None
     if u_labeled_raw is not None:
         u_lab_norm = _normalized_df(u_labeled_raw)
@@ -333,6 +333,70 @@ def main() -> int:
     u_bottom_n_raw = int(max(0, int(args.u_bottom_n)))
     u_bottom_ratio = float(args.u_bottom_ratio)
     u_bottom_ratio = 0.0 if not np.isfinite(u_bottom_ratio) else max(0.0, min(1.0, u_bottom_ratio))
+
+    topk_ratio = float(args.topk_ratio)
+    topk_ratio = 0.0 if not np.isfinite(topk_ratio) else max(0.0, min(1.0, topk_ratio))
+
+    u_holdout_n_raw = int(max(0, int(args.u_holdout_n)))
+    u_holdout_ratio = float(args.u_holdout_ratio)
+    u_holdout_ratio = 0.0 if not np.isfinite(u_holdout_ratio) else max(0.0, min(1.0, u_holdout_ratio))
+
+    u_ids_full = (
+        [str(x) for x in u_norm[u_id_col].tolist()]
+        if u_id_col in u_norm.columns
+        else [str(i) for i in range(int(u_norm.shape[0]))]
+    )
+    if u_labels_map is None:
+        u_labels_full = np.zeros((int(u_norm.shape[0]),), dtype=int)
+    else:
+        u_labels_full = np.asarray([int(u_labels_map.get(_id, 0)) for _id in u_ids_full], dtype=int)
+
+    n_u = int(u_norm.shape[0])
+    if u_holdout_n_raw > 0:
+        u_holdout_n = int(min(u_holdout_n_raw, n_u))
+    elif u_holdout_ratio > 0.0:
+        u_holdout_n = int(round(float(n_u) * u_holdout_ratio))
+        if n_u >= 2:
+            u_holdout_n = int(max(1, min(u_holdout_n, n_u - 1)))
+        else:
+            u_holdout_n = int(min(u_holdout_n, n_u))
+    else:
+        u_holdout_n = 0
+
+    if u_holdout_n > 0:
+        rng = np.random.RandomState(int(args.seed))
+        all_idx = np.arange(n_u, dtype=int)
+        pos_idx = all_idx[u_labels_full.astype(int) == 1]
+        neg_idx = all_idx[u_labels_full.astype(int) != 1]
+        rng.shuffle(pos_idx)
+        rng.shuffle(neg_idx)
+        desired_pos = int(round(float(u_holdout_n) * (float(pos_idx.size) / float(max(1, n_u)))))
+        pos_take = int(min(max(0, desired_pos), int(pos_idx.size)))
+        neg_take = int(min(int(u_holdout_n - pos_take), int(neg_idx.size)))
+        holdout = np.concatenate([pos_idx[:pos_take], neg_idx[:neg_take]], axis=0)
+        if int(holdout.size) < int(u_holdout_n):
+            remaining = np.concatenate([pos_idx[pos_take:], neg_idx[neg_take:]], axis=0)
+            rng.shuffle(remaining)
+            need = int(u_holdout_n - int(holdout.size))
+            holdout = np.concatenate([holdout, remaining[:need]], axis=0)
+        holdout = np.unique(holdout.astype(int))
+        train = np.setdiff1d(all_idx, holdout, assume_unique=False)
+        u_train_norm0 = u_norm.iloc[train].copy()
+        u_eval_norm = u_norm.iloc[holdout].copy()
+        u_train_raw0 = u_raw.iloc[train].copy()
+        u_eval_raw = u_raw.iloc[holdout].copy()
+        u_train_ids0 = [u_ids_full[i] for i in train.tolist()]
+        u_ids_all = [u_ids_full[i] for i in holdout.tolist()]
+        u_eval_labels = u_labels_full[holdout]
+    else:
+        u_train_norm0 = u_norm.copy()
+        u_eval_norm = u_norm.copy()
+        u_train_raw0 = u_raw.copy()
+        u_eval_raw = u_raw.copy()
+        u_train_ids0 = u_ids_full
+        u_ids_all = u_ids_full
+        u_eval_labels = u_labels_full
+
     if u_bottom_n_raw > 0:
         u_bottom_n = u_bottom_n_raw
     elif u_bottom_ratio > 0.0:
@@ -343,13 +407,8 @@ def main() -> int:
             u_bottom_n = 0
     else:
         u_bottom_n = 0
-    u_ids_all = (
-        [str(x) for x in u_eval_norm[u_id_col].tolist()]
-        if u_id_col in u_eval_norm.columns
-        else [str(i) for i in range(int(u_eval_norm.shape[0]))]
-    )
 
-    u_train_mask = np.ones((int(u_eval_norm.shape[0]),), dtype=bool)
+    u_train_mask = np.ones((int(u_train_norm0.shape[0]),), dtype=bool)
     iter_records: list[dict[str, object]] = []
     last_scores_df: pd.DataFrame | None = None
     last_scores_path: Path | None = None
@@ -358,13 +417,13 @@ def main() -> int:
     last_used_k: int | None = None
     last_used_threshold: float | None = None
     last_eval_out: dict[str, object] = {}
+    last_eval_out_all: dict[str, object] = {}
 
     for it in range(iterations):
-        u_train_norm = u_eval_norm.iloc[np.nonzero(u_train_mask)[0]].copy()
+        u_train_norm = u_train_norm0.iloc[np.nonzero(u_train_mask)[0]].copy()
         model_kind, model_meta, score_any = _load_backend(model_path, p_train=p_train_norm, u_df=u_train_norm, seed=int(args.seed))
         last_model_kind = model_kind
         last_model_meta = model_meta
-
         if model_kind == "legacy_score_u":
             p_test_scores_list: list[float] = []
             for i in range(int(p_test_norm.shape[0])):
@@ -378,10 +437,6 @@ def main() -> int:
         scores = np.concatenate([p_test_scores, u_eval_scores], axis=0).astype(float, copy=False)
         scores[~np.isfinite(scores)] = float("-inf")
 
-        if u_labels_map is None:
-            u_eval_labels = np.zeros((int(u_eval_norm.shape[0]),), dtype=int)
-        else:
-            u_eval_labels = np.asarray([int(u_labels_map.get(_id, 0)) for _id in u_ids_all], dtype=int)
         y_true = np.concatenate([np.ones(int(p_test_norm.shape[0]), dtype=int), u_eval_labels.astype(int)], axis=0)
 
         eval_out: dict[str, object]
@@ -393,7 +448,12 @@ def main() -> int:
 
         if metric_mode in {"topk", "u_topk"}:
             default_k = int(p_test_norm.shape[0])
-            k = int(args.topk_k) if int(args.topk_k) > 0 else default_k
+            if int(args.topk_k) > 0:
+                k = int(args.topk_k)
+            elif topk_ratio > 0.0:
+                k = int(round(float(eval_scores.shape[0]) * topk_ratio))
+            else:
+                k = default_k
             used_k = int(max(1, min(k, int(eval_scores.shape[0])))) if int(eval_scores.shape[0]) > 0 else 0
             eval_out = _eval_topk(eval_scores, eval_labels, k=used_k)
         elif metric_mode in {"threshold", "u_threshold"}:
@@ -422,9 +482,54 @@ def main() -> int:
             eval_out["best_recall"] = float(best.get("best_recall", 0.0) or 0.0)
             eval_out["best_f1"] = float(best.get("best_f1", 0.0) or 0.0)
 
+        eval_out_all: dict[str, object] = {}
+        used_k_all: int | None = None
+        used_threshold_all: float | None = None
+        if u_only:
+            base_mode = metric_mode[2:]
+            if base_mode == "topk":
+                default_k_all = int(p_test_norm.shape[0])
+                if int(args.topk_k) > 0:
+                    k_all = int(args.topk_k)
+                elif topk_ratio > 0.0:
+                    k_all = int(round(float(scores.shape[0]) * topk_ratio))
+                else:
+                    k_all = default_k_all
+                used_k_all = int(max(1, min(int(k_all), int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
+                eval_out_all = _eval_topk(scores, y_true, k=used_k_all)
+                best_all = _eval_maxf1(scores, y_true)
+                eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
+                eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
+                eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
+                eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
+            elif base_mode == "threshold":
+                raw_t = str(args.threshold or "").strip()
+                if not raw_t:
+                    raise ValueError("metric_mode=threshold requires --threshold")
+                t = float(raw_t)
+                if not math.isfinite(t):
+                    raise ValueError("threshold must be finite")
+                used_threshold_all = float(t)
+                eval_out_all = _eval_threshold(scores, y_true, threshold=used_threshold_all)
+                best_all = _eval_maxf1(scores, y_true)
+                eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
+                eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
+                eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
+                eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
+            else:
+                best_all = _eval_maxf1(scores, y_true)
+                used_k_all = int(best_all.get("best_k", 0) or 0)
+                eval_out_all = {
+                    "best_k": used_k_all,
+                    "best_precision": float(best_all.get("best_precision", 0.0) or 0.0),
+                    "best_recall": float(best_all.get("best_recall", 0.0) or 0.0),
+                    "best_f1": float(best_all.get("best_f1", 0.0) or 0.0),
+                }
+
         last_used_k = used_k
         last_used_threshold = used_threshold
         last_eval_out = eval_out
+        last_eval_out_all = eval_out_all
 
         p_test_ids = (
             [str(x) for x in p_test_norm[p_id_col].tolist()]
@@ -472,14 +577,14 @@ def main() -> int:
             remove_idx = u_train_norm.index.to_numpy()[remove_pos]
             for idx in remove_idx.tolist():
                 try:
-                    pos = int(np.where(u_eval_norm.index.to_numpy() == idx)[0][0])
+                    pos = int(np.where(u_train_norm0.index.to_numpy() == idx)[0][0])
                 except Exception:
                     continue
                 if 0 <= pos < u_train_mask.shape[0]:
                     u_train_mask[pos] = False
-                    removed_ids.append(u_ids_all[pos] if pos < len(u_ids_all) else str(pos))
+                    removed_ids.append(u_train_ids0[pos] if pos < len(u_train_ids0) else str(pos))
 
-            rem_df = u_eval_raw.iloc[np.nonzero(~u_train_mask)[0]].copy()
+            rem_df = u_train_raw0.iloc[np.nonzero(~u_train_mask)[0]].copy()
             removed_path = str(out_dir / f"u_train_removed_until_iter{int(it + 1)}.csv")
             rem_df.to_csv(removed_path, index=False)
 
@@ -498,8 +603,14 @@ def main() -> int:
                 "recall": _safe_float(eval_out.get("recall")) if "recall" in eval_out else _safe_float(eval_out.get("best_recall")),
                 "f1": _safe_float(eval_out.get("f1")) if "f1" in eval_out else _safe_float(eval_out.get("best_f1")),
                 "eval": eval_out,
+                "precision_all": _safe_float(eval_out_all.get("precision")) if "precision" in eval_out_all else _safe_float(eval_out_all.get("best_precision")) if eval_out_all else None,
+                "recall_all": _safe_float(eval_out_all.get("recall")) if "recall" in eval_out_all else _safe_float(eval_out_all.get("best_recall")) if eval_out_all else None,
+                "f1_all": _safe_float(eval_out_all.get("f1")) if "f1" in eval_out_all else _safe_float(eval_out_all.get("best_f1")) if eval_out_all else None,
+                "eval_all": eval_out_all,
                 "used_k": used_k,
                 "used_threshold": used_threshold,
+                "used_k_all": used_k_all,
+                "used_threshold_all": used_threshold_all,
             }
         )
 
@@ -521,12 +632,19 @@ def main() -> int:
         "used_k": last_used_k,
         "used_threshold": last_used_threshold,
         "iterations": iterations,
+        "topk_ratio": topk_ratio,
+        "u_holdout_ratio": u_holdout_ratio,
+        "u_holdout_n": u_holdout_n,
         "remove_n_per_iter": remove_n_per_iter_raw,
         "remove_ratio_per_iter": remove_ratio_per_iter,
         "precision": _safe_float(last_eval_out.get("precision")) if "precision" in last_eval_out else _safe_float(last_eval_out.get("best_precision")),
         "recall": _safe_float(last_eval_out.get("recall")) if "recall" in last_eval_out else _safe_float(last_eval_out.get("best_recall")),
         "f1": _safe_float(last_eval_out.get("f1")) if "f1" in last_eval_out else _safe_float(last_eval_out.get("best_f1")),
         "eval": last_eval_out,
+        "precision_all": _safe_float(last_eval_out_all.get("precision")) if "precision" in last_eval_out_all else _safe_float(last_eval_out_all.get("best_precision")) if last_eval_out_all else None,
+        "recall_all": _safe_float(last_eval_out_all.get("recall")) if "recall" in last_eval_out_all else _safe_float(last_eval_out_all.get("best_recall")) if last_eval_out_all else None,
+        "f1_all": _safe_float(last_eval_out_all.get("f1")) if "f1" in last_eval_out_all else _safe_float(last_eval_out_all.get("best_f1")) if last_eval_out_all else None,
+        "eval_all": last_eval_out_all,
         "model_meta": last_model_meta,
         "iter": iter_records,
         "outputs": {
