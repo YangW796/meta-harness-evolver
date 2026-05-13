@@ -33,8 +33,8 @@ PROJECT_PU_U_HOLDOUT_N="${PROJECT_PU_U_HOLDOUT_N:-0}"
 PROJECT_PU_U_HOLDOUT_RATIO="${PROJECT_PU_U_HOLDOUT_RATIO:-0.5}"
 PROJECT_PU_ITERATIONS="${PROJECT_PU_ITERATIONS:-1}"
 PROJECT_PU_REMOVE_N_PER_ITER="${PROJECT_PU_REMOVE_N_PER_ITER:-0}"
-PROJECT_PU_REMOVE_RATIO_PER_ITER="${PROJECT_PU_REMOVE_RATIO_PER_ITER:-0.05}"
-PROJECT_PU_STATE_PATH="${PROJECT_PU_STATE_PATH:-$WORKSPACE_DIR/pu_state.json}"
+PROJECT_PU_REMOVE_RATIO_PER_ITER="${PROJECT_PU_REMOVE_RATIO_PER_ITER:-0}"
+PROJECT_PU_STATE_PATH="${PROJECT_PU_STATE_PATH:-}"
 PROJECT_PU_SEED="${PROJECT_PU_SEED:-42}"
 
 if [[ ! -d "$HARNESS_DIR" ]]; then
@@ -63,25 +63,30 @@ if [[ ! -f "$MODEL_PATH" ]]; then
   MODEL_PATH=""
 fi
 
-"$PYTHON_BIN" "$PROJECT_MAIN" \
-  --p_csv "$PROJECT_PU_P_CSV" \
-  --u_csv "$PROJECT_PU_U_CSV" \
-  --u_labeled_csv "$PROJECT_PU_U_LABELED_CSV" \
-  --u_label_col "$PROJECT_PU_U_LABEL_COL" \
-  --candidate_dir "$CANDIDATE_DIR" \
-  --state_path "$PROJECT_PU_STATE_PATH" \
-  --model_path "$MODEL_PATH" \
-  --test_ratio "$PROJECT_PU_TEST_RATIO" \
-  --test_n "$PROJECT_PU_TEST_N" \
-  --metric_mode "$PROJECT_PU_METRIC_MODE" \
-  --topk_k "$PROJECT_PU_TOPK_K" \
-  --topk_ratio "$PROJECT_PU_TOPK_RATIO" \
-  --threshold "$PROJECT_PU_THRESHOLD" \
-  --u_bottom_n "$PROJECT_PU_U_BOTTOM_N" \
-  --u_bottom_ratio "$PROJECT_PU_U_BOTTOM_RATIO" \
-  --u_holdout_ratio "$PROJECT_PU_U_HOLDOUT_RATIO" \
-  --u_holdout_n "$PROJECT_PU_U_HOLDOUT_N" \
-  --iterations "$PROJECT_PU_ITERATIONS" \
-  --remove_n_per_iter "$PROJECT_PU_REMOVE_N_PER_ITER" \
-  --remove_ratio_per_iter "$PROJECT_PU_REMOVE_RATIO_PER_ITER" \
+ARGS=(
+  "$PYTHON_BIN" "$PROJECT_MAIN"
+  --p_csv "$PROJECT_PU_P_CSV"
+  --u_csv "$PROJECT_PU_U_CSV"
+  --u_labeled_csv "$PROJECT_PU_U_LABELED_CSV"
+  --u_label_col "$PROJECT_PU_U_LABEL_COL"
+  --candidate_dir "$CANDIDATE_DIR"
+  --model_path "$MODEL_PATH"
+  --test_ratio "$PROJECT_PU_TEST_RATIO"
+  --test_n "$PROJECT_PU_TEST_N"
+  --metric_mode "$PROJECT_PU_METRIC_MODE"
+  --topk_k "$PROJECT_PU_TOPK_K"
+  --topk_ratio "$PROJECT_PU_TOPK_RATIO"
+  --threshold "$PROJECT_PU_THRESHOLD"
+  --u_bottom_n "$PROJECT_PU_U_BOTTOM_N"
+  --u_bottom_ratio "$PROJECT_PU_U_BOTTOM_RATIO"
+  --u_holdout_ratio "$PROJECT_PU_U_HOLDOUT_RATIO"
+  --u_holdout_n "$PROJECT_PU_U_HOLDOUT_N"
+  --iterations "$PROJECT_PU_ITERATIONS"
+  --remove_n_per_iter "$PROJECT_PU_REMOVE_N_PER_ITER"
+  --remove_ratio_per_iter "$PROJECT_PU_REMOVE_RATIO_PER_ITER"
   --seed "$PROJECT_PU_SEED"
+)
+if [[ -n "$PROJECT_PU_STATE_PATH" ]]; then
+  ARGS+=(--state_path "$PROJECT_PU_STATE_PATH")
+fi
+"${ARGS[@]}"

@@ -142,6 +142,54 @@ def _eval_maxf1(scores: np.ndarray, y_true: np.ndarray) -> dict[str, object]:
     return best
 
 
+def _pred_pos_topk(scores: np.ndarray, k: int) -> np.ndarray:
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    n = int(scores.shape[0])
+    k = int(max(0, min(int(k), n)))
+    pred = np.zeros(n, dtype=bool)
+    if n == 0 or k == 0:
+        return pred
+    order = np.argsort(scores, kind="mergesort")[::-1]
+    pred[order[:k]] = True
+    return pred
+
+
+def _pred_pos_threshold(scores: np.ndarray, threshold: float) -> np.ndarray:
+    scores = np.asarray(scores, dtype=float).reshape(-1)
+    return scores >= float(threshold)
+
+
+def _subset_metrics(pred_pos: np.ndarray, y_true: np.ndarray) -> dict[str, object]:
+    pred_pos = np.asarray(pred_pos, dtype=bool).reshape(-1)
+    y_true = np.asarray(y_true, dtype=int).reshape(-1)
+    n = int(y_true.shape[0])
+    if int(pred_pos.shape[0]) != n:
+        pred_pos = pred_pos[:n]
+    tp = int(np.sum((y_true == 1) & pred_pos))
+    fp = int(np.sum((y_true == 0) & pred_pos))
+    fn = int(np.sum((y_true == 1) & (~pred_pos)))
+    p, r, f1 = _prf1_from_counts(tp, fp, fn)
+    return {
+        "rows": n,
+        "pos_total": int(np.sum(y_true == 1)),
+        "selected": int(tp + fp),
+        "hits": tp,
+        "precision": float(p),
+        "recall": float(r),
+        "f1": float(f1),
+    }
+
+
+def _pred_pos_from_mode(mode: str, scores: np.ndarray, used_k: int | None, used_threshold: float | None) -> np.ndarray:
+    m = str(mode or "").strip().lower()
+    if m == "threshold":
+        if used_threshold is None:
+            return np.zeros((int(np.asarray(scores).reshape(-1).shape[0]),), dtype=bool)
+        return _pred_pos_threshold(scores, float(used_threshold))
+    k = int(used_k or 0)
+    return _pred_pos_topk(scores, k)
+
+
 def _default_fit(p_train: pd.DataFrame, u_df: pd.DataFrame) -> tuple[list[str], np.ndarray, np.ndarray]:
     p = _normalized_df(p_train)
     u = _normalized_df(u_df)
@@ -433,7 +481,8 @@ def main() -> int:
 
     global_removed_ids: set[str] = set()
     removed_for_next_candidates_ids: list[str] = []
-    if state_path is not None:
+    remove_enabled = bool(int(remove_n_per_iter_raw) > 0 or float(remove_ratio_per_iter) > 0.0)
+    if remove_enabled and state_path is not None:
         state_payload = _load_state(state_path)
         global_removed_ids = set(state_payload.get("removed_u_ids", []))
         for _id in list(global_removed_ids):
@@ -452,6 +501,7 @@ def main() -> int:
     last_used_threshold: float | None = None
     last_eval_out: dict[str, object] = {}
     last_eval_out_all: dict[str, object] = {}
+    last_breakdown: dict[str, object] = {}
 
     for it in range(iterations):
         u_train_norm = u_train_norm0.iloc[np.nonzero(u_train_mask)[0]].copy()
@@ -519,51 +569,61 @@ def main() -> int:
         eval_out_all: dict[str, object] = {}
         used_k_all: int | None = None
         used_threshold_all: float | None = None
-        if u_only:
-            base_mode = metric_mode[2:]
-            if base_mode == "topk":
-                default_k_all = int(p_test_norm.shape[0])
-                if int(args.topk_k) > 0:
-                    k_all = int(args.topk_k)
-                elif topk_ratio > 0.0:
-                    k_all = int(round(float(scores.shape[0]) * topk_ratio))
-                else:
-                    k_all = default_k_all
-                used_k_all = int(max(1, min(int(k_all), int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
-                eval_out_all = _eval_topk(scores, y_true, k=used_k_all)
-                best_all = _eval_maxf1(scores, y_true)
-                eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
-                eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
-                eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
-                eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
-            elif base_mode == "threshold":
-                raw_t = str(args.threshold or "").strip()
-                if not raw_t:
-                    raise ValueError("metric_mode=threshold requires --threshold")
-                t = float(raw_t)
-                if not math.isfinite(t):
-                    raise ValueError("threshold must be finite")
-                used_threshold_all = float(t)
-                eval_out_all = _eval_threshold(scores, y_true, threshold=used_threshold_all)
-                best_all = _eval_maxf1(scores, y_true)
-                eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
-                eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
-                eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
-                eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
+        mode_all = metric_mode[2:] if u_only else metric_mode
+        if mode_all == "topk":
+            default_k_all = int(p_test_norm.shape[0])
+            if int(args.topk_k) > 0:
+                k_all = int(args.topk_k)
+            elif topk_ratio > 0.0:
+                k_all = int(round(float(scores.shape[0]) * topk_ratio))
             else:
-                best_all = _eval_maxf1(scores, y_true)
-                used_k_all = int(best_all.get("best_k", 0) or 0)
-                eval_out_all = {
-                    "best_k": used_k_all,
-                    "best_precision": float(best_all.get("best_precision", 0.0) or 0.0),
-                    "best_recall": float(best_all.get("best_recall", 0.0) or 0.0),
-                    "best_f1": float(best_all.get("best_f1", 0.0) or 0.0),
-                }
+                k_all = default_k_all
+            used_k_all = int(max(1, min(int(k_all), int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
+            eval_out_all = _eval_topk(scores, y_true, k=used_k_all)
+            best_all = _eval_maxf1(scores, y_true)
+            eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
+            eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
+            eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
+            eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
+        elif mode_all == "threshold":
+            raw_t = str(args.threshold or "").strip()
+            if not raw_t:
+                raise ValueError("metric_mode=threshold requires --threshold")
+            t = float(raw_t)
+            if not math.isfinite(t):
+                raise ValueError("threshold must be finite")
+            used_threshold_all = float(t)
+            eval_out_all = _eval_threshold(scores, y_true, threshold=used_threshold_all)
+            best_all = _eval_maxf1(scores, y_true)
+            eval_out_all["best_k"] = int(best_all.get("best_k", 0) or 0)
+            eval_out_all["best_precision"] = float(best_all.get("best_precision", 0.0) or 0.0)
+            eval_out_all["best_recall"] = float(best_all.get("best_recall", 0.0) or 0.0)
+            eval_out_all["best_f1"] = float(best_all.get("best_f1", 0.0) or 0.0)
+        else:
+            best_all = _eval_maxf1(scores, y_true)
+            used_k_all = int(best_all.get("best_k", 0) or 0)
+            eval_out_all = {
+                "best_k": used_k_all,
+                "best_precision": float(best_all.get("best_precision", 0.0) or 0.0),
+                "best_recall": float(best_all.get("best_recall", 0.0) or 0.0),
+                "best_f1": float(best_all.get("best_f1", 0.0) or 0.0),
+            }
+
+        pred_all = _pred_pos_from_mode(mode_all, scores, used_k_all, used_threshold_all)
+        pred_u = _pred_pos_from_mode(metric_mode[2:] if u_only else metric_mode, eval_scores, used_k, used_threshold)
+        p_n = int(p_test_norm.shape[0])
+        p_mask = pred_all[:p_n]
+        u_mask_all = pred_all[p_n:]
+        p_metrics = _subset_metrics(p_mask, y_true[:p_n])
+        u_metrics = _subset_metrics(pred_u, u_eval_labels) if u_only else _subset_metrics(u_mask_all, u_eval_labels)
+        all_metrics = _subset_metrics(pred_all, y_true)
+        breakdown = {"p_test": p_metrics, "u_test": u_metrics, "all": all_metrics}
 
         last_used_k = used_k
         last_used_threshold = used_threshold
         last_eval_out = eval_out
         last_eval_out_all = eval_out_all
+        last_breakdown = breakdown
 
         p_test_ids = (
             [str(x) for x in p_test_norm[p_id_col].tolist()]
@@ -626,7 +686,7 @@ def main() -> int:
             rem_df.to_csv(removed_path, index=False)
 
         removed_for_next_candidates_this_iter: list[str] = []
-        if state_path is not None and it == (iterations - 1) and remove_n_per_iter_eff > 0 and int(u_train_norm.shape[0]) > 0:
+        if remove_enabled and state_path is not None and it == (iterations - 1) and remove_n_per_iter_eff > 0 and int(u_train_norm.shape[0]) > 0:
             u_train_scores = score_any(u_train_norm)
             remove_n = int(min(remove_n_per_iter_eff, int(u_train_norm.shape[0])))
             order_train = np.argsort(u_train_scores.astype(float, copy=False), kind="mergesort")
@@ -664,6 +724,7 @@ def main() -> int:
                 "recall_all": _safe_float(eval_out_all.get("recall")) if "recall" in eval_out_all else _safe_float(eval_out_all.get("best_recall")) if eval_out_all else None,
                 "f1_all": _safe_float(eval_out_all.get("f1")) if "f1" in eval_out_all else _safe_float(eval_out_all.get("best_f1")) if eval_out_all else None,
                 "eval_all": eval_out_all,
+                "breakdown": breakdown,
                 "used_k": used_k,
                 "used_threshold": used_threshold,
                 "used_k_all": used_k_all,
@@ -697,6 +758,7 @@ def main() -> int:
         "state_path": str(state_path) if state_path is not None else "",
         "removed_u_ids_total": int(len(global_removed_ids)),
         "removed_u_ids_added_this_candidate": sorted(list(set(removed_for_next_candidates_ids))),
+        "breakdown": last_breakdown,
         "precision": _safe_float(last_eval_out.get("precision")) if "precision" in last_eval_out else _safe_float(last_eval_out.get("best_precision")),
         "recall": _safe_float(last_eval_out.get("recall")) if "recall" in last_eval_out else _safe_float(last_eval_out.get("best_recall")),
         "f1": _safe_float(last_eval_out.get("f1")) if "f1" in last_eval_out else _safe_float(last_eval_out.get("best_f1")),
@@ -714,7 +776,7 @@ def main() -> int:
         },
     }
     
-    if state_path is not None:
+    if remove_enabled and state_path is not None:
         state_payload = _load_state(state_path)
         state_payload["removed_u_ids"] = sorted(list(global_removed_ids))
         _save_state(state_path, state_payload)

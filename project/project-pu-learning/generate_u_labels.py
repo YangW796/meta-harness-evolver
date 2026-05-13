@@ -47,35 +47,6 @@ def _robust_center_scale(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return center, scale
 
 
-def _winsorize(z: np.ndarray, limit: float = 6.0) -> np.ndarray:
-    z = np.asarray(z, dtype=float)
-    z = np.where(np.isfinite(z), z, 0.0)
-    lim = float(limit)
-    if not np.isfinite(lim) or lim <= 0.0:
-        return z
-    return np.clip(z, -lim, lim)
-
-
-def _shrink_inv_cov(z: np.ndarray) -> np.ndarray:
-    z = np.asarray(z, dtype=float)
-    n, d = z.shape
-    if n <= 1 or d <= 0:
-        return np.eye(int(d), dtype=float)
-    mu = np.mean(z, axis=0)
-    x = z - mu[None, :]
-    s = (x.T @ x) / float(max(1, n - 1))
-    tr = float(np.trace(s))
-    if not np.isfinite(tr) or tr <= 0.0:
-        s = np.eye(int(d), dtype=float)
-        tr = float(d)
-    alpha = float(min(0.95, max(0.05, float(d) / float(n + d))))
-    cov = (1.0 - alpha) * s + alpha * (tr / float(d)) * np.eye(int(d), dtype=float)
-    cov = cov + 1e-8 * np.eye(int(d), dtype=float)
-    inv = np.linalg.pinv(cov)
-    inv = np.asarray(inv, dtype=float)
-    return inv
-
-
 def _kmeans2(z: np.ndarray, seed: int, iters: int = 12) -> tuple[np.ndarray, np.ndarray]:
     z = np.asarray(z, dtype=float)
     n, d = z.shape
@@ -101,6 +72,19 @@ def _kmeans2(z: np.ndarray, seed: int, iters: int = 12) -> tuple[np.ndarray, np.
     return np.asarray(c1, dtype=float), np.asarray(c2, dtype=float)
 
 
+def _feature_weights(z_p: np.ndarray) -> np.ndarray:
+    z_p = np.asarray(z_p, dtype=float)
+    if z_p.ndim != 2 or z_p.shape[1] == 0:
+        return np.zeros((0,), dtype=float)
+    m = np.mean(np.tanh(z_p), axis=0)
+    w = 0.5 + 0.5 * np.abs(m)
+    w = np.asarray(w, dtype=float).reshape(-1)
+    w[~np.isfinite(w)] = 1.0
+    w = np.maximum(w, 1e-3)
+    w = w / float(np.mean(w) + 1e-12)
+    return w
+
+
 def _score_like_p(z_x: np.ndarray, z_p: np.ndarray, seed: int) -> np.ndarray:
     z_x = np.asarray(z_x, dtype=float)
     z_p = np.asarray(z_p, dtype=float)
@@ -110,38 +94,30 @@ def _score_like_p(z_x: np.ndarray, z_p: np.ndarray, seed: int) -> np.ndarray:
     if d == 0:
         return np.zeros((n_x,), dtype=float)
 
-    z_p2 = _winsorize(z_p, limit=6.0)
-    z_x2 = _winsorize(z_x, limit=6.0)
-    inv_cov = _shrink_inv_cov(z_p2)
-    c1, c2 = _kmeans2(z_p2, seed=int(seed), iters=12)
-
-    x1 = z_x2 - c1[None, :]
-    x2 = z_x2 - c2[None, :]
-    md2_1 = np.einsum("ni,ij,nj->n", x1, inv_cov, x1, optimize=True)
-    md2_2 = np.einsum("ni,ij,nj->n", x2, inv_cov, x2, optimize=True)
-    md2 = np.minimum(md2_1, md2_2)
-    md2 = np.where(np.isfinite(md2), md2, float("inf"))
-    base = -0.5 * md2
+    c1, c2 = _kmeans2(z_p, seed=int(seed), iters=10)
+    w_feat = _feature_weights(z_p)
+    x1 = z_x - c1[None, :]
+    x2 = z_x - c2[None, :]
+    d2_1 = np.sum(x1 * x1 * w_feat[None, :], axis=1)
+    d2_2 = np.sum(x2 * x2 * w_feat[None, :], axis=1)
+    d2 = np.minimum(d2_1, d2_2)
+    d2 = np.where(np.isfinite(d2), d2, float("inf"))
+    base = -0.5 * d2
 
     rng = np.random.default_rng(int(seed) + 17)
-    h = int(min(48, max(12, d)))
-    w1 = rng.normal(scale=1.0 / np.sqrt(float(max(1, d))), size=(d, h))
-    b1 = rng.normal(scale=0.2, size=(h,))
-    w2 = rng.normal(scale=1.0 / np.sqrt(float(max(1, h))), size=(h,))
+    w = rng.normal(size=(d,))
+    w = w / (np.linalg.norm(w) + 1e-12)
+    proj = (z_x @ w) / np.sqrt(float(d))
+    bump = np.tanh(proj)
+    w2 = rng.normal(size=(d,))
+    w2 = w2 / (np.linalg.norm(w2) + 1e-12)
+    proj2 = (z_x @ w2) / np.sqrt(float(d))
+    ripple = np.sin(1.1 * proj + 0.7 * np.tanh(proj2))
+    sign = np.sign(np.mean(z_p, axis=0))
+    align = np.mean(np.tanh(z_x) * sign[None, :], axis=1)
+    interaction = np.tanh(proj) * np.sin(1.7 * proj2)
 
-    t = np.tanh(z_x2 @ w1 + b1[None, :])
-    mlp = t @ w2
-    mlp = np.asarray(mlp, dtype=float).reshape(-1)
-
-    sign = np.sign(np.mean(np.tanh(z_p2), axis=0))
-    align = np.mean(np.tanh(z_x2) * sign[None, :], axis=1)
-
-    proj = rng.normal(size=(d,))
-    proj = proj / (np.linalg.norm(proj) + 1e-12)
-    p = (z_x2 @ proj) / np.sqrt(float(d))
-    ripple = np.sin(1.7 * p + 0.3 * np.tanh(mlp))
-
-    scores = base + 0.08 * mlp + 0.05 * align + 0.03 * ripple
+    scores = base + 0.05 * bump + 0.03 * align + 0.02 * ripple + 0.02 * interaction
     scores = np.asarray(scores, dtype=float).reshape(-1)
     scores[~np.isfinite(scores)] = float("-inf")
     return scores
