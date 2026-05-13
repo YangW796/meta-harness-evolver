@@ -298,7 +298,7 @@ def main() -> int:
     p_train_raw = p_raw.iloc[train_idx].copy()
     p_test_raw = p_raw.iloc[test_idx].copy()
 
-    out_dir = candidate_dir / "harness" / "outputs"
+    out_dir = candidate_dir / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     u_eval_norm = u_norm.copy()
@@ -323,7 +323,7 @@ def main() -> int:
                 u_labels_map[str(_id)] = 0
 
     metric_mode = str(args.metric_mode or "topk").strip().lower()
-    if metric_mode not in {"topk", "maxf1", "threshold"}:
+    if metric_mode not in {"topk", "maxf1", "threshold", "u_topk", "u_maxf1", "u_threshold"}:
         raise ValueError(f"Unsupported metric_mode: {metric_mode}")
 
     iterations = int(max(1, int(args.iterations)))
@@ -387,11 +387,16 @@ def main() -> int:
         eval_out: dict[str, object]
         used_k: int | None = None
         used_threshold: float | None = None
-        if metric_mode == "topk":
-            k = int(args.topk_k) if int(args.topk_k) > 0 else int(p_test_norm.shape[0])
-            used_k = int(max(1, min(k, int(scores.shape[0])))) if int(scores.shape[0]) > 0 else 0
-            eval_out = _eval_topk(scores, y_true, k=used_k)
-        elif metric_mode == "threshold":
+        u_only = metric_mode.startswith("u_")
+        eval_scores = u_eval_scores if u_only else scores
+        eval_labels = u_eval_labels if u_only else y_true
+
+        if metric_mode in {"topk", "u_topk"}:
+            default_k = int(p_test_norm.shape[0])
+            k = int(args.topk_k) if int(args.topk_k) > 0 else default_k
+            used_k = int(max(1, min(k, int(eval_scores.shape[0])))) if int(eval_scores.shape[0]) > 0 else 0
+            eval_out = _eval_topk(eval_scores, eval_labels, k=used_k)
+        elif metric_mode in {"threshold", "u_threshold"}:
             raw_t = str(args.threshold or "").strip()
             if not raw_t:
                 raise ValueError("metric_mode=threshold requires --threshold")
@@ -399,9 +404,9 @@ def main() -> int:
             if not math.isfinite(t):
                 raise ValueError("threshold must be finite")
             used_threshold = float(t)
-            eval_out = _eval_threshold(scores, y_true, threshold=used_threshold)
+            eval_out = _eval_threshold(eval_scores, eval_labels, threshold=used_threshold)
         else:
-            best = _eval_maxf1(scores, y_true)
+            best = _eval_maxf1(eval_scores, eval_labels)
             used_k = int(best.get("best_k", 0) or 0)
             eval_out = {
                 "best_k": used_k,
@@ -410,8 +415,8 @@ def main() -> int:
                 "best_f1": float(best.get("best_f1", 0.0) or 0.0),
             }
 
-        if metric_mode != "maxf1":
-            best = _eval_maxf1(scores, y_true)
+        if metric_mode not in {"maxf1", "u_maxf1"}:
+            best = _eval_maxf1(eval_scores, eval_labels)
             eval_out["best_k"] = int(best.get("best_k", 0) or 0)
             eval_out["best_precision"] = float(best.get("best_precision", 0.0) or 0.0)
             eval_out["best_recall"] = float(best.get("best_recall", 0.0) or 0.0)

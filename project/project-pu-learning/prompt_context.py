@@ -132,7 +132,10 @@ def _collect_dataset_context() -> dict[str, object]:
 
 
 def _collect_best_metrics(paths) -> dict[str, object]:
-    metrics_path = paths.best_dir / "harness" / "outputs" / "metrics.json"
+    metrics_path = paths.best_dir / "outputs" / "metrics.json"
+    legacy_metrics_path = paths.best_dir / "harness" / "outputs" / "metrics.json"
+    if not metrics_path.exists():
+        metrics_path = legacy_metrics_path
     payload = _read_json(metrics_path) if metrics_path.exists() else {}
 
     iters = payload.get("iter", []) if isinstance(payload, dict) else []

@@ -25,9 +25,12 @@ def main() -> int:
     args = parser.parse_args()
 
     candidate_dir = args.candidate_dir.expanduser().resolve()
-    metrics_path = candidate_dir / "harness" / "outputs" / "metrics.json"
+    metrics_path = candidate_dir / "outputs" / "metrics.json"
+    legacy_metrics_path = candidate_dir / "harness" / "outputs" / "metrics.json"
     if not metrics_path.exists():
-        print(json.dumps({"error": f"missing metrics.json: {metrics_path}"}))
+        metrics_path = legacy_metrics_path
+    if not metrics_path.exists():
+        print(json.dumps({"error": f"missing metrics.json: tried {candidate_dir / 'outputs' / 'metrics.json'} and {legacy_metrics_path}"}))
         return 1
 
     payload = json.loads(metrics_path.read_text(encoding="utf-8"))
@@ -42,7 +45,7 @@ def main() -> int:
     best_recall = _safe_float(eval_payload.get("best_recall"))
     best_k = payload.get("eval", {}).get("best_k", None) if isinstance(payload.get("eval", {}), dict) else None
 
-    if metric_mode == "maxf1":
+    if metric_mode in {"maxf1", "u_maxf1"}:
         f1 = best_f1 if best_f1 is not None else f1
         precision = best_precision if best_precision is not None else precision
         recall = best_recall if best_recall is not None else recall
