@@ -247,6 +247,23 @@ def _load_backend(model_path: Path | None, p_train: pd.DataFrame, u_df: pd.DataF
     raise ValueError("model.py must define fit(...) or score_x(...) or score_u(p_df, u_df, seed=42).")
 
 
+def _load_state(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return payload
+
+
+def _save_state(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--p_csv", type=str, required=True)
@@ -254,6 +271,7 @@ def main() -> int:
     parser.add_argument("--u_labeled_csv", type=str, default="")
     parser.add_argument("--u_label_col", type=str, default="u_label")
     parser.add_argument("--candidate_dir", type=str, required=True)
+    parser.add_argument("--state_path", type=str, default="")
     parser.add_argument("--model_path", type=str, default="")
     parser.add_argument("--test_ratio", type=float, default=0.2)
     parser.add_argument("--test_n", type=int, default=0)
@@ -275,6 +293,7 @@ def main() -> int:
     u_csv = Path(args.u_csv).expanduser().resolve()
     u_labeled_csv = Path(args.u_labeled_csv).expanduser().resolve() if args.u_labeled_csv else None
     candidate_dir = Path(args.candidate_dir).expanduser().resolve()
+    state_path = Path(args.state_path).expanduser().resolve() if args.state_path else None
     model_path = Path(args.model_path).expanduser().resolve() if args.model_path else None
 
     if not p_csv.exists():
@@ -409,6 +428,20 @@ def main() -> int:
         u_bottom_n = 0
 
     u_train_mask = np.ones((int(u_train_norm0.shape[0]),), dtype=bool)
+    
+    global_removed_ids: set[str] = set()
+    if state_path is not None:
+        state_payload = _load_state(state_path)
+        global_removed_ids = set(state_payload.get("removed_u_ids", []))
+        if global_removed_ids:
+            for idx_str in global_removed_ids:
+                try:
+                    pos = u_train_ids0.index(idx_str)
+                    if 0 <= pos < u_train_mask.shape[0]:
+                        u_train_mask[pos] = False
+                except ValueError:
+                    pass
+
     iter_records: list[dict[str, object]] = []
     last_scores_df: pd.DataFrame | None = None
     last_scores_path: Path | None = None
@@ -582,7 +615,9 @@ def main() -> int:
                     continue
                 if 0 <= pos < u_train_mask.shape[0]:
                     u_train_mask[pos] = False
-                    removed_ids.append(u_train_ids0[pos] if pos < len(u_train_ids0) else str(pos))
+                    removed_id = u_train_ids0[pos] if pos < len(u_train_ids0) else str(pos)
+                    removed_ids.append(removed_id)
+                    global_removed_ids.add(removed_id)
 
             rem_df = u_train_raw0.iloc[np.nonzero(~u_train_mask)[0]].copy()
             removed_path = str(out_dir / f"u_train_removed_until_iter{int(it + 1)}.csv")
@@ -653,6 +688,12 @@ def main() -> int:
             "u_bottom_ratio": u_bottom_ratio,
         },
     }
+    
+    if state_path is not None:
+        state_payload = _load_state(state_path)
+        state_payload["removed_u_ids"] = sorted(list(global_removed_ids))
+        _save_state(state_path, state_payload)
+        
     (out_dir / "metrics.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
 
